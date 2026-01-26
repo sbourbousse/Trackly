@@ -12,6 +12,7 @@ public static class DeliveryEndpoints
         var group = app.MapGroup("/api/deliveries");
 
         group.MapGet("/", GetDeliveries);
+        group.MapGet("/{id:guid}", GetDelivery);
         group.MapPost("/", CreateDelivery);
         group.MapPost("/batch", CreateDeliveriesBatch);
         group.MapPatch("/{id:guid}/complete", CompleteDelivery);
@@ -40,6 +41,49 @@ public static class DeliveryEndpoints
             .ToListAsync(cancellationToken);
 
         return Results.Ok(deliveries);
+    }
+
+    private static async Task<IResult> GetDelivery(
+        Guid id,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var delivery = await dbContext.Deliveries
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == id && d.TenantId == tenantContext.TenantId && d.DeletedAt == null, cancellationToken);
+
+        if (delivery == null)
+        {
+            return Results.NotFound("Livraison introuvable.");
+        }
+
+        // Récupérer l'ordre associé
+        var order = await dbContext.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == delivery.OrderId && o.DeletedAt == null, cancellationToken);
+
+        // Récupérer le driver
+        var driver = await dbContext.Drivers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == delivery.DriverId, cancellationToken);
+
+        return Results.Ok(new DeliveryDetailResponse(
+            delivery.Id,
+            delivery.OrderId,
+            delivery.DriverId,
+            delivery.Status,
+            delivery.CreatedAt,
+            delivery.CompletedAt,
+            order?.CustomerName ?? "Inconnu",
+            order?.Address ?? "Adresse inconnue",
+            driver?.Name ?? "Non assigné"
+        ));
     }
 
     private static async Task<IResult> CreateDelivery(

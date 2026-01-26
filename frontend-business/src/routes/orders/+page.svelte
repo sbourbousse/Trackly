@@ -9,37 +9,6 @@
 		Livree: 'success'
 	};
 
-	const orders: OrderItem[] = [
-		{
-			id: 'ord-702',
-			ref: 'ORD-702',
-			client: 'Atelier Moreau',
-			address: '12 Rue des Tanneurs',
-			status: 'En cours',
-			deliveries: 3
-		},
-		{
-			id: 'ord-703',
-			ref: 'ORD-703',
-			client: 'Boulangerie Romy',
-			address: '8 Avenue du Port',
-			status: 'En attente',
-			deliveries: 2
-		},
-		{
-			id: 'ord-704',
-			ref: 'ORD-704',
-			client: 'Fleurs Mimosa',
-			address: '3 Rue du Marche',
-			status: 'Livree',
-			deliveries: 1
-		}
-	];
-
-	if (!ordersState.items.length) {
-		ordersActions.setOrders(orders);
-	}
-
 	let didInit = $state(false);
 	let selectedIds = $state<Set<string>>(new Set());
 	let deleting = $state(false);
@@ -131,7 +100,7 @@
 				>
 					{ordersState.loading ? 'Chargement...' : 'Actualiser'}
 				</button>
-				<button class="primary-button" type="button">Nouvelle commande</button>
+				<a href="/orders/new" class="primary-button" style="text-decoration: none; display: inline-block;">Nouvelle commande</a>
 			</div>
 		</div>
 

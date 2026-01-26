@@ -12,6 +12,22 @@ export const getDeliveries = async () => {
 	return await apiFetch<ApiDelivery[]>('/api/deliveries');
 };
 
+export type ApiDeliveryDetail = {
+	id: string;
+	orderId: string;
+	driverId: string;
+	status: string;
+	createdAt: string;
+	completedAt: string | null;
+	customerName: string;
+	address: string;
+	driverName: string;
+};
+
+export const getDelivery = async (id: string) => {
+	return await apiFetch<ApiDeliveryDetail>(`/api/deliveries/${id}`);
+};
+
 export const deleteDelivery = async (id: string) => {
 	return await apiFetch<{ message: string }>(`/api/deliveries/${id}`, {
 		method: 'DELETE'

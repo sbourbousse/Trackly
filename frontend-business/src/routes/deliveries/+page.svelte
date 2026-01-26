@@ -14,37 +14,6 @@
 		Retard: 'danger'
 	};
 
-	const deliveries: DeliveryRoute[] = [
-		{
-			id: 'tournee-est',
-			route: 'Tournee Est',
-			driver: 'Amine K.',
-			stops: 8,
-			status: 'En cours',
-			eta: '11:40'
-		},
-		{
-			id: 'tournee-centre',
-			route: 'Tournee Centre',
-			driver: 'Lina P.',
-			stops: 6,
-			status: 'Prevue',
-			eta: '13:20'
-		},
-		{
-			id: 'tournee-ouest',
-			route: 'Tournee Ouest',
-			driver: 'Marc D.',
-			stops: 5,
-			status: 'Livree',
-			eta: '09:05'
-		}
-	];
-
-	if (!deliveriesState.routes.length) {
-		deliveriesActions.setRoutes(deliveries);
-	}
-
 	let didInit = $state(false);
 	let selectedIds = $state<Set<string>>(new Set());
 	let deleting = $state(false);
@@ -108,7 +77,10 @@
 		<div class="panel-toolbar">
 			<div>
 				<h2>Tournees du jour</h2>
-				<p class="footer-note">3 tournees actives</p>
+				<p class="footer-note">
+					{deliveriesState.routes.length} tournee{deliveriesState.routes.length > 1 ? 's' : ''} 
+					{deliveriesState.lastUpdateAt ? `· Dernière mise à jour: ${deliveriesState.lastUpdateAt}` : ''}
+				</p>
 			</div>
 			<div class="controls">
 				<input class="search-input" type="search" placeholder="Filtrer par chauffeur" />

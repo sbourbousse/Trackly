@@ -30,3 +30,14 @@ public sealed record DeleteDeliveriesBatchResponse
     public int Deleted { get; init; }
     public string Message { get; init; } = string.Empty;
 }
+
+public sealed record DeliveryDetailResponse(
+    Guid Id,
+    Guid OrderId,
+    Guid DriverId,
+    DeliveryStatus Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? CompletedAt,
+    string CustomerName,
+    string Address,
+    string DriverName);

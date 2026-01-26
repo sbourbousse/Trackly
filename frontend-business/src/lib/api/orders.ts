@@ -22,6 +22,21 @@ export const getOrders = async () => {
 	return await apiFetch<ApiOrder[]>('/api/orders');
 };
 
+export type CreateOrderRequest = {
+	customerName: string;
+	address: string;
+};
+
+export const createOrder = async (request: CreateOrderRequest) => {
+	return await apiFetch<ApiOrder>('/api/orders', {
+		method: 'POST',
+		body: JSON.stringify({
+			customerName: request.customerName,
+			address: request.address
+		})
+	});
+};
+
 export type ApiOrderDetail = {
 	id: string;
 	customerName: string;

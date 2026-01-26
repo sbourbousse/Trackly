@@ -10,26 +10,26 @@
 ## Backend .NET 9
 
 ### Infrastructure
-- [ ] Initialiser projet .NET 9 ASP.NET Core (Minimal APIs)
-- [ ] Configurer PostgreSQL avec EF Core
-- [ ] Créer interface `ITenantIsolated` avec propriété `TenantId`
-- [ ] Implémenter Global Query Filters sur `TenantId` dans DbContext
-- [ ] Créer middleware pour extraction `TenantId` depuis JWT/Header
-- [ ] Injecter `TenantId` dans HttpContext pour utilisation dans services
+- [x] Initialiser projet .NET 9 ASP.NET Core (Minimal APIs)
+- [x] Configurer PostgreSQL avec EF Core
+- [x] Créer interface `ITenantIsolated` avec propriété `TenantId`
+- [x] Implémenter Global Query Filters sur `TenantId` dans DbContext
+- [x] Créer middleware pour extraction `TenantId` depuis JWT/Header
+- [x] Injecter `TenantId` dans HttpContext pour utilisation dans services
 
 ### Domaines
-- [ ] Créer entité `Tenant` (Id, Name, SubscriptionPlan, CreatedAt)
-- [ ] Créer entité `Order` implémentant `ITenantIsolated` (Id, TenantId, CustomerName, Address, Status)
-- [ ] Créer entité `Delivery` implémentant `ITenantIsolated` (Id, TenantId, OrderId, DriverId, Status, CompletedAt)
-- [ ] Créer entité `Driver` implémentant `ITenantIsolated` (Id, TenantId, Name, Phone)
-- [ ] Créer DbContext avec Global Query Filters
+- [x] Créer entité `Tenant` (Id, Name, SubscriptionPlan, CreatedAt)
+- [x] Créer entité `Order` implémentant `ITenantIsolated` (Id, TenantId, CustomerName, Address, Status)
+- [x] Créer entité `Delivery` implémentant `ITenantIsolated` (Id, TenantId, OrderId, DriverId, Status, CompletedAt)
+- [x] Créer entité `Driver` implémentant `ITenantIsolated` (Id, TenantId, Name, Phone)
+- [x] Créer DbContext avec Global Query Filters
 
 ### API Endpoints
-- [ ] Endpoint POST `/api/orders` (création commande avec vérification quota)
-- [ ] Endpoint GET `/api/orders` (liste commandes filtrée par TenantId)
-- [ ] Endpoint POST `/api/deliveries` (création livraison)
-- [ ] Endpoint PATCH `/api/deliveries/{id}/complete` (validation livraison)
-- [ ] Endpoint GET `/api/deliveries/{id}/tracking` (suivi livraison)
+- [x] Endpoint POST `/api/orders` (création commande avec vérification quota)
+- [x] Endpoint GET `/api/orders` (liste commandes filtrée par TenantId)
+- [x] Endpoint POST `/api/deliveries` (création livraison)
+- [x] Endpoint PATCH `/api/deliveries/{id}/complete` (validation livraison)
+- [x] Endpoint GET `/api/deliveries/{id}/tracking` (suivi livraison)
 
 ### SignalR
 - [ ] Créer interface `ITrackingClient` (méthodes typées)
@@ -40,8 +40,8 @@
 
 ### Intégrations
 - [ ] Configurer Stripe Billing (clés API, webhooks)
-- [ ] Créer service `BillingService` pour vérification quotas
-- [ ] Implémenter logique quota 20-25 livraisons/mois (Starter)
+- [x] Créer service `BillingService` pour vérification quotas
+- [x] Implémenter logique quota 20-25 livraisons/mois (Starter)
 - [ ] Configurer Twilio/Vonage pour SMS
 - [ ] Créer service `SmsService` pour envoi notifications
 - [ ] Configurer Google Maps API pour géocodage

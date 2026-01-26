@@ -142,6 +142,70 @@
         "reveal": "silent",
         "panel": "shared"
       }
+    },
+    {
+      "label": "Setup MkDocs",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "if (-not (Test-Path 'venv')) { Write-Host 'Creating virtual environment...'; python -m venv venv }; Write-Host 'Activating virtual environment...'; .\\venv\\Scripts\\Activate.ps1; Write-Host 'Upgrading pip...'; python.exe -m pip install -q --upgrade pip; Write-Host 'Installing MkDocs dependencies...'; python.exe -m pip install -q -r requirements-docs.txt; Write-Host 'Setup complete!'"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
+    },
+    {
+      "label": "Serve MkDocs",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "if (-not (Test-Path 'venv')) { Write-Host 'Virtual environment not found. Running setup...'; python -m venv venv }; if (-not (Test-Path 'venv\\Scripts\\mkdocs.exe')) { Write-Host 'Installing MkDocs dependencies...'; .\\venv\\Scripts\\Activate.ps1; python.exe -m pip install -q --upgrade pip; python.exe -m pip install -q -r requirements-docs.txt } else { .\\venv\\Scripts\\Activate.ps1 }; Write-Host 'Starting MkDocs server...'; mkdocs serve"
+      ],
+      "isBackground": true,
+      "problemMatcher": {
+        "owner": "mkdocs",
+        "pattern": {
+          "regexp": "^.*$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "message": 4
+        },
+        "background": {
+          "activeOnStart": true,
+          "beginsPattern": ".*",
+          "endsPattern": ".*Serving on http://127\\.0\\.0\\.1:8000.*"
+        }
+      },
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated",
+        "focus": false
+      }
+    },
+    {
+      "label": "Build MkDocs",
+      "type": "shell",
+      "command": "powershell",
+      "args": [
+        "-ExecutionPolicy",
+        "Bypass",
+        "-Command",
+        "if (-not (Test-Path 'venv')) { Write-Host 'Virtual environment not found. Running setup...'; python -m venv venv }; if (-not (Test-Path 'venv\\Scripts\\mkdocs.exe')) { Write-Host 'Installing MkDocs dependencies...'; .\\venv\\Scripts\\Activate.ps1; python.exe -m pip install -q --upgrade pip; python.exe -m pip install -q -r requirements-docs.txt } else { .\\venv\\Scripts\\Activate.ps1 }; Write-Host 'Building documentation...'; mkdocs build"
+      ],
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "new"
+      }
     }
   ]
 }

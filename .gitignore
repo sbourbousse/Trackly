@@ -36,3 +36,9 @@ Thumbs.db
 # Vite
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
+
+# MkDocs
+site/
+venv/
+*.pyc
+__pycache__/

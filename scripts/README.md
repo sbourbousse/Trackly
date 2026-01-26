@@ -71,6 +71,18 @@ Ajoutez dans `.vscode/keybindings.json` :
 ]
 ```
 
+## Scripts de Documentation
+
+### `build-docs.ps1`
+**Usage:** `.\scripts\build-docs.ps1 [serve|build|deploy]`
+
+Génère la documentation MkDocs :
+- `serve` : Démarre le serveur de développement (port 8000)
+- `build` : Construit la documentation statique dans `site/`
+- `deploy` : Déploie sur GitHub Pages
+
+**Prérequis** : Python 3.8+ et dépendances installées (`pip install -r requirements-docs.txt`)
+
 ## Ports utilisés
 
 | Port | Service | Description |
@@ -78,6 +90,7 @@ Ajoutez dans `.vscode/keybindings.json` :
 | 5257 | Backend HTTP | API .NET en mode développement |
 | 7114 | Backend HTTPS | API .NET en mode HTTPS |
 | 5173 | Frontend Vite | Serveur de développement SvelteKit |
+| 8000 | MkDocs | Serveur de documentation |
 | 5432 | PostgreSQL | Base de données (non tué par les scripts) |
 
 ## Notes

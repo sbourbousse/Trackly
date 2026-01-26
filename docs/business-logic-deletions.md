@@ -1,5 +1,7 @@
 # Logique Métier : Gestion des Suppressions
 
+> **Note** : Pour une vue complète du modèle de données et des relations, voir [Modèle de Données](../metier/modele-donnees.md) et [Relations entre Entités](../metier/relations-entites.md).
+
 ## Workflow de Suppression
 
 ### Règles Générales

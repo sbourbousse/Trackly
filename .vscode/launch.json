@@ -87,6 +87,15 @@
       "port": 9222,
       "webRoot": "${workspaceFolder}/frontend-business",
       "sourceMaps": true
+    },
+    {
+      "name": "Launch MkDocs Server",
+      "type": "chrome",
+      "request": "launch",
+      "preLaunchTask": "Serve MkDocs",
+      "url": "http://127.0.0.1:8000",
+      "webRoot": "${workspaceFolder}",
+      "sourceMaps": false
     }
   ],
   "compounds": [

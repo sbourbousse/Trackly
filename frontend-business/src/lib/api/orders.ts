@@ -28,3 +28,25 @@ export const importOrders = async (orders: ImportOrderRequest[]) => {
 		body: JSON.stringify({ orders })
 	});
 };
+
+export type DeleteOrdersBatchRequest = {
+	ids: string[];
+	forceDeleteDeliveries?: boolean;
+};
+
+export type DeleteOrdersBatchResponse = {
+	deleted: number;
+	deletedDeliveries: number;
+	skipped: number;
+	message: string;
+};
+
+export const deleteOrdersBatch = async (request: DeleteOrdersBatchRequest) => {
+	return await apiFetch<DeleteOrdersBatchResponse>('/api/orders/batch/delete', {
+		method: 'POST',
+		body: JSON.stringify({
+			ids: request.ids,
+			forceDeleteDeliveries: request.forceDeleteDeliveries ?? false
+		})
+	});
+};

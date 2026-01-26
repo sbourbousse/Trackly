@@ -12,6 +12,28 @@ export const getDeliveries = async () => {
 	return await apiFetch<ApiDelivery[]>('/api/deliveries');
 };
 
+export const deleteDelivery = async (id: string) => {
+	return await apiFetch<{ message: string }>(`/api/deliveries/${id}`, {
+		method: 'DELETE'
+	});
+};
+
+export type DeleteDeliveriesBatchRequest = {
+	ids: string[];
+};
+
+export type DeleteDeliveriesBatchResponse = {
+	deleted: number;
+	message: string;
+};
+
+export const deleteDeliveriesBatch = async (request: DeleteDeliveriesBatchRequest) => {
+	return await apiFetch<DeleteDeliveriesBatchResponse>('/api/deliveries/batch/delete', {
+		method: 'POST',
+		body: JSON.stringify({ ids: request.ids })
+	});
+};
+
 export type CreateDeliveriesBatchRequest = {
 	driverId: string;
 	orderIds: string[];

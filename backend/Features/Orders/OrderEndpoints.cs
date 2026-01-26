@@ -14,6 +14,8 @@ public static class OrderEndpoints
         group.MapPost("/", CreateOrder);
         group.MapPost("/import", ImportOrders);
         group.MapGet("/", GetOrders);
+        group.MapDelete("/{id:guid}", DeleteOrder);
+        group.MapPost("/batch/delete", DeleteOrdersBatch);
 
         return app;
     }
@@ -130,15 +132,167 @@ public static class OrderEndpoints
 
     private static async Task<IResult> GetOrders(
         TracklyDbContext dbContext,
+        TenantContext tenantContext,
         CancellationToken cancellationToken)
     {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
         var orders = await dbContext.Orders
             .AsNoTracking()
+            .Where(o => o.DeletedAt == null)
             .OrderByDescending(order => order.CreatedAt)
             .Select(order => ToResponse(order))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(orders);
+    }
+
+    private static async Task<IResult> DeleteOrder(
+        Guid id,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var order = await dbContext.Orders
+            .FirstOrDefaultAsync(o => o.Id == id && o.TenantId == tenantContext.TenantId, cancellationToken);
+
+        if (order == null)
+        {
+            return Results.NotFound("Commande introuvable.");
+        }
+
+        if (order.DeletedAt != null)
+        {
+            return Results.BadRequest("Cette commande est déjà supprimée.");
+        }
+
+        // Vérifier les livraisons actives
+        var activeDeliveries = await dbContext.Deliveries
+            .AsNoTracking()
+            .Where(d => d.OrderId == id && d.DeletedAt == null)
+            .CountAsync(cancellationToken);
+
+        if (activeDeliveries > 0)
+        {
+            return Results.Problem(
+                $"Impossible de supprimer cette commande : {activeDeliveries} livraison(s) active(s) associée(s). Supprimez d'abord les livraisons ou utilisez la suppression en cascade.",
+                statusCode: StatusCodes.Status409Conflict);
+        }
+
+        // Soft delete
+        order.DeletedAt = DateTimeOffset.UtcNow;
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(new { message = "Commande supprimée avec succès." });
+    }
+
+    private static async Task<IResult> DeleteOrdersBatch(
+        DeleteOrdersBatchRequest request,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        if (request.Ids == null || request.Ids.Count == 0)
+        {
+            return Results.BadRequest("Aucune commande sélectionnée.");
+        }
+
+        var orders = await dbContext.Orders
+            .Where(o => request.Ids.Contains(o.Id) && o.TenantId == tenantContext.TenantId && o.DeletedAt == null)
+            .ToListAsync(cancellationToken);
+
+        if (orders.Count == 0)
+        {
+            return Results.NotFound("Aucune commande trouvée à supprimer.");
+        }
+
+        // Vérifier les livraisons actives pour chaque commande
+        var ordersWithDeliveries = new List<Guid>();
+        var ordersToDelete = new List<Order>();
+
+        foreach (var order in orders)
+        {
+            var activeDeliveries = await dbContext.Deliveries
+                .AsNoTracking()
+                .Where(d => d.OrderId == order.Id && d.DeletedAt == null)
+                .CountAsync(cancellationToken);
+
+            if (activeDeliveries > 0)
+            {
+                ordersWithDeliveries.Add(order.Id);
+            }
+            else
+            {
+                ordersToDelete.Add(order);
+            }
+        }
+
+        // Si certaines commandes ont des livraisons actives
+        if (ordersWithDeliveries.Count > 0 && !request.ForceDeleteDeliveries)
+        {
+            return Results.Problem(
+                $"{ordersWithDeliveries.Count} commande(s) ont des livraisons actives. Utilisez 'forceDeleteDeliveries: true' pour supprimer aussi les livraisons.",
+                statusCode: StatusCodes.Status409Conflict,
+                extensions: new Dictionary<string, object?>
+                {
+                    ["ordersWithDeliveries"] = ordersWithDeliveries
+                });
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        var deletedDeliveriesCount = 0;
+
+        // Supprimer les commandes
+        foreach (var order in ordersToDelete)
+        {
+            order.DeletedAt = now;
+        }
+
+        // Si forceDeleteDeliveries est activé, supprimer aussi les livraisons
+        if (request.ForceDeleteDeliveries && ordersWithDeliveries.Count > 0)
+        {
+            var deliveriesToDelete = await dbContext.Deliveries
+                .Where(d => ordersWithDeliveries.Contains(d.OrderId) && d.DeletedAt == null)
+                .ToListAsync(cancellationToken);
+
+            foreach (var delivery in deliveriesToDelete)
+            {
+                delivery.DeletedAt = now;
+            }
+
+            deletedDeliveriesCount = deliveriesToDelete.Count;
+
+            // Supprimer aussi les commandes avec livraisons
+            foreach (var orderId in ordersWithDeliveries)
+            {
+                var order = orders.First(o => o.Id == orderId);
+                order.DeletedAt = now;
+            }
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(new DeleteOrdersBatchResponse
+        {
+            Deleted = ordersToDelete.Count + (request.ForceDeleteDeliveries ? ordersWithDeliveries.Count : 0),
+            DeletedDeliveries = deletedDeliveriesCount,
+            Skipped = request.ForceDeleteDeliveries ? 0 : ordersWithDeliveries.Count,
+            Message = $"{(ordersToDelete.Count + (request.ForceDeleteDeliveries ? ordersWithDeliveries.Count : 0))} commande(s) supprimée(s)." +
+                     (deletedDeliveriesCount > 0 ? $" {deletedDeliveriesCount} livraison(s) supprimée(s) en cascade." : "")
+        });
     }
 
     private static OrderResponse ToResponse(Order order) =>

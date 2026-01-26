@@ -22,3 +22,11 @@ public sealed record CreateDeliveriesBatchResponse
     public int Created { get; init; }
     public List<DeliveryResponse> Deliveries { get; init; } = new();
 }
+
+public sealed record DeleteDeliveriesBatchRequest(List<Guid> Ids);
+
+public sealed record DeleteDeliveriesBatchResponse
+{
+    public int Deleted { get; init; }
+    public string Message { get; init; } = string.Empty;
+}

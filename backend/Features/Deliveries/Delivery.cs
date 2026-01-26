@@ -11,6 +11,7 @@ public sealed class Delivery : ITenantIsolated
     public DeliveryStatus Status { get; set; } = DeliveryStatus.Pending;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? CompletedAt { get; set; }
+    public DateTimeOffset? DeletedAt { get; set; }
 }
 
 public enum DeliveryStatus

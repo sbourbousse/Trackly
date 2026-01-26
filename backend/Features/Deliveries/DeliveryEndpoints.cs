@@ -15,6 +15,8 @@ public static class DeliveryEndpoints
         group.MapPost("/", CreateDelivery);
         group.MapPost("/batch", CreateDeliveriesBatch);
         group.MapPatch("/{id:guid}/complete", CompleteDelivery);
+        group.MapDelete("/{id:guid}", DeleteDelivery);
+        group.MapPost("/batch/delete", DeleteDeliveriesBatch);
         group.MapGet("/{id:guid}/tracking", GetTracking);
 
         return app;
@@ -32,7 +34,7 @@ public static class DeliveryEndpoints
 
         var deliveries = await dbContext.Deliveries
             .AsNoTracking()
-            .Where(d => d.TenantId == tenantContext.TenantId)
+            .Where(d => d.TenantId == tenantContext.TenantId && d.DeletedAt == null)
             .OrderByDescending(d => d.CreatedAt)
             .Select(d => ToResponse(d))
             .ToListAsync(cancellationToken);
@@ -193,10 +195,16 @@ public static class DeliveryEndpoints
     private static async Task<IResult> CompleteDelivery(
         Guid id,
         TracklyDbContext dbContext,
+        TenantContext tenantContext,
         CancellationToken cancellationToken)
     {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
         var delivery = await dbContext.Deliveries
-            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(current => current.Id == id && current.TenantId == tenantContext.TenantId && current.DeletedAt == null, cancellationToken);
 
         if (delivery == null)
         {
@@ -211,6 +219,78 @@ public static class DeliveryEndpoints
         return Results.Ok(ToResponse(delivery));
     }
 
+    private static async Task<IResult> DeleteDelivery(
+        Guid id,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var delivery = await dbContext.Deliveries
+            .FirstOrDefaultAsync(d => d.Id == id && d.TenantId == tenantContext.TenantId, cancellationToken);
+
+        if (delivery == null)
+        {
+            return Results.NotFound("Livraison introuvable.");
+        }
+
+        if (delivery.DeletedAt != null)
+        {
+            return Results.BadRequest("Cette livraison est déjà supprimée.");
+        }
+
+        // Soft delete
+        delivery.DeletedAt = DateTimeOffset.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(new { message = "Livraison supprimée avec succès." });
+    }
+
+    private static async Task<IResult> DeleteDeliveriesBatch(
+        DeleteDeliveriesBatchRequest request,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        if (request.Ids == null || request.Ids.Count == 0)
+        {
+            return Results.BadRequest("Aucune livraison sélectionnée.");
+        }
+
+        var deliveries = await dbContext.Deliveries
+            .Where(d => request.Ids.Contains(d.Id) && d.TenantId == tenantContext.TenantId && d.DeletedAt == null)
+            .ToListAsync(cancellationToken);
+
+        if (deliveries.Count == 0)
+        {
+            return Results.NotFound("Aucune livraison trouvée à supprimer.");
+        }
+
+        var now = DateTimeOffset.UtcNow;
+        foreach (var delivery in deliveries)
+        {
+            delivery.DeletedAt = now;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        return Results.Ok(new DeleteDeliveriesBatchResponse
+        {
+            Deleted = deliveries.Count,
+            Message = $"{deliveries.Count} livraison(s) supprimée(s) avec succès."
+        });
+    }
+
     private static async Task<IResult> GetTracking(
         Guid id,
         TracklyDbContext dbContext,
@@ -218,7 +298,7 @@ public static class DeliveryEndpoints
     {
         var delivery = await dbContext.Deliveries
             .AsNoTracking()
-            .FirstOrDefaultAsync(current => current.Id == id, cancellationToken);
+            .FirstOrDefaultAsync(current => current.Id == id && current.DeletedAt == null, cancellationToken);
 
         if (delivery == null)
         {

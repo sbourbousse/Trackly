@@ -54,8 +54,9 @@ export const deliveriesActions = {
 				hour: '2-digit',
 				minute: '2-digit'
 			});
-		} catch {
-			// Ignore les erreurs en mode demo.
+		} catch (error) {
+			console.error('[Deliveries] Erreur lors du chargement:', error);
+			// Garde les données de démo en cas d'erreur
 		}
 	}
 };

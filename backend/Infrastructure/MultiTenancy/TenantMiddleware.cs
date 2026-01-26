@@ -8,6 +8,14 @@ public sealed class TenantMiddleware(RequestDelegate next)
 
     public async Task InvokeAsync(HttpContext context, TenantContext tenantContext)
     {
+        // Endpoints publics qui ne nécessitent pas de TenantId
+        var path = context.Request.Path.Value ?? "";
+        if (path == "/" || path == "/health" || path.StartsWith("/api/tenants/default"))
+        {
+            await next(context);
+            return;
+        }
+
         var tenantId = ResolveTenantId(context);
         if (tenantId == null)
         {

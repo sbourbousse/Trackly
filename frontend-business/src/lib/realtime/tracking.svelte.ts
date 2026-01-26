@@ -1,4 +1,4 @@
-import { PUBLIC_SIGNALR_URL } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 
 type TrackingPoint = {
@@ -17,7 +17,7 @@ export let trackingState = $state({
 let connection: ReturnType<typeof HubConnectionBuilder.prototype.build> | null = null;
 
 const getHubUrl = () => {
-	return PUBLIC_SIGNALR_URL || 'http://localhost:5257/hubs/tracking';
+	return env.PUBLIC_SIGNALR_URL || 'http://localhost:5257/hubs/tracking';
 };
 
 export const trackingActions = {

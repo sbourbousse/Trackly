@@ -11,11 +11,32 @@ public static class DeliveryEndpoints
     {
         var group = app.MapGroup("/api/deliveries");
 
+        group.MapGet("/", GetDeliveries);
         group.MapPost("/", CreateDelivery);
         group.MapPatch("/{id:guid}/complete", CompleteDelivery);
         group.MapGet("/{id:guid}/tracking", GetTracking);
 
         return app;
+    }
+
+    private static async Task<IResult> GetDeliveries(
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var deliveries = await dbContext.Deliveries
+            .AsNoTracking()
+            .Where(d => d.TenantId == tenantContext.TenantId)
+            .OrderByDescending(d => d.CreatedAt)
+            .Select(d => ToResponse(d))
+            .ToListAsync(cancellationToken);
+
+        return Results.Ok(deliveries);
     }
 
     private static async Task<IResult> CreateDelivery(

@@ -23,4 +23,70 @@
 
 ---
 
+## 2026-01-26 | Initialisation backend .NET 9
+
+**Tâche** : Création du projet backend ASP.NET Core Minimal APIs.
+
+**Fichiers créés** :
+- `backend/Program.cs`
+- `backend/Trackly.Backend.csproj`
+- `backend/appsettings.json`
+- `backend/appsettings.Development.json`
+- `backend/Properties/launchSettings.json`
+
+**Dossiers créés** :
+- `frontend-business/`
+- `frontend-driver/`
+- `frontend-tracking/`
+- `shared/`
+
+**Notes** : Projet backend initialisé avec .NET 9 pour servir de base au monolithe modulaire, avec structure monorepo en place.
+
+---
+
+## 2026-01-26 | Base EF Core et multi-tenant
+
+**Tâche** : Configuration PostgreSQL + EF Core et fondations multi-tenant.
+
+**Fichiers créés** :
+- `backend/Infrastructure/MultiTenancy/ITenantIsolated.cs`
+- `backend/Infrastructure/MultiTenancy/TenantContext.cs`
+- `backend/Infrastructure/MultiTenancy/TenantMiddleware.cs`
+- `backend/Infrastructure/Data/TracklyDbContext.cs`
+- `backend/Features/Tenants/Tenant.cs`
+- `backend/Features/Orders/Order.cs`
+- `backend/Features/Deliveries/Delivery.cs`
+- `backend/Features/Drivers/Driver.cs`
+
+**Fichiers modifiés** :
+- `backend/Program.cs`
+- `backend/Trackly.Backend.csproj`
+- `backend/appsettings.json`
+- `backend/appsettings.Development.json`
+
+**Notes** : EF Core 9 + Npgsql configurés, avec filtre global automatique sur `TenantId`.
+
+---
+
+## 2026-01-26 | Endpoints API et quota Starter
+
+**Tâche** : Exposition des endpoints orders/deliveries avec validation quota.
+
+**Fichiers créés** :
+- `backend/Features/Billing/IBillingService.cs`
+- `backend/Features/Billing/BillingService.cs`
+- `backend/Features/Orders/OrderDtos.cs`
+- `backend/Features/Orders/OrderEndpoints.cs`
+- `backend/Features/Deliveries/DeliveryDtos.cs`
+- `backend/Features/Deliveries/DeliveryEndpoints.cs`
+
+**Fichiers modifiés** :
+- `backend/Program.cs`
+- `backend/Features/Orders/Order.cs`
+- `backend/Features/Deliveries/Delivery.cs`
+
+**Notes** : Quota mensuel appliqué au plan Starter, enums JSON exposés en string.
+
+---
+
 _Continuer à documenter les modifications importantes au fur et à mesure..._

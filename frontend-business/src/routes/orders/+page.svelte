@@ -59,13 +59,27 @@
 			<div class="controls">
 				<input class="search-input" type="search" placeholder="Rechercher une commande" />
 				<a class="ghost-button" href="/orders/import">Importer CSV</a>
-				<button class="ghost-button" type="button" onclick={ordersActions.loadOrders}>
-					Actualiser
+				<button 
+					class="ghost-button" 
+					type="button" 
+					onclick={ordersActions.loadOrders}
+					disabled={ordersState.loading}
+				>
+					{ordersState.loading ? 'Chargement...' : 'Actualiser'}
 				</button>
 				<button class="primary-button" type="button">Nouvelle commande</button>
 			</div>
 		</div>
 
+		{#if ordersState.error}
+			<div class="error-message" style="padding: 1rem; background: #fee; color: #c33; border-radius: 4px; margin-bottom: 1rem;">
+				{ordersState.error}
+			</div>
+		{/if}
+
+		{#if ordersState.loading && !ordersState.items.length}
+			<div style="padding: 2rem; text-align: center;">Chargement des commandes...</div>
+		{:else}
 		<table class="table">
 			<thead>
 				<tr>
@@ -92,5 +106,6 @@
 				{/each}
 			</tbody>
 		</table>
+		{/if}
 	</section>
 </div>

@@ -12,7 +12,8 @@ export type OrderItem = {
 export let ordersState = $state({
 	items: [] as OrderItem[],
 	lastSyncAt: '09:18',
-	loading: false
+	loading: false,
+	error: null as string | null
 });
 
 export const ordersActions = {
@@ -30,6 +31,8 @@ export const ordersActions = {
 	},
 	async loadOrders() {
 		ordersState.loading = true;
+		ordersState.error = null;
+		
 		try {
 			const { getOrders } = await import('$lib/api/orders');
 			const orders = await getOrders();
@@ -48,7 +51,10 @@ export const ordersActions = {
 			});
 		} catch (error) {
 			console.error('[Orders] Erreur lors du chargement:', error);
-			// Garde les données de démo en cas d'erreur
+			ordersState.error = error instanceof Error 
+				? error.message 
+				: 'Erreur lors du chargement des commandes';
+			// Garde les données existantes en cas d'erreur
 		} finally {
 			ordersState.loading = false;
 		}

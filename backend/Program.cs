@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Trackly.Backend.Features.Billing;
 using Trackly.Backend.Features.Deliveries;
 using Trackly.Backend.Features.Orders;
+using Trackly.Backend.Features.Tracking;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
 
@@ -15,6 +16,9 @@ builder.Services.ConfigureHttpJsonOptions(options =>
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
 });
 
+// Configuration SignalR
+builder.Services.AddSignalR();
+
 // Configuration CORS
 builder.Services.AddCors(options =>
 {
@@ -24,11 +28,15 @@ builder.Services.AddCors(options =>
         {
             // En développement, autorise toutes les origines locales
             policy.WithOrigins(
-                "http://localhost:5173",  // Vite/SvelteKit par défaut
+                "http://localhost:5173",  // Vite/SvelteKit par défaut (frontend-business)
                 "http://localhost:5174",   // Port alternatif Vite
+                "http://localhost:5175",   // Frontend Driver PWA
+                "http://localhost:5176",   // Frontend Driver PWA (port alternatif)
                 "http://localhost:3000",   // Port alternatif
                 "http://127.0.0.1:5173",
-                "http://127.0.0.1:5174"
+                "http://127.0.0.1:5174",
+                "http://127.0.0.1:5175",
+                "http://127.0.0.1:5176"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
@@ -98,5 +106,8 @@ app.UseMiddleware<TenantMiddleware>();
 
 app.MapOrderEndpoints();
 app.MapDeliveryEndpoints();
+
+// SignalR Hub pour le tracking temps réel
+app.MapHub<TrackingHub>("/hubs/tracking");
 
 app.Run();

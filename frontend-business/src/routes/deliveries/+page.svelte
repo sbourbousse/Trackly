@@ -64,13 +64,27 @@
 			<div class="controls">
 				<input class="search-input" type="search" placeholder="Filtrer par chauffeur" />
 				<button class="ghost-button" type="button">Voir la carte</button>
-				<button class="ghost-button" type="button" onclick={deliveriesActions.loadDeliveries}>
-					Actualiser
+				<button 
+					class="ghost-button" 
+					type="button" 
+					onclick={deliveriesActions.loadDeliveries}
+					disabled={deliveriesState.loading}
+				>
+					{deliveriesState.loading ? 'Chargement...' : 'Actualiser'}
 				</button>
 				<button class="primary-button" type="button">Nouvelle tournee</button>
 			</div>
 		</div>
 
+		{#if deliveriesState.error}
+			<div class="error-message" style="padding: 1rem; background: #fee; color: #c33; border-radius: 4px; margin-bottom: 1rem;">
+				{deliveriesState.error}
+			</div>
+		{/if}
+
+		{#if deliveriesState.loading && !deliveriesState.routes.length}
+			<div style="padding: 2rem; text-align: center;">Chargement des tournees...</div>
+		{:else}
 		<table class="table">
 			<thead>
 				<tr>
@@ -101,5 +115,6 @@
 				{/each}
 			</tbody>
 		</table>
+		{/if}
 	</section>
 </div>

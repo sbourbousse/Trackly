@@ -21,7 +21,9 @@ export let deliveriesState = $state({
 	routes: [] as DeliveryRoute[],
 	activeRouteId: null as string | null,
 	stops: [] as DeliveryStop[],
-	lastUpdateAt: '10:18'
+	lastUpdateAt: '10:18',
+	loading: false,
+	error: null as string | null
 });
 
 export const deliveriesActions = {
@@ -38,6 +40,9 @@ export const deliveriesActions = {
 		deliveriesState.lastUpdateAt = time;
 	},
 	async loadDeliveries() {
+		deliveriesState.loading = true;
+		deliveriesState.error = null;
+		
 		try {
 			const { getDeliveries } = await import('$lib/api/deliveries');
 			const deliveries = await getDeliveries();
@@ -56,7 +61,12 @@ export const deliveriesActions = {
 			});
 		} catch (error) {
 			console.error('[Deliveries] Erreur lors du chargement:', error);
-			// Garde les données de démo en cas d'erreur
+			deliveriesState.error = error instanceof Error 
+				? error.message 
+				: 'Erreur lors du chargement des tournees';
+			// Garde les données existantes en cas d'erreur
+		} finally {
+			deliveriesState.loading = false;
 		}
 	}
 };

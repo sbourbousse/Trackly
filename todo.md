@@ -16,6 +16,8 @@
 - [x] Implémenter Global Query Filters sur `TenantId` dans DbContext
 - [x] Créer middleware pour extraction `TenantId` depuis JWT/Header
 - [x] Injecter `TenantId` dans HttpContext pour utilisation dans services
+- [x] Créer migration initiale EF Core
+- [x] Ajouter seed de données (dev)
 
 ### Domaines
 - [x] Créer entité `Tenant` (Id, Name, SubscriptionPlan, CreatedAt)

@@ -27,6 +27,14 @@ builder.Services.AddDbContext<TracklyDbContext>(options =>
 
 var app = builder.Build();
 
+if (app.Environment.IsDevelopment())
+{
+    using var scope = app.Services.CreateScope();
+    var dbContext = scope.ServiceProvider.GetRequiredService<TracklyDbContext>();
+    await dbContext.Database.MigrateAsync();
+    await SeedData.SeedAsync(scope.ServiceProvider);
+}
+
 app.UseMiddleware<TenantMiddleware>();
 
 app.MapGet("/", () => "Trackly API");

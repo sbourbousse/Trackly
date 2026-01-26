@@ -89,4 +89,42 @@
 
 ---
 
+## 2026-01-26 | Migration initiale et seed dev
+
+**Tâche** : Génération de la migration EF Core et seed de données de base.
+
+**Fichiers créés** :
+- `.config/dotnet-tools.json`
+- `backend/Infrastructure/Data/TracklyDbContextFactory.cs`
+- `backend/Infrastructure/Data/SeedData.cs`
+- `backend/Migrations/20260126152307_InitialCreate.cs`
+- `backend/Migrations/20260126152307_InitialCreate.Designer.cs`
+- `backend/Migrations/TracklyDbContextModelSnapshot.cs`
+
+**Fichiers modifiés** :
+- `backend/Program.cs`
+
+**Notes** : Le seed s'exécute en développement au démarrage (après `MigrateAsync`).
+
+---
+
+## 2026-01-26 | Gitignore et test migration
+
+**Tâche** : Ajout du `.gitignore` et tentative de démarrage + migration.
+
+**Fichiers créés** :
+- `.gitignore`
+
+**Notes** : Le démarrage de l'API et `database update` échouent si PostgreSQL n'est pas démarré (connexion refusée sur `localhost:5432`).
+
+---
+
+## 2026-01-26 | Création DB et migration appliquée
+
+**Tâche** : Création utilisateur/base PostgreSQL et application des migrations.
+
+**Notes** : Rôle `trackly` créé, bases `trackly` et `trackly_dev` créées, migration initiale appliquée avec succès.
+
+---
+
 _Continuer à documenter les modifications importantes au fur et à mesure..._

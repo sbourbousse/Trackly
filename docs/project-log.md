@@ -127,4 +127,134 @@
 
 ---
 
+## 2026-01-26 | Frontend Business initialisé
+
+**Tâche** : Initialisation du frontend Business (SvelteKit) et premier écran dashboard.
+
+**Fichiers modifiés** :
+- `frontend-business/README.md`
+- `frontend-business/src/app.css`
+- `frontend-business/src/app.html`
+- `frontend-business/src/routes/+layout.svelte`
+- `frontend-business/src/routes/+page.svelte`
+
+**Notes** : Mise en place d'un layout simple et de cartes KPI mockees pour demarrer la suite.
+
+---
+
+## 2026-01-26 | Pages login + dashboard
+
+**Tâche** : Ajout des pages `/login` et `/dashboard` avec redirection racine.
+
+**Fichiers modifiés** :
+- `frontend-business/src/app.css`
+- `frontend-business/src/routes/+page.svelte`
+- `frontend-business/src/routes/+page.server.ts`
+- `frontend-business/src/routes/dashboard/+page.svelte`
+- `frontend-business/src/routes/login/+page.svelte`
+
+**Notes** : UI login minimal et dashboard disponible sous `/dashboard`.
+
+---
+
+## 2026-01-26 | Pages commandes + tournees
+
+**Tâche** : Ajout des pages `/orders` et `/deliveries` avec navigation commune.
+
+**Fichiers modifiés** :
+- `frontend-business/src/app.css`
+- `frontend-business/src/lib/components/TopNav.svelte`
+- `frontend-business/src/routes/dashboard/+page.svelte`
+- `frontend-business/src/routes/orders/+page.svelte`
+- `frontend-business/src/routes/deliveries/+page.svelte`
+
+**Notes** : Pages liste avec tableaux et actions mockees pour continuer le flux.
+
+---
+
+## 2026-01-26 | Import commandes
+
+**Tâche** : Ajout de la page `/orders/import` pour l import CSV et plugins.
+
+**Fichiers modifiés** :
+- `frontend-business/src/app.css`
+- `frontend-business/src/routes/orders/+page.svelte`
+- `frontend-business/src/routes/orders/import/+page.svelte`
+
+**Notes** : Flux d import mocke, CTA et etapes visibles.
+
+---
+
+## 2026-01-26 | Detail tournee
+
+**Tâche** : Ajout de la page `/deliveries/[id]` avec carte mockee et liste d arrets.
+
+**Fichiers modifiés** :
+- `frontend-business/src/app.css`
+- `frontend-business/src/routes/deliveries/+page.svelte`
+- `frontend-business/src/routes/deliveries/[id]/+page.svelte`
+
+**Notes** : Carte simulée pour le suivi chauffeur et tableau des arrets.
+
+---
+
+## 2026-01-26 | Etat global (stores)
+
+**Tâche** : Mise en place des stores Svelte 5 pour auth, commandes et tournees.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/stores/auth.svelte.ts`
+- `frontend-business/src/lib/stores/orders.svelte.ts`
+- `frontend-business/src/lib/stores/deliveries.svelte.ts`
+- `frontend-business/src/routes/login/+page.svelte`
+- `frontend-business/src/routes/orders/+page.svelte`
+- `frontend-business/src/routes/deliveries/+page.svelte`
+- `frontend-business/src/routes/deliveries/[id]/+page.svelte`
+
+**Notes** : Donnees mockees stockees dans les stores, prêtes pour brancher l API.
+
+---
+
+## 2026-01-26 | Client HTTP API
+
+**Tâche** : Configuration du client HTTP et endpoints de base pour orders/deliveries.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/api/client.ts`
+- `frontend-business/src/lib/api/orders.ts`
+- `frontend-business/src/lib/api/deliveries.ts`
+- `frontend-business/src/lib/stores/orders.svelte.ts`
+- `frontend-business/src/lib/stores/deliveries.svelte.ts`
+- `frontend-business/src/routes/orders/+page.svelte`
+
+**Notes** : Appels API disponibles, avec fallback silencieux en mode demo.
+
+---
+
+## 2026-01-26 | Client SignalR
+
+**Tâche** : Ajout du client SignalR pour le suivi temps reel chauffeur.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/realtime/tracking.svelte.ts`
+- `frontend-business/src/routes/deliveries/+page.svelte`
+- `frontend-business/src/routes/deliveries/[id]/+page.svelte`
+- `frontend-business/src/app.css`
+
+**Notes** : Connexion auto sur detail tournee, affichage position si disponible.
+
+---
+
+## 2026-01-26 | Chargement auto API
+
+**Tâche** : Lancement automatique des appels API sur listes commandes et tournees.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/orders/+page.svelte`
+- `frontend-business/src/routes/deliveries/+page.svelte`
+
+**Notes** : Les listes se mettent a jour si le backend est accessible.
+
+---
+
 _Continuer à documenter les modifications importantes au fur et à mesure..._

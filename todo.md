@@ -51,24 +51,24 @@
 ## Frontend Business (SvelteKit)
 
 ### Setup
-- [ ] Initialiser projet SvelteKit
-- [ ] Configurer Svelte 5 avec Runes
+- [x] Initialiser projet SvelteKit
+- [x] Configurer Svelte 5 avec Runes
 - [ ] Installer shadcn-svelte ou Tailwind CSS
-- [ ] Configurer client HTTP (fetch/axios) pour appels API
-- [ ] Configurer client SignalR pour temps réel
+- [x] Configurer client HTTP (fetch/axios) pour appels API
+- [x] Configurer client SignalR pour temps réel
 
 ### Pages
-- [ ] Page `/login` (authentification)
-- [ ] Page `/dashboard` (vue d'ensemble)
-- [ ] Page `/orders` (liste commandes)
-- [ ] Page `/orders/import` (import CSV/manuel)
-- [ ] Page `/deliveries` (liste tournées)
-- [ ] Page `/deliveries/[id]` (détail tournée avec carte)
+- [x] Page `/login` (authentification)
+- [x] Page `/dashboard` (vue d'ensemble)
+- [x] Page `/orders` (liste commandes)
+- [x] Page `/orders/import` (import CSV/manuel)
+- [x] Page `/deliveries` (liste tournées)
+- [x] Page `/deliveries/[id]` (détail tournée avec carte)
 
 ### État Global
-- [ ] Créer `stores/auth.svelte.ts` avec `$state` pour utilisateur connecté
-- [ ] Créer `stores/orders.svelte.ts` avec `$state` pour liste commandes
-- [ ] Créer `stores/deliveries.svelte.ts` avec `$state` pour tournées
+- [x] Créer `stores/auth.svelte.ts` avec `$state` pour utilisateur connecté
+- [x] Créer `stores/orders.svelte.ts` avec `$state` pour liste commandes
+- [x] Créer `stores/deliveries.svelte.ts` avec `$state` pour tournées
 
 ## Frontend Driver (PWA)
 
@@ -115,4 +115,4 @@
 
 ## Tâches Complétées
 
-_À déplacer ici après complétion avec date et résumé_
+- 2026-01-26 | Frontend Business | Projet SvelteKit minimal + layout base.

@@ -3,7 +3,7 @@
 > **Usage** : Avant de commencer une session, l'IA doit lire ce fichier pour comprendre où on en est.
 
 ## Objectif du Jour
-Démarrer l'API et tester l'application des migrations.
+Demarrer le frontend Business et poser les premiers ecrans.
 
 ## Fichiers Modifiés Récemment
 - `.gitignore`
@@ -31,13 +31,33 @@ Démarrer l'API et tester l'application des migrations.
 - `backend/Migrations/20260126152307_InitialCreate.Designer.cs`
 - `backend/Migrations/TracklyDbContextModelSnapshot.cs`
 - `.config/dotnet-tools.json`
+- `frontend-business/README.md`
+- `frontend-business/src/app.css`
+- `frontend-business/src/app.html`
+- `frontend-business/src/routes/+layout.svelte`
+- `frontend-business/src/routes/+page.svelte`
+- `frontend-business/src/routes/+page.server.ts`
+- `frontend-business/src/routes/dashboard/+page.svelte`
+- `frontend-business/src/routes/login/+page.svelte`
+- `frontend-business/src/lib/components/TopNav.svelte`
+- `frontend-business/src/routes/orders/+page.svelte`
+- `frontend-business/src/routes/orders/import/+page.svelte`
+- `frontend-business/src/routes/deliveries/+page.svelte`
+- `frontend-business/src/routes/deliveries/[id]/+page.svelte`
+- `frontend-business/src/lib/stores/auth.svelte.ts`
+- `frontend-business/src/lib/stores/orders.svelte.ts`
+- `frontend-business/src/lib/stores/deliveries.svelte.ts`
+- `frontend-business/src/lib/api/client.ts`
+- `frontend-business/src/lib/api/orders.ts`
+- `frontend-business/src/lib/api/deliveries.ts`
+- `frontend-business/src/lib/realtime/tracking.svelte.ts`
 
 ## Prochain Blocage Attendu
 Aucun blocage identifié.
 
 ## État Actuel du Projet
 - [x] Backend .NET 9 initialisé
-- [ ] Frontend Business (SvelteKit) initialisé
+- [x] Frontend Business (SvelteKit) initialisé
 - [ ] Frontend Driver (PWA) initialisé
 - [ ] Frontend Tracking initialisé
 - [ ] Base de données PostgreSQL configurée
@@ -53,3 +73,12 @@ Aucun blocage identifié.
 - Migration initiale générée, seed dev ajouté.
 - Rôle `trackly` + bases `trackly`/`trackly_dev` créés, migration appliquée.
 - API démarrée après création de la base.
+- Frontend Business scaffold SvelteKit + ecran dashboard de base.
+- Pages login + dashboard en place, redirection racine.
+- Pages commandes et tournees ajoutees avec navigation.
+- Page import commandes ajoutee.
+- Detail tournee avec carte mockee.
+- Etat global en place pour auth, commandes et tournees.
+- Client HTTP ajoute et actions de refresh API.
+- Client SignalR ajoute pour suivi temps reel.
+- Chargement auto des donnees API sur listes.

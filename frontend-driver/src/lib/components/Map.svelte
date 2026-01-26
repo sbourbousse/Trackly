@@ -8,12 +8,23 @@
 	let accuracyCircle: any = null;
 	let L: any = null;
 
-	export let center: [number, number] = [48.8566, 2.3522]; // Paris par défaut
-	export let zoom: number = 15;
-	export let height: string = '400px';
-	export let destination: { lat: number; lng: number; label?: string } | null = null;
-	export let currentPosition: { lat: number; lng: number; accuracy?: number } | null = null;
-	export let followPosition: boolean = true;
+	interface Props {
+		center?: [number, number];
+		zoom?: number;
+		height?: string;
+		destination?: { lat: number; lng: number; label?: string } | null;
+		currentPosition?: { lat: number; lng: number; accuracy?: number } | null;
+		followPosition?: boolean;
+	}
+
+	let {
+		center = [48.8566, 2.3522],
+		zoom = 15,
+		height = '400px',
+		destination = null,
+		currentPosition = null,
+		followPosition = true
+	}: Props = $props();
 
 	let DefaultIcon: any = null;
 	let createCurrentPositionIcon: (() => any) | null = null;

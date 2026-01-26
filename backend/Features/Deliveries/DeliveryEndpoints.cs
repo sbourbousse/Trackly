@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Trackly.Backend.Features.Billing;
+using Trackly.Backend.Features.Orders;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
 
@@ -137,6 +138,12 @@ public static class DeliveryEndpoints
         dbContext.Deliveries.Add(delivery);
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        // Mettre à jour le statut de la commande associée
+        await OrderStatusService.UpdateOrderStatusOnDeliveryCreatedAsync(
+            request.OrderId,
+            dbContext,
+            cancellationToken);
+
         return Results.Created($"/api/deliveries/{delivery.Id}", ToResponse(delivery));
     }
 
@@ -227,6 +234,16 @@ public static class DeliveryEndpoints
         dbContext.Deliveries.AddRange(deliveries);
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        // Mettre à jour le statut de chaque commande concernée
+        var orderIds = request.OrderIds.Distinct().ToList();
+        foreach (var orderId in orderIds)
+        {
+            await OrderStatusService.UpdateOrderStatusOnDeliveryCreatedAsync(
+                orderId,
+                dbContext,
+                cancellationToken);
+        }
+
         createdDeliveries = deliveries.Select(ToResponse).ToList();
 
         return Results.Ok(new CreateDeliveriesBatchResponse
@@ -260,6 +277,12 @@ public static class DeliveryEndpoints
 
         await dbContext.SaveChangesAsync(cancellationToken);
 
+        // Mettre à jour automatiquement le statut de la commande associée
+        await OrderStatusService.UpdateOrderStatusAsync(
+            delivery.OrderId,
+            dbContext,
+            cancellationToken);
+
         return Results.Ok(ToResponse(delivery));
     }
 
@@ -287,10 +310,17 @@ public static class DeliveryEndpoints
             return Results.BadRequest("Cette livraison est déjà supprimée.");
         }
 
+        var orderId = delivery.OrderId;
         // Soft delete
         delivery.DeletedAt = DateTimeOffset.UtcNow;
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Réévaluer le statut de la commande après suppression de la livraison
+        await OrderStatusService.UpdateOrderStatusAsync(
+            orderId,
+            dbContext,
+            cancellationToken);
 
         return Results.Ok(new { message = "Livraison supprimée avec succès." });
     }
@@ -320,6 +350,9 @@ public static class DeliveryEndpoints
             return Results.NotFound("Aucune livraison trouvée à supprimer.");
         }
 
+        // Récupérer les IDs des commandes concernées avant suppression
+        var orderIds = deliveries.Select(d => d.OrderId).Distinct().ToList();
+
         var now = DateTimeOffset.UtcNow;
         foreach (var delivery in deliveries)
         {
@@ -327,6 +360,15 @@ public static class DeliveryEndpoints
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Réévaluer le statut de chaque commande concernée
+        foreach (var orderId in orderIds)
+        {
+            await OrderStatusService.UpdateOrderStatusAsync(
+                orderId,
+                dbContext,
+                cancellationToken);
+        }
 
         return Results.Ok(new DeleteDeliveriesBatchResponse
         {

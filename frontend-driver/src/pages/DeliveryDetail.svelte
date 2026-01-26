@@ -3,16 +3,20 @@
 	import { getDelivery, completeDelivery } from '../lib/api/deliveries';
 	import { gpsService } from '../lib/services/gps.svelte';
 	import { trackingService } from '../lib/services/tracking.svelte';
-	import type { ApiDelivery } from '../lib/api/deliveries';
+	import Map from '../lib/components/Map.svelte';
+	import { geocodeAddressCached } from '../lib/utils/geocoding';
+	import type { ApiDeliveryDetail } from '../lib/api/deliveries';
 
 	const dispatch = createEventDispatcher();
 
 	let { driverId = null, deliveryId }: { driverId?: string | null; deliveryId: string } = $props();
-	let delivery = $state<ApiDelivery | null>(null);
+	let delivery = $state<ApiDeliveryDetail | null>(null);
 	let loading = $state(false);
 	let completing = $state(false);
 	let error = $state<string | null>(null);
 	let isTracking = $state(false);
+	let destinationCoords = $state<{ lat: number; lng: number } | null>(null);
+	let geocodingLoading = $state(false);
 
 	onMount(() => {
 		loadDelivery();
@@ -25,6 +29,16 @@
 		try {
 			const data = await getDelivery(deliveryId);
 			delivery = data;
+
+			// Géocoder l'adresse pour obtenir les coordonnées
+			if (data.address) {
+				geocodingLoading = true;
+				const coords = await geocodeAddressCached(data.address);
+				if (coords) {
+					destinationCoords = { lat: coords.lat, lng: coords.lng };
+				}
+				geocodingLoading = false;
+			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Erreur lors du chargement';
 		} finally {
@@ -118,16 +132,34 @@
 		</div>
 
 		<div class="card">
-			<h3 style="margin-bottom: 1rem;">Géolocalisation</h3>
-			{#if gpsService.position}
-				<p style="margin-bottom: 0.5rem;">
-					<strong>Position:</strong> {gpsService.position.lat.toFixed(6)}, {gpsService.position.lng.toFixed(6)}
-				</p>
-				<p style="color: var(--text-muted); font-size: 0.875rem;">
-					Précision: {gpsService.position.accuracy ? `${Math.round(gpsService.position.accuracy)}m` : 'N/A'}
-				</p>
+			<h3 style="margin-bottom: 1rem;">Carte et navigation</h3>
+			
+			{#if geocodingLoading}
+				<div style="padding: 2rem; text-align: center; color: var(--text-muted);">
+					Chargement de la carte...
+				</div>
+			{:else if destinationCoords}
+				<Map
+					center={[destinationCoords.lat, destinationCoords.lng]}
+					zoom={15}
+					height="400px"
+					destination={{
+						lat: destinationCoords.lat,
+						lng: destinationCoords.lng,
+						label: `${delivery.customerName}<br/>${delivery.address}`
+					}}
+					currentPosition={gpsService.position ? {
+						lat: gpsService.position.lat,
+						lng: gpsService.position.lng,
+						accuracy: gpsService.position.accuracy
+					} : null}
+					followPosition={isTracking}
+				/>
 			{:else}
-				<p style="color: var(--text-muted);">Position non disponible</p>
+				<div style="padding: 2rem; text-align: center; color: var(--text-muted);">
+					<p>Impossible de charger la carte pour cette adresse.</p>
+					<p style="font-size: 0.875rem; margin-top: 0.5rem;">Adresse: {delivery.address}</p>
+				</div>
 			{/if}
 
 			<div style="margin-top: 1.5rem; display: flex; gap: 1rem;">
@@ -141,6 +173,17 @@
 					</button>
 				{/if}
 			</div>
+
+			{#if gpsService.position}
+				<div style="margin-top: 1rem; padding: 0.75rem; background: #f3f4f6; border-radius: 4px; font-size: 0.875rem;">
+					<p style="margin-bottom: 0.25rem;">
+						<strong>Position actuelle:</strong> {gpsService.position.lat.toFixed(6)}, {gpsService.position.lng.toFixed(6)}
+					</p>
+					<p style="color: var(--text-muted);">
+						Précision: {gpsService.position.accuracy ? `${Math.round(gpsService.position.accuracy)}m` : 'N/A'}
+					</p>
+				</div>
+			{/if}
 
 			{#if trackingService.isConnected}
 				<p style="margin-top: 1rem; color: var(--success); font-size: 0.875rem;">

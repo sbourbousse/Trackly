@@ -1,16 +1,20 @@
 <script lang="ts">
 	import TopNav from '$lib/components/TopNav.svelte';
+	import Map from '$lib/components/Map.svelte';
 	import { page } from '$app/stores';
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { trackingActions, trackingState } from '$lib/realtime/tracking.svelte';
 	import { getDelivery, deleteDelivery } from '$lib/api/deliveries';
+	import { geocodeAddressCached } from '$lib/utils/geocoding';
 	import type { ApiDeliveryDetail } from '$lib/api/deliveries';
 
 	let delivery = $state<ApiDeliveryDetail | null>(null);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 	let didInit = $state(false);
+	let deliveryCoords = $state<{ lat: number; lng: number } | null>(null);
+	let geocodingLoading = $state(false);
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
 
@@ -71,6 +75,16 @@
 			}
 			const data = await getDelivery(deliveryId);
 			delivery = data;
+
+			// Géocoder l'adresse pour obtenir les coordonnées
+			if (data.address) {
+				geocodingLoading = true;
+				const coords = await geocodeAddressCached(data.address);
+				if (coords) {
+					deliveryCoords = { lat: coords.lat, lng: coords.lng };
+				}
+				geocodingLoading = false;
+			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Erreur lors du chargement de la livraison';
 		} finally {
@@ -202,22 +216,47 @@
 				<h2>Carte et position</h2>
 				<span class="status-pill">Temps réel</span>
 			</div>
-			<div class="map-placeholder">
-				<div>
-					<strong>Carte</strong>
+			
+			{#if geocodingLoading}
+				<div style="padding: 2rem; text-align: center; color: #666;">
+					Chargement de la carte...
+				</div>
+			{:else if deliveryCoords}
+				<Map
+					center={[deliveryCoords.lat, deliveryCoords.lng]}
+					zoom={15}
+					height="500px"
+					deliveryMarkers={[
+						{
+							lat: deliveryCoords.lat,
+							lng: deliveryCoords.lng,
+							label: `${delivery.customerName}<br/>${delivery.address}`
+						}
+					]}
+					trackPosition={trackingState.point ? {
+						lat: trackingState.point.lat,
+						lng: trackingState.point.lng
+					} : null}
+					followTracking={true}
+				/>
+				<div style="padding: 1rem; background: #f9fafb; border-radius: 4px; margin-top: 1rem; font-size: 0.875rem;">
 					{#if trackingState.point}
-						<span>
-							{trackingState.point.lat.toFixed(4)}, {trackingState.point.lng.toFixed(4)}
-						</span>
-					{:else if trackingState.lastError}
-						<span>Erreur: {trackingState.lastError}</span>
+						<p><strong>Position chauffeur:</strong> {trackingState.point.lat.toFixed(6)}, {trackingState.point.lng.toFixed(6)}</p>
+						<p><strong>Dernière mise à jour:</strong> {new Date(trackingState.point.updatedAt).toLocaleTimeString('fr-FR')}</p>
 					{:else if trackingState.isConnected}
-						<span>En attente de position...</span>
+						<p style="color: #059669;">✅ Connecté - En attente de position GPS...</p>
+					{:else if trackingState.lastError}
+						<p style="color: #dc2626;">❌ Erreur: {trackingState.lastError}</p>
 					{:else}
-						<span>Cliquez sur "Activer temps réel" pour suivre la position</span>
+						<p style="color: #666;">Cliquez sur "Activer temps réel" pour suivre la position du chauffeur</p>
 					{/if}
 				</div>
-			</div>
+			{:else}
+				<div style="padding: 2rem; text-align: center; color: #666;">
+					<p>Impossible de charger la carte pour cette adresse.</p>
+					<p style="font-size: 0.875rem; margin-top: 0.5rem;">Adresse: {delivery.address}</p>
+				</div>
+			{/if}
 		</section>
 
 		<section class="panel">

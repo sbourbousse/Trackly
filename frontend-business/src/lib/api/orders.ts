@@ -22,6 +22,28 @@ export const getOrders = async () => {
 	return await apiFetch<ApiOrder[]>('/api/orders');
 };
 
+export type ApiOrderDetail = {
+	id: string;
+	customerName: string;
+	address: string;
+	status: string;
+	createdAt: string;
+	deliveries: ApiOrderDelivery[];
+};
+
+export type ApiOrderDelivery = {
+	id: string;
+	driverId: string;
+	driverName?: string;
+	status: string;
+	createdAt: string;
+	completedAt: string | null;
+};
+
+export const getOrder = async (id: string) => {
+	return await apiFetch<ApiOrderDetail>(`/api/orders/${id}`);
+};
+
 export const importOrders = async (orders: ImportOrderRequest[]) => {
 	return await apiFetch<ImportOrdersResponse>('/api/orders/import', {
 		method: 'POST',

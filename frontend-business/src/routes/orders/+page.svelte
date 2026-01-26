@@ -219,7 +219,11 @@
 								onclick={(e) => e.stopPropagation()}
 							/>
 						</td>
-						<td class="mono">{order.ref}</td>
+						<td class="mono">
+							<a class="secondary-link" href={`/orders/${order.id}`} onclick={(e) => e.stopPropagation()}>
+								{order.ref}
+							</a>
+						</td>
 						<td>{order.client}</td>
 						<td>{order.address}</td>
 						<td>

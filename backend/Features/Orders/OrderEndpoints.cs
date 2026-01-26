@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using Trackly.Backend.Features.Billing;
+using Trackly.Backend.Features.Deliveries;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
 
@@ -14,6 +15,7 @@ public static class OrderEndpoints
         group.MapPost("/", CreateOrder);
         group.MapPost("/import", ImportOrders);
         group.MapGet("/", GetOrders);
+        group.MapGet("/{id:guid}", GetOrder);
         group.MapDelete("/{id:guid}", DeleteOrder);
         group.MapPost("/batch/delete", DeleteOrdersBatch);
 
@@ -148,6 +150,67 @@ public static class OrderEndpoints
             .ToListAsync(cancellationToken);
 
         return Results.Ok(orders);
+    }
+
+    private static async Task<IResult> GetOrder(
+        Guid id,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var order = await dbContext.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == id && o.TenantId == tenantContext.TenantId && o.DeletedAt == null, cancellationToken);
+
+        if (order == null)
+        {
+            return Results.NotFound("Commande introuvable.");
+        }
+
+        // Récupérer les livraisons associées
+        var deliveries = await dbContext.Deliveries
+            .AsNoTracking()
+            .Where(d => d.OrderId == id && d.DeletedAt == null)
+            .OrderByDescending(d => d.CreatedAt)
+            .Select(d => new
+            {
+                d.Id,
+                d.DriverId,
+                d.Status,
+                d.CreatedAt,
+                d.CompletedAt
+            })
+            .ToListAsync(cancellationToken);
+
+        // Récupérer les informations des drivers
+        var driverIds = deliveries.Select(d => d.DriverId).Distinct().ToList();
+        var drivers = driverIds.Count > 0
+            ? await dbContext.Drivers
+                .AsNoTracking()
+                .Where(d => driverIds.Contains(d.Id))
+                .ToDictionaryAsync(d => d.Id, d => d.Name, cancellationToken)
+            : new Dictionary<Guid, string>();
+
+        var deliveriesWithDriver = deliveries.Select(d => new OrderDeliveryInfo(
+            d.Id,
+            d.DriverId,
+            d.Status,
+            d.CreatedAt,
+            d.CompletedAt,
+            drivers.GetValueOrDefault(d.DriverId, "Inconnu"))).ToList();
+
+        return Results.Ok(new OrderDetailResponse(
+            order.Id,
+            order.CustomerName,
+            order.Address,
+            order.Status,
+            order.CreatedAt,
+            deliveriesWithDriver));
     }
 
     private static async Task<IResult> DeleteOrder(

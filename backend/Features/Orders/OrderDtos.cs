@@ -1,3 +1,5 @@
+using Trackly.Backend.Features.Deliveries;
+
 namespace Trackly.Backend.Features.Orders;
 
 public sealed record CreateOrderRequest(string CustomerName, string Address);
@@ -27,3 +29,19 @@ public sealed record OrderResponse(
     string Address,
     OrderStatus Status,
     DateTimeOffset CreatedAt);
+
+public sealed record OrderDeliveryInfo(
+    Guid Id,
+    Guid DriverId,
+    DeliveryStatus Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? CompletedAt,
+    string? DriverName = null);
+
+public sealed record OrderDetailResponse(
+    Guid Id,
+    string CustomerName,
+    string Address,
+    OrderStatus Status,
+    DateTimeOffset CreatedAt,
+    List<OrderDeliveryInfo> Deliveries);

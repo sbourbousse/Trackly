@@ -1,0 +1,68 @@
+# Contexte Global Trackly - Vision Business et Multi-Tenancy
+
+## Vision du Projet
+**SaaS Logistique Ultra-Simplifié pour TPE/Artisans**
+
+Objectif : Fournir une solution de gestion de tournées et suivi de colis pour très petites entreprises gérant leurs propres livraisons. **Simplicité radicale** et **coût de run minimal** sont les priorités absolues.
+
+## Cible et Marché
+- **Clients** : Commerçants locaux, artisans, micro-entrepreneurs
+- **Volume moyen** : ~73 colis/mois
+- **Concurrence** : Onfleet/Stuart sont trop complexes et chers pour ce segment
+
+## Modèle Freemium - Quotas à Respecter dans le Code
+
+### Plan Starter (Gratuit)
+- **Limite** : Max 20-25 livraisons/mois
+- L'IA doit implémenter cette limite dans la logique métier
+- Vérification avant création de nouvelle livraison
+
+### Plan Pro (Payant)
+- **Prix** : ~20€/mois
+- Volumes supérieurs sans limite
+- Notifications SMS incluses
+- Taux de conversion cible : 4-5%
+
+## Interfaces Principales
+
+### 1. Business Dashboard (SvelteKit)
+- Import de commandes
+- Gestion de tournées
+- Vue d'ensemble des livraisons
+
+### 2. Driver App (Svelte 5 PWA)
+- Interface mobile simple
+- Validation des livraisons
+- Géolocalisation en temps réel
+
+### 3. Client Tracking (Page Web ultra-légère)
+- Suivi en temps réel sans téléchargement
+- Accessible via lien SMS
+- < 50kb compressé
+
+## Architecture Globale
+
+### Choix : Monolithe Modulaire
+**Pourquoi** : Simplicité de déploiement et performance (appels en mémoire) pour développeur solo.
+
+### Structure Monorepo
+```
+/ (root)
+├── backend/              # API .NET 9 (C#)
+├── frontend-business/    # SvelteKit (Dashboard)
+├── frontend-driver/      # Svelte 5 PWA (Chauffeur)
+├── frontend-tracking/    # Svelte (Tracking client)
+├── shared/               # Types TypeScript générés
+└── docs/                 # Documentation projet
+```
+
+### Isolation Multi-Tenant
+- **Base de données** : PostgreSQL unique
+- **Isolation** : Par TenantId (Shared Database, Shared Schema)
+- **Sécurité** : Toutes les requêtes doivent filtrer par TenantId automatiquement
+
+## Principes Directeurs
+1. **Simplicité avant tout** : Éviter la sur-ingénierie
+2. **Coût minimal** : Optimiser pour réduire les coûts d'infrastructure
+3. **Performance** : Appels en mémoire, pas de micro-services
+4. **Isolation stricte** : Multi-tenancy garanti au niveau code et base de données

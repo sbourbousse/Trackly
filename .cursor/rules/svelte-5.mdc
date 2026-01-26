@@ -1,0 +1,51 @@
+# Règles Svelte 5 Runes pour Trackly
+
+## Version Obligatoire
+- **Svelte 5 uniquement** avec l'API Runes
+- **Interdiction absolue** : Ne jamais utiliser `writable()`, `readable()`, `derived()` de Svelte 4
+- **Interdiction absolue** : Ne jamais utiliser les stores classiques (`writable`, `readable`, `derived`)
+
+## Gestion d'État avec Runes
+- **Réactivité locale** : Utiliser `$state` pour l'état local dans les composants
+- **Calculs dérivés** : Utiliser `$derived` pour les calculs de tournées et transformations de données
+- **Effets de bord** : Utiliser `$effect` pour les interactions avec la carte et les subscriptions SignalR
+
+## Partage d'État Global
+- **Pattern** : Créer des fichiers `.svelte.ts` pour l'état global partagé
+- Exemple : `stores/tracking.svelte.ts` avec `export let trackingState = $state({ ... })`
+- Importer et utiliser directement dans les composants
+
+## Structure des Frontends
+- **frontend-business/** : SvelteKit (Dashboard Business)
+- **frontend-driver/** : Svelte 5 PWA (Application Chauffeur)
+- **frontend-tracking/** : Svelte (Page de tracking client ultra-légère)
+
+## Spécificités Driver App (PWA)
+- **Mode** : Progressive Web App pour accès géolocalisation native
+- **Ergonomie** : Interface "une main", boutons larges, contrastes élevés
+- **Usage** : Optimisé pour usage en extérieur (luminosité, taille des boutons)
+
+## Spécificités Client Tracking
+- **Poids** : Page ultra-légère (< 50kb compressé)
+- **Performance** : Doit s'ouvrir instantanément sur mobile via lien SMS
+- **Temps réel** : Client SignalR en Svelte pour animer position livreur sans rafraîchir
+
+## UI Library
+- **Recommandé** : shadcn-svelte ou Tailwind CSS
+- Priorité à la rapidité d'exécution et simplicité
+
+## Partage de Types
+- Types TypeScript générés depuis DTOs C# dans `shared/`
+- Utiliser NSwag ou TypeGen pour synchronisation automatique
+
+## Exemple de Code Runes
+```svelte
+<script>
+  let count = $state(0);
+  let doubled = $derived(count * 2);
+  
+  $effect(() => {
+    console.log('Count changed:', count);
+  });
+</script>
+```

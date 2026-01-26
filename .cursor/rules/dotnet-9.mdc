@@ -1,0 +1,38 @@
+# Règles .NET 9 pour Trackly
+
+## Framework et Version
+- **Obligatoire** : .NET 9 (dernière version stable)
+- Utiliser ASP.NET Core Minimal APIs pour tous les endpoints
+- Pas de contrôleurs MVC classiques
+
+## Architecture Backend
+- **Pattern** : Monolithe Modulaire avec séparation par domaines
+- Structure : `Features/{Domain}` (ex: `Features/Orders`, `Features/Tracking`)
+- Chaque entité doit implémenter `ITenantIsolated` avec propriété `TenantId`
+
+## Isolation Multi-Tenant
+- **Base de données** : PostgreSQL unique (Shared Database, Shared Schema)
+- **ORM** : Entity Framework Core avec Global Query Filters sur `TenantId`
+- **Middleware** : Implémenter un middleware qui extrait le `TenantId` depuis le token JWT/header et l'injecte dans le contexte
+- Toutes les requêtes EF Core doivent automatiquement filtrer par `TenantId`
+
+## Communication Temps Réel
+- **SignalR** : Utiliser des Hubs fortement typés
+- Push des coordonnées GPS du livreur vers clients/commerçants
+- Exemple : `TrackingHub : Hub<ITrackingClient>` avec méthodes typées
+
+## Communication Inter-Modules
+- **Interdiction** : Pas de micro-services
+- **Autorisé** : MediatR ou `System.Threading.Channels` pour communication asynchrone interne
+- Exemple : Notifier le module SMS quand une commande est livrée via MediatR
+
+## Intégrations Tierces
+- **Paiements** : Stripe Billing pour abonnements freemium
+- **SMS** : Twilio ou Vonage pour notifications de suivi client
+- **Cartographie** : API Google Maps pour géocodage et calcul d'itinéraires
+
+## Bonnes Pratiques
+- Utiliser les Records C# pour les DTOs
+- Validation avec FluentValidation
+- Logging structuré avec Serilog
+- Tests unitaires avec xUnit

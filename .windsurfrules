@@ -1,0 +1,56 @@
+# Windsurf Rules pour Trackly
+
+## Structure du Monorepo
+**IMPORTANT** : Respecter strictement cette structure. Ne jamais créer de fichiers au mauvais endroit.
+
+```
+/ (root)
+├── backend/              # API .NET 9 (C#) - Ne pas créer de fichiers frontend ici
+├── frontend-business/    # SvelteKit (Dashboard) - Ne pas créer de fichiers backend ici
+├── frontend-driver/      # Svelte 5 PWA (Chauffeur) - Ne pas créer de fichiers backend ici
+├── frontend-tracking/    # Svelte (Tracking client) - Ne pas créer de fichiers backend ici
+├── shared/               # Types TypeScript générés automatiquement depuis C#
+└── docs/                 # Documentation projet uniquement
+```
+
+## Règles de Placement de Fichiers
+
+### Backend (.NET 9)
+- Tous les fichiers C# doivent être dans `backend/`
+- Structure : `backend/Features/{Domain}/` pour séparation par domaines
+- Ne jamais créer de fichiers TypeScript/JavaScript dans `backend/`
+
+### Frontend (Svelte 5)
+- `frontend-business/` : Dashboard SvelteKit uniquement
+- `frontend-driver/` : PWA Svelte 5 uniquement
+- `frontend-tracking/` : Page de tracking Svelte uniquement
+- Ne jamais créer de fichiers C# dans les dossiers frontend
+
+### Shared Types
+- `shared/` contient uniquement les types TypeScript générés depuis les DTOs C#
+- Génération automatique via NSwag ou TypeGen
+- Ne jamais modifier manuellement les fichiers dans `shared/`
+
+## Standards Techniques
+
+### Backend
+- .NET 9 avec Minimal APIs
+- Entity Framework Core avec Global Query Filters sur TenantId
+- SignalR avec Hubs fortement typés
+- PostgreSQL avec isolation multi-tenant
+
+### Frontend
+- Svelte 5 avec Runes API uniquement
+- Interdiction d'utiliser `writable()`, `readable()`, `derived()` de Svelte 4
+- Utiliser `$state`, `$derived`, `$effect` pour la réactivité
+- État global dans fichiers `.svelte.ts`
+
+## Dépendances Inter-Fichiers
+- Le backend expose des DTOs qui sont générés en TypeScript dans `shared/`
+- Les frontends importent les types depuis `shared/`
+- Ne jamais dupliquer les définitions de types
+
+## Workflow de Développement
+1. Modifier les DTOs dans `backend/`
+2. Régénérer les types TypeScript dans `shared/`
+3. Utiliser les types dans les frontends

@@ -13,6 +13,7 @@ public static class DeliveryEndpoints
 
         group.MapGet("/", GetDeliveries);
         group.MapPost("/", CreateDelivery);
+        group.MapPost("/batch", CreateDeliveriesBatch);
         group.MapPatch("/{id:guid}/complete", CompleteDelivery);
         group.MapGet("/{id:guid}/tracking", GetTracking);
 
@@ -91,6 +92,102 @@ public static class DeliveryEndpoints
         await dbContext.SaveChangesAsync(cancellationToken);
 
         return Results.Created($"/api/deliveries/{delivery.Id}", ToResponse(delivery));
+    }
+
+    private static async Task<IResult> CreateDeliveriesBatch(
+        CreateDeliveriesBatchRequest request,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        IBillingService billingService,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        if (request.OrderIds == null || request.OrderIds.Count == 0)
+        {
+            return Results.BadRequest("Aucune commande sélectionnée.");
+        }
+
+        if (request.DriverId == Guid.Empty)
+        {
+            return Results.BadRequest("DriverId manquant.");
+        }
+
+        // Vérifier que le driver existe
+        var driverExists = await dbContext.Drivers
+            .AsNoTracking()
+            .AnyAsync(driver => driver.Id == request.DriverId, cancellationToken);
+
+        if (!driverExists)
+        {
+            return Results.NotFound("Livreur introuvable.");
+        }
+
+        // Vérifier que toutes les commandes existent et sont en attente
+        var orders = await dbContext.Orders
+            .AsNoTracking()
+            .Where(o => request.OrderIds.Contains(o.Id) && o.TenantId == tenantContext.TenantId)
+            .ToListAsync(cancellationToken);
+
+        if (orders.Count != request.OrderIds.Count)
+        {
+            return Results.BadRequest("Certaines commandes sont introuvables ou n'appartiennent pas à ce tenant.");
+        }
+
+        // Vérifier le quota global
+        var canCreate = await billingService.CanCreateDeliveryAsync(tenantContext.TenantId, cancellationToken);
+        if (!canCreate)
+        {
+            return Results.Problem(
+                "Quota mensuel dépassé pour le plan Starter.",
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        var deliveries = new List<Delivery>();
+        var createdDeliveries = new List<DeliveryResponse>();
+
+        foreach (var orderId in request.OrderIds)
+        {
+            // Vérifier le quota pour chaque livraison
+            var canCreateDelivery = await billingService.CanCreateDeliveryAsync(tenantContext.TenantId, cancellationToken);
+            if (!canCreateDelivery)
+            {
+                continue; // Skip cette livraison si quota dépassé
+            }
+
+            var delivery = new Delivery
+            {
+                Id = Guid.NewGuid(),
+                TenantId = tenantContext.TenantId,
+                OrderId = orderId,
+                DriverId = request.DriverId,
+                Status = DeliveryStatus.Pending,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            deliveries.Add(delivery);
+        }
+
+        if (deliveries.Count == 0)
+        {
+            return Results.Problem(
+                "Aucune livraison créée. Quota mensuel dépassé.",
+                statusCode: StatusCodes.Status403Forbidden);
+        }
+
+        dbContext.Deliveries.AddRange(deliveries);
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        createdDeliveries = deliveries.Select(ToResponse).ToList();
+
+        return Results.Ok(new CreateDeliveriesBatchResponse
+        {
+            Created = createdDeliveries.Count,
+            Deliveries = createdDeliveries
+        });
     }
 
     private static async Task<IResult> CompleteDelivery(

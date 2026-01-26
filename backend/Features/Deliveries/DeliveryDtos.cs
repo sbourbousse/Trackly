@@ -14,3 +14,11 @@ public sealed record DeliveryTrackingResponse(
     Guid DeliveryId,
     DeliveryStatus Status,
     DateTimeOffset? CompletedAt);
+
+public sealed record CreateDeliveriesBatchRequest(Guid DriverId, List<Guid> OrderIds);
+
+public sealed record CreateDeliveriesBatchResponse
+{
+    public int Created { get; init; }
+    public List<DeliveryResponse> Deliveries { get; init; } = new();
+}

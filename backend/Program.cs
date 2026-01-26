@@ -2,6 +2,7 @@ using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
 using Trackly.Backend.Features.Billing;
 using Trackly.Backend.Features.Deliveries;
+using Trackly.Backend.Features.Drivers;
 using Trackly.Backend.Features.Orders;
 using Trackly.Backend.Features.Tracking;
 using Trackly.Backend.Infrastructure.Data;
@@ -106,6 +107,7 @@ app.UseMiddleware<TenantMiddleware>();
 
 app.MapOrderEndpoints();
 app.MapDeliveryEndpoints();
+app.MapDriverEndpoints();
 
 // SignalR Hub pour le tracking temps réel
 app.MapHub<TrackingHub>("/hubs/tracking");

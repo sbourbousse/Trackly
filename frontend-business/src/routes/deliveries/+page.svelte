@@ -72,7 +72,7 @@
 				>
 					{deliveriesState.loading ? 'Chargement...' : 'Actualiser'}
 				</button>
-				<button class="primary-button" type="button">Nouvelle tournee</button>
+				<a href="/deliveries/new" class="primary-button" style="text-decoration: none; display: inline-block;">Nouvelle tournee</a>
 			</div>
 		</div>
 

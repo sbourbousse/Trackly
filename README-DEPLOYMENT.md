@@ -41,6 +41,9 @@ Cors__AllowedOrigins__1=https://frontend-driver.vercel.app
 # Environnement
 ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=http://0.0.0.0:$PORT
+
+# Auth (obligatoire en production)
+JWT_SECRET=<32+ caracteres aleatoires>
 ```
 
 **Note** : `DATABASE_URL` est automatiquement fourni par Railway.

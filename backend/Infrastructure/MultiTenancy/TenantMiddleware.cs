@@ -10,7 +10,12 @@ public sealed class TenantMiddleware(RequestDelegate next)
     {
         // Endpoints publics qui ne nécessitent pas de TenantId
         var path = context.Request.Path.Value ?? "";
-        if (path == "/" || path == "/health" || path.StartsWith("/api/tenants/default"))
+        if (path == "/" ||
+            path == "/health" ||
+            path.StartsWith("/api/tenants/default") ||
+            path.StartsWith("/api/tenants/register") ||
+            path.StartsWith("/api/auth/register") ||
+            path.StartsWith("/api/auth/login"))
         {
             await next(context);
             return;

@@ -1,6 +1,10 @@
+using System.Text;
 using System.Text.Json.Serialization;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
 using Npgsql;
+using Trackly.Backend.Features.Auth;
 using Trackly.Backend.Features.Billing;
 using Trackly.Backend.Features.Deliveries;
 using Trackly.Backend.Features.Drivers;
@@ -14,6 +18,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<TenantContext>();
 builder.Services.AddScoped<IBillingService, BillingService>();
+builder.Services.AddSingleton<AuthService>();
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -74,12 +79,49 @@ builder.Services.AddDbContext<TracklyDbContext>(options =>
     options.UseNpgsql(NormalizeConnectionString(connectionString));
 });
 
+var jwtSecret = builder.Configuration["JWT_SECRET"]
+    ?? Environment.GetEnvironmentVariable("JWT_SECRET");
+if (string.IsNullOrWhiteSpace(jwtSecret))
+{
+    if (builder.Environment.IsDevelopment())
+    {
+        jwtSecret = "dev-secret-change-me";
+    }
+    else
+    {
+        throw new InvalidOperationException("JWT_SECRET est requis en production.");
+    }
+}
+else if (jwtSecret.Length < 32)
+{
+    throw new InvalidOperationException("JWT_SECRET doit contenir au moins 32 caracteres (256 bits).");
+}
+
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+    .AddJwtBearer(options =>
+    {
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = false,
+            ValidateAudience = false,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
+        };
+    });
+
+builder.Services.AddAuthorization();
+
 var app = builder.Build();
 
 var allowTenantBootstrap = builder.Configuration.GetValue<bool>("ALLOW_TENANT_BOOTSTRAP");
 
 // Active CORS avant les autres middlewares
 app.UseCors();
+app.UseAuthentication();
+app.UseAuthorization();
 
 // Exécute les migrations en développement et production
 using (var scope = app.Services.CreateScope())
@@ -97,6 +139,88 @@ using (var scope = app.Services.CreateScope())
 // Endpoints publics (sans TenantMiddleware)
 app.MapGet("/", () => "Trackly API");
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+// Auth business (création de compte + login)
+app.MapPost("/api/auth/register", async (TracklyDbContext dbContext, AuthService authService, RegisterRequest request) =>
+{
+    var companyName = request.CompanyName?.Trim();
+    var name = request.Name?.Trim();
+    var email = request.Email?.Trim().ToLowerInvariant();
+    var password = request.Password;
+
+    if (string.IsNullOrWhiteSpace(companyName) ||
+        string.IsNullOrWhiteSpace(name) ||
+        string.IsNullOrWhiteSpace(email) ||
+        string.IsNullOrWhiteSpace(password))
+    {
+        return Results.BadRequest("CompanyName, Name, Email et Password sont requis.");
+    }
+
+    var existingUser = await dbContext.Users
+        .IgnoreQueryFilters()
+        .AnyAsync(u => u.Email == email);
+
+    if (existingUser)
+    {
+        return Results.Conflict("Un compte existe deja pour cet email.");
+    }
+
+    var tenant = new Tenant { Name = companyName };
+    dbContext.Tenants.Add(tenant);
+
+    var user = new TracklyUser
+    {
+        TenantId = tenant.Id,
+        Name = name,
+        Email = email
+    };
+    user.PasswordHash = authService.HashPassword(user, password);
+
+    dbContext.Users.Add(user);
+    await dbContext.SaveChangesAsync();
+
+    var token = authService.CreateToken(user, jwtSecret);
+    return Results.Ok(new AuthResponse(token, tenant.Id, user.Id, user.Name, user.Email));
+});
+
+app.MapPost("/api/auth/login", async (TracklyDbContext dbContext, AuthService authService, LoginRequest request) =>
+{
+    var email = request.Email?.Trim().ToLowerInvariant();
+    var password = request.Password;
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+    {
+        return Results.BadRequest("Email et Password sont requis.");
+    }
+
+    var user = await dbContext.Users
+        .IgnoreQueryFilters()
+        .FirstOrDefaultAsync(u => u.Email == email);
+
+    if (user == null || !authService.VerifyPassword(user, password))
+    {
+        return Results.Unauthorized();
+    }
+
+    var token = authService.CreateToken(user, jwtSecret);
+    return Results.Ok(new AuthResponse(token, user.TenantId, user.Id, user.Name, user.Email));
+});
+
+// Enregistrement public d'un tenant (création simple)
+app.MapPost("/api/tenants/register", async (TracklyDbContext dbContext, TenantRegistrationRequest request) =>
+{
+    var name = request.Name?.Trim();
+    if (string.IsNullOrWhiteSpace(name))
+    {
+        return Results.BadRequest("Le nom du tenant est requis.");
+    }
+
+    var tenant = new Tenant { Name = name };
+    dbContext.Tenants.Add(tenant);
+    await dbContext.SaveChangesAsync();
+
+    return Results.Created($"/api/tenants/{tenant.Id}", new { id = tenant.Id, name = tenant.Name });
+});
 
 // Endpoint pour récupérer le tenant par défaut (dev ou bootstrap explicite)
 if (app.Environment.IsDevelopment() || allowTenantBootstrap)

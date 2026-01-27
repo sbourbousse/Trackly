@@ -108,6 +108,9 @@ Cors__AllowedOrigins__1=https://trackly-frontend-driver-production.up.railway.ap
 ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=http://0.0.0.0:$PORT
 
+# Auth (obligatoire en production)
+JWT_SECRET=<32+ caracteres aleatoires>
+
 # (Optionnel) Permet de créer/récupérer un tenant par défaut via /api/tenants/default
 ALLOW_TENANT_BOOTSTRAP=true
 ```
@@ -129,6 +132,9 @@ PORT=$PORT
 
 # (Optionnel) Forcer un tenant précis si vous ne voulez pas de bootstrap
 # PUBLIC_DEFAULT_TENANT_ID=<guid>
+
+# (Optionnel) Autoriser le bootstrap côté frontend
+# PUBLIC_TENANT_BOOTSTRAP=true
 ```
 
 **Option recommandé Railway** : si votre service backend s'appelle `backend`, utilisez :  
@@ -148,6 +154,9 @@ PORT=$PORT
 
 # (Optionnel) Forcer un tenant précis si vous ne voulez pas de bootstrap
 # PUBLIC_DEFAULT_TENANT_ID=<guid>
+
+# (Optionnel) Autoriser le bootstrap côté frontend
+# PUBLIC_TENANT_BOOTSTRAP=true
 ```
 
 **Option recommandé Railway** : si votre service backend s'appelle `backend`, utilisez :  

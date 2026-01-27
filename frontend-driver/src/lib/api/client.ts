@@ -22,17 +22,19 @@ const getTenantId = async (): Promise<string | null> => {
 		return envTenantId;
 	}
 	
-	// En développement, récupère depuis l'API
-	try {
-		const response = await fetch(`${baseUrl}/api/tenants/default`);
-		if (response.ok) {
-			const data = await response.json() as { id: string };
-			cachedTenantId = data.id;
-			localStorage.setItem('trackly_tenant_id', data.id);
-			return data.id;
+	// En développement ou bootstrap explicite, récupère depuis l'API
+	if (import.meta.env.DEV || import.meta.env.PUBLIC_TENANT_BOOTSTRAP === 'true') {
+		try {
+			const response = await fetch(`${baseUrl}/api/tenants/default`);
+			if (response.ok) {
+				const data = await response.json() as { id: string };
+				cachedTenantId = data.id;
+				localStorage.setItem('trackly_tenant_id', data.id);
+				return data.id;
+			}
+		} catch (error) {
+			console.warn('[API] Impossible de récupérer le tenant par défaut:', error);
 		}
-	} catch (error) {
-		console.warn('[API] Impossible de récupérer le tenant par défaut:', error);
 	}
 	
 	return null;

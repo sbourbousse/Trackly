@@ -3,6 +3,7 @@ using Microsoft.EntityFrameworkCore;
 using Trackly.Backend.Features.Deliveries;
 using Trackly.Backend.Features.Drivers;
 using Trackly.Backend.Features.Orders;
+using Trackly.Backend.Features.Auth;
 using Trackly.Backend.Features.Tenants;
 using Trackly.Backend.Infrastructure.MultiTenancy;
 
@@ -21,6 +22,7 @@ public sealed class TracklyDbContext : DbContext
     public Guid TenantId => _tenantContext.TenantId;
 
     public DbSet<Tenant> Tenants => Set<Tenant>();
+    public DbSet<TracklyUser> Users => Set<TracklyUser>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<Driver> Drivers => Set<Driver>();

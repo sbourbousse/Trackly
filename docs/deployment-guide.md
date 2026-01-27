@@ -90,6 +90,9 @@ Cors__AllowedOrigins__1=https://frontend-driver.vercel.app
 # Environnement
 ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=http://0.0.0.0:$PORT
+
+# Auth (obligatoire en production)
+JWT_SECRET=<32+ caracteres aleatoires>
 ```
 
 **Note** : Railway expose le port via la variable `$PORT`, utilisez-la dans `ASPNETCORE_URLS`.
@@ -162,6 +165,7 @@ Pour chaque projet frontend sur Vercel :
 PUBLIC_API_BASE_URL=https://votre-backend-railway.up.railway.app
 PUBLIC_SIGNALR_URL=https://votre-backend-railway.up.railway.app/hubs/tracking
 PUBLIC_DEFAULT_TENANT_ID=<optionnel - ID du tenant par défaut>
+# PUBLIC_TENANT_BOOTSTRAP=true (optionnel)
 ```
 
 #### Pour frontend-driver :
@@ -170,6 +174,7 @@ PUBLIC_DEFAULT_TENANT_ID=<optionnel - ID du tenant par défaut>
 PUBLIC_API_BASE_URL=https://votre-backend-railway.up.railway.app
 PUBLIC_SIGNALR_URL=https://votre-backend-railway.up.railway.app/hubs/tracking
 PUBLIC_DEFAULT_TENANT_ID=<optionnel>
+# PUBLIC_TENANT_BOOTSTRAP=true (optionnel)
 ```
 
 ### 2.2 Redéployer les frontends
@@ -215,6 +220,16 @@ Cors__AllowedOrigins__1=https://frontend-driver.vercel.app
 ### Frontends
 - ✅ Frontend Business : `https://frontend-business-alpha.vercel.app`
 - ✅ Frontend Driver : `https://frontend-driver.vercel.app`
+
+## 4.1 Initialisation du Tenant
+
+Si aucun tenant n'existe, vous pouvez :
+
+1. Utiliser l'écran de login du frontend business (creation automatique)
+2. Ou appeler l'API :
+   `POST /api/auth/register` avec `{ "companyName": "Mon entreprise", "name": "Jean Dupont", "email": "contact@exemple.fr", "password": "..." }`
+
+Ensuite, recopiez l'ID du tenant dans `PUBLIC_DEFAULT_TENANT_ID` si besoin.
 
 ## 5. Coûts Estimés
 

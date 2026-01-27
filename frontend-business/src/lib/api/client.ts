@@ -1,10 +1,11 @@
 import { env } from '$env/dynamic/public';
-import { browser } from '$app/environment';
+import { browser, dev } from '$app/environment';
 
 const baseUrl = env.PUBLIC_API_BASE_URL || 'http://localhost:5257';
 
 // Récupère ou récupère le TenantId depuis le backend
 let cachedTenantId: string | null = null;
+let cachedAuthToken: string | null = null;
 
 const getTenantId = async (): Promise<string | null> => {
 	if (!browser) return null;
@@ -18,6 +19,12 @@ const getTenantId = async (): Promise<string | null> => {
 		cachedTenantId = stored;
 		return stored;
 	}
+
+	const sessionStored = sessionStorage.getItem('trackly_tenant_id');
+	if (sessionStored) {
+		cachedTenantId = sessionStored;
+		return sessionStored;
+	}
 	
 	// Récupère depuis l'env si disponible
 	const envTenantId = env.PUBLIC_DEFAULT_TENANT_ID;
@@ -27,20 +34,38 @@ const getTenantId = async (): Promise<string | null> => {
 		return envTenantId;
 	}
 	
-	// En développement, récupère depuis l'API
-	try {
-		const response = await fetch(`${baseUrl}/api/tenants/default`);
-		if (response.ok) {
-			const data = await response.json() as { id: string };
-			cachedTenantId = data.id;
-			localStorage.setItem('trackly_tenant_id', data.id);
-			return data.id;
+	// En développement ou bootstrap explicite, récupère depuis l'API
+	if (dev || env.PUBLIC_TENANT_BOOTSTRAP === 'true') {
+		try {
+			const response = await fetch(`${baseUrl}/api/tenants/default`);
+			if (response.ok) {
+				const data = await response.json() as { id: string };
+				cachedTenantId = data.id;
+				localStorage.setItem('trackly_tenant_id', data.id);
+				return data.id;
+			}
+		} catch (error) {
+			console.warn('[API] Impossible de récupérer le tenant par défaut:', error);
 		}
-	} catch (error) {
-		console.warn('[API] Impossible de récupérer le tenant par défaut:', error);
 	}
 	
 	return null;
+};
+
+const getAuthToken = (): string | null => {
+	if (!browser) return null;
+	if (cachedAuthToken) return cachedAuthToken;
+	const stored = localStorage.getItem('trackly_auth_token');
+	if (stored) {
+		cachedAuthToken = stored;
+		return stored;
+	}
+	const sessionToken = sessionStorage.getItem('trackly_auth_token');
+	if (sessionToken) {
+		cachedAuthToken = sessionToken;
+		return sessionToken;
+	}
+	return stored;
 };
 
 export class ApiError extends Error {
@@ -55,6 +80,7 @@ export class ApiError extends Error {
 
 export const apiFetch = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
 	const tenantId = await getTenantId();
+	const authToken = getAuthToken();
 	
 	const headers: Record<string, string> = {
 		'Content-Type': 'application/json',
@@ -64,6 +90,10 @@ export const apiFetch = async <T>(path: string, init: RequestInit = {}): Promise
 	// Ajoute le header TenantId si disponible
 	if (tenantId) {
 		headers['X-Tenant-Id'] = tenantId;
+	}
+
+	if (authToken) {
+		headers.Authorization = `Bearer ${authToken}`;
 	}
 
 	const url = `${baseUrl}${path}`;
@@ -97,3 +127,40 @@ export const apiFetch = async <T>(path: string, init: RequestInit = {}): Promise
 		throw new ApiError('Erreur de connexion au serveur', 0, error instanceof Error ? error.message : String(error));
 	}
 };
+
+export type TenantRegistration = {
+	name: string;
+	email?: string;
+};
+
+export type AuthRegisterPayload = {
+	companyName: string;
+	name: string;
+	email: string;
+	password: string;
+};
+
+export type AuthLoginPayload = {
+	email: string;
+	password: string;
+};
+
+export type AuthResponse = {
+	token: string;
+	tenantId: string;
+	userId: string;
+	name: string;
+	email: string;
+};
+
+export const registerAccount = async (payload: AuthRegisterPayload) =>
+	apiFetch<AuthResponse>('/api/auth/register', {
+		method: 'POST',
+		body: JSON.stringify(payload)
+	});
+
+export const loginAccount = async (payload: AuthLoginPayload) =>
+	apiFetch<AuthResponse>('/api/auth/login', {
+		method: 'POST',
+		body: JSON.stringify(payload)
+	});

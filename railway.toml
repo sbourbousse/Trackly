@@ -14,3 +14,8 @@
 #
 # Note: Railway détecte automatiquement les services basés sur les fichiers package.json et .csproj
 # Les fichiers railway.json dans chaque dossier fournissent la configuration spécifique
+#
+# Option GHCR (images pré-buildées) :
+# - Railway ne lit pas les images depuis railway.json/railway.toml
+# - Configurez chaque service manuellement en "Docker Image" (GHCR)
+# - Voir README-DOCKER.md et RAILWAY-SETUP.md pour la procédure

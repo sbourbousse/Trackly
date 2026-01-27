@@ -113,6 +113,18 @@ Railway détecte automatiquement les Dockerfiles dans chaque dossier. Les fichie
    PUBLIC_SIGNALR_URL=https://votre-backend.up.railway.app/hubs/tracking
    ```
 
+## 🐙 Déploiement via GHCR + Railway
+
+Pour éviter les builds Railway et pousser des images pré-buildées :
+
+1. Activez le workflow GitHub Actions `.github/workflows/ghcr.yml`.
+2. Les images sont publiées sur GHCR :
+   - `ghcr.io/<owner>/trackly-backend:latest`
+   - `ghcr.io/<owner>/trackly-frontend-business:latest`
+   - `ghcr.io/<owner>/trackly-frontend-driver:latest`
+3. Dans Railway, créez des services **Docker Image** et collez l'image correspondante.
+4. Après chaque push sur `main`, utilisez **Redeploy** dans Railway.
+
    **Frontend Driver :**
    ```env
    NODE_ENV=production

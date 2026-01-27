@@ -54,6 +54,15 @@ https://trackly-backend-production.up.railway.app
 
 **📝 Notez cette URL** - vous en aurez besoin pour les frontends.
 
+## Option GHCR + Railway (images pré-buildées)
+
+Si vous préférez déployer des images Docker pré-construites :
+
+1. Activez le workflow GitHub Actions `.github/workflows/ghcr.yml`.
+2. Créez un service **Docker Image** dans Railway.
+3. Image backend : `ghcr.io/<owner>/trackly-backend:latest`.
+4. Pour mettre à jour : poussez un commit puis **Redeploy** dans Railway.
+
 ## Configuration des Frontends Vercel
 
 ### Variables d'environnement à ajouter

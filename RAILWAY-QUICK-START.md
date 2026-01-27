@@ -56,6 +56,15 @@ Si ce n'est pas le cas, créez manuellement 3 services avec ces configurations :
 - Build: `npm install && npm run build`
 - Start: `npx serve -s dist -l $PORT`
 
+### Option GHCR (images pré-buildées)
+
+Railway ne lit pas d'image GHCR depuis `railway.json`. Si vous préférez GHCR :
+
+1. Activez le workflow `.github/workflows/ghcr.yml`.
+2. Utilisez les images `ghcr.io/<owner>/trackly-backend:latest`, `ghcr.io/<owner>/trackly-frontend-business:latest`, `ghcr.io/<owner>/trackly-frontend-driver:latest`.
+3. Créez des services **Docker Image** dans Railway et collez l'image GHCR.
+4. Redeployez dans Railway après chaque push sur `main`.
+
 ### 5. Variables d'environnement
 
 #### Backend

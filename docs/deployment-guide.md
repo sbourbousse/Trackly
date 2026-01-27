@@ -63,6 +63,15 @@ Ce guide explique comment déployer Trackly en production.
    - **Build Command**: `dotnet publish -c Release -o /app`
    - **Start Command**: `dotnet Trackly.Backend.dll`
 
+#### Option GHCR (image pré-buildée)
+
+Railway ne permet pas de déclarer une image GHCR dans `railway.json`. Pour utiliser GHCR :
+
+1. Activez le workflow `.github/workflows/ghcr.yml`.
+2. Créez un service **Docker Image** dans Railway.
+3. Image backend : `ghcr.io/<owner>/trackly-backend:latest`.
+4. Après chaque push sur `main`, utilisez **Redeploy** dans Railway.
+
 #### 1.4 Configurer les variables d'environnement
 
 Dans les paramètres du service backend, ajoutez :

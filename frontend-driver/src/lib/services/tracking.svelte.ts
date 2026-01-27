@@ -1,6 +1,8 @@
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 
 const hubUrl = import.meta.env.VITE_SIGNALR_URL || 'http://localhost:5257/hubs/tracking';
+console.info('[Driver] VITE_SIGNALR_URL:', import.meta.env.VITE_SIGNALR_URL);
+console.info('[Driver] hubUrl used:', hubUrl);
 
 // État réactif
 let connection = $state<ReturnType<typeof HubConnectionBuilder.prototype.build> | null>(null);

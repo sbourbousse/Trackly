@@ -1,4 +1,6 @@
 const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5257';
+console.info('[Driver] VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
+console.info('[Driver] baseUrl used:', baseUrl);
 
 // Récupère ou récupère le TenantId depuis le backend
 let cachedTenantId: string | null = null;

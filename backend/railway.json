@@ -1,11 +1,10 @@
 {
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
-    "builder": "NIXPACKS",
-    "buildCommand": "dotnet publish -c Release -o /app"
+    "builder": "DOCKERFILE",
+    "dockerfilePath": "Dockerfile"
   },
   "deploy": {
-    "startCommand": "dotnet Trackly.Backend.dll",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 10
   }

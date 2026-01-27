@@ -11,19 +11,41 @@ namespace Trackly.Backend.Migrations
         /// <inheritdoc />
         protected override void Up(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.AddColumn<DateTimeOffset>(
-                name: "DeletedAt",
-                table: "Deliveries",
-                type: "timestamp with time zone",
-                nullable: true);
+            // Vérifier si la colonne existe avant de l'ajouter
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    IF NOT EXISTS (
+                        SELECT 1 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'Deliveries' 
+                        AND column_name = 'DeletedAt'
+                    ) THEN
+                        ALTER TABLE ""Deliveries"" 
+                        ADD COLUMN ""DeletedAt"" timestamp with time zone NULL;
+                    END IF;
+                END $$;
+            ");
         }
 
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
-            migrationBuilder.DropColumn(
-                name: "DeletedAt",
-                table: "Deliveries");
+            // Vérifier si la colonne existe avant de la supprimer
+            migrationBuilder.Sql(@"
+                DO $$
+                BEGIN
+                    IF EXISTS (
+                        SELECT 1 
+                        FROM information_schema.columns 
+                        WHERE table_name = 'Deliveries' 
+                        AND column_name = 'DeletedAt'
+                    ) THEN
+                        ALTER TABLE ""Deliveries"" 
+                        DROP COLUMN ""DeletedAt"";
+                    END IF;
+                END $$;
+            ");
         }
     }
 }

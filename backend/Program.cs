@@ -243,6 +243,22 @@ if (app.Environment.IsDevelopment() || allowTenantBootstrap)
     });
 }
 
+// Endpoint de debug pour lister tous les drivers (dev uniquement)
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/api/drivers/debug/all", async (TracklyDbContext dbContext) =>
+    {
+        // IgnoreQueryFilters() pour voir tous les drivers sans filtre de tenant
+        var drivers = await dbContext.Drivers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Select(d => new { d.Id, d.Name, d.Phone, d.TenantId })
+            .ToListAsync();
+
+        return Results.Ok(drivers);
+    });
+}
+
 // Endpoint public pour récupérer le tenant ID d'un driver (utilisé par le frontend-driver)
 app.MapGet("/api/drivers/{driverId}/tenant", async (TracklyDbContext dbContext, string driverId) =>
 {
@@ -251,7 +267,10 @@ app.MapGet("/api/drivers/{driverId}/tenant", async (TracklyDbContext dbContext, 
         return Results.BadRequest("ID driver invalide.");
     }
 
+    // IgnoreQueryFilters() est nécessaire car cet endpoint est public (avant TenantMiddleware)
+    // et doit pouvoir trouver le driver sans filtre de tenant
     var driver = await dbContext.Drivers
+        .IgnoreQueryFilters()
         .AsNoTracking()
         .FirstOrDefaultAsync(d => d.Id == driverGuid);
 

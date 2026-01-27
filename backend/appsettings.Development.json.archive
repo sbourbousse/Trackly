@@ -6,7 +6,7 @@
     }
   },
   "ConnectionStrings": {
-    "TracklyDb": "Host=nozomi.proxy.rlwy.net;Port=39656;Database=railway;Username=postgres;Password=mSPrvRKxVqxPpUmjtTCbkEzJctWuQXCG;SslMode=Require"
+    "TracklyDb": "Host=localhost;Port=5432;Database=trackly_dev;Username=trackly;Password=admin"
   },
   "JWT_SECRET": "6f8c2b1e9a3d4f5e6b7c8d9e0f1a2b3c"
 }

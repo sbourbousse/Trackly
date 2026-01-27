@@ -1,4 +1,4 @@
-const baseUrl = import.meta.env.PUBLIC_API_BASE_URL || 'http://localhost:5257';
+const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5257';
 
 // Récupère ou récupère le TenantId depuis le backend
 let cachedTenantId: string | null = null;
@@ -15,7 +15,7 @@ const getTenantId = async (): Promise<string | null> => {
 	}
 	
 	// Récupère depuis l'env si disponible
-	const envTenantId = import.meta.env.PUBLIC_DEFAULT_TENANT_ID;
+	const envTenantId = import.meta.env.VITE_DEFAULT_TENANT_ID;
 	if (envTenantId) {
 		cachedTenantId = envTenantId;
 		localStorage.setItem('trackly_tenant_id', envTenantId);
@@ -23,7 +23,7 @@ const getTenantId = async (): Promise<string | null> => {
 	}
 	
 	// En développement ou bootstrap explicite, récupère depuis l'API
-	if (import.meta.env.DEV || import.meta.env.PUBLIC_TENANT_BOOTSTRAP === 'true') {
+	if (import.meta.env.DEV || import.meta.env.VITE_TENANT_BOOTSTRAP === 'true') {
 		try {
 			const response = await fetch(`${baseUrl}/api/tenants/default`);
 			if (response.ok) {

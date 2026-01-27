@@ -159,18 +159,18 @@ PORT=$PORT
 
 ```env
 # URL du backend Railway (à remplacer par l'URL réelle)
-PUBLIC_API_BASE_URL=https://trackly-backend-production.up.railway.app
-PUBLIC_SIGNALR_URL=https://trackly-backend-production.up.railway.app/hubs/tracking
+VITE_API_BASE_URL=https://trackly-backend-production.up.railway.app
+VITE_SIGNALR_URL=https://trackly-backend-production.up.railway.app/hubs/tracking
 
 # Environnement
 NODE_ENV=production
 PORT=$PORT
 
 # (Optionnel) Forcer un tenant précis si vous ne voulez pas de bootstrap
-# PUBLIC_DEFAULT_TENANT_ID=<guid>
+# VITE_DEFAULT_TENANT_ID=<guid>
 
 # (Optionnel) Autoriser le bootstrap côté frontend
-# PUBLIC_TENANT_BOOTSTRAP=true
+# VITE_TENANT_BOOTSTRAP=true
 ```
 
 **Option recommandé Railway** : si votre service backend s'appelle `backend`, utilisez :  

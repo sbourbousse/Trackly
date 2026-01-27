@@ -96,8 +96,8 @@ PUBLIC_SIGNALR_URL=https://votre-backend-railway.up.railway.app/hubs/tracking
 
 #### frontend-driver :
 ```env
-PUBLIC_API_BASE_URL=https://votre-backend-railway.up.railway.app
-PUBLIC_SIGNALR_URL=https://votre-backend-railway.up.railway.app/hubs/tracking
+VITE_API_BASE_URL=https://votre-backend-railway.up.railway.app
+VITE_SIGNALR_URL=https://votre-backend-railway.up.railway.app/hubs/tracking
 ```
 
 ### Redéployer

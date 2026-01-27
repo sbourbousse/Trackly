@@ -182,10 +182,10 @@ PUBLIC_DEFAULT_TENANT_ID=<optionnel - ID du tenant par défaut>
 #### Pour frontend-driver :
 
 ```env
-PUBLIC_API_BASE_URL=https://votre-backend-railway.up.railway.app
-PUBLIC_SIGNALR_URL=https://votre-backend-railway.up.railway.app/hubs/tracking
-PUBLIC_DEFAULT_TENANT_ID=<optionnel>
-# PUBLIC_TENANT_BOOTSTRAP=true (optionnel)
+VITE_API_BASE_URL=https://votre-backend-railway.up.railway.app
+VITE_SIGNALR_URL=https://votre-backend-railway.up.railway.app/hubs/tracking
+VITE_DEFAULT_TENANT_ID=<optionnel>
+# VITE_TENANT_BOOTSTRAP=true (optionnel)
 ```
 
 ### 2.2 Redéployer les frontends

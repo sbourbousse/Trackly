@@ -1,6 +1,6 @@
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 
-const hubUrl = import.meta.env.PUBLIC_SIGNALR_URL || 'http://localhost:5257/hubs/tracking';
+const hubUrl = import.meta.env.VITE_SIGNALR_URL || 'http://localhost:5257/hubs/tracking';
 
 // État réactif
 let connection = $state<ReturnType<typeof HubConnectionBuilder.prototype.build> | null>(null);

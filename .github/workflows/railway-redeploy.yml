@@ -1,6 +1,7 @@
 name: Redeploy Railway services
 
 on:
+  workflow_dispatch:
   workflow_run:
     workflows: ["Build & push GHCR images"]
     types:

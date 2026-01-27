@@ -1,11 +1,16 @@
 <script lang="ts">
 	import { createEventDispatcher } from 'svelte';
+	import { getDriverTenantId } from '../lib/api/client';
+	import { getRuntimeConfig } from '../lib/config';
 
 	const dispatch = createEventDispatcher();
 
 	let driverId = $state('');
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+
+	const config = getRuntimeConfig();
+	const baseUrl = config.API_BASE_URL || 'http://localhost:5257';
 
 	async function handleLogin() {
 		if (!driverId.trim()) {
@@ -16,12 +21,25 @@
 		loading = true;
 		error = null;
 
-		// En développement, on accepte n'importe quel ID
-		// En production, on vérifiera avec l'API
-		setTimeout(() => {
-			dispatch('login', driverId.trim());
+		try {
+			// Récupère le tenant ID du driver depuis l'API
+			const trimmedDriverId = driverId.trim();
+			const tenantId = await getDriverTenantId(trimmedDriverId);
+			
+			if (!tenantId) {
+				error = 'Impossible de récupérer le tenant ID. Vérifiez que l\'ID livreur est correct.';
+				loading = false;
+				return;
+			}
+
+			console.log('[Login] Tenant ID récupéré:', tenantId);
+			dispatch('login', trimmedDriverId);
+		} catch (err) {
+			console.error('[Login] Erreur:', err);
+			error = err instanceof Error ? err.message : 'Erreur lors de la connexion';
+		} finally {
 			loading = false;
-		}, 500);
+		}
 	}
 </script>
 

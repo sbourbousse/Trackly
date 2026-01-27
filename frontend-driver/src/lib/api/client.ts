@@ -10,6 +10,32 @@ console.info('[Driver] - baseUrl used:', baseUrl);
 // Récupère ou récupère le TenantId depuis le backend
 let cachedTenantId: string | null = null;
 
+/**
+ * Définit le tenant ID manuellement (utilisé après connexion du driver)
+ */
+export const setTenantId = (tenantId: string): void => {
+	cachedTenantId = tenantId;
+	localStorage.setItem('trackly_tenant_id', tenantId);
+	console.log('[API] Tenant ID défini:', tenantId);
+};
+
+/**
+ * Récupère le tenant ID d'un driver depuis l'API
+ */
+export const getDriverTenantId = async (driverId: string): Promise<string | null> => {
+	try {
+		const response = await fetch(`${baseUrl}/api/drivers/${driverId}/tenant`);
+		if (response.ok) {
+			const data = await response.json() as { tenantId: string };
+			setTenantId(data.tenantId);
+			return data.tenantId;
+		}
+	} catch (error) {
+		console.warn('[API] Impossible de récupérer le tenant ID du driver:', error);
+	}
+	return null;
+};
+
 const getTenantId = async (): Promise<string | null> => {
 	// Utilise le cache si disponible
 	if (cachedTenantId) return cachedTenantId;

@@ -243,6 +243,26 @@ if (app.Environment.IsDevelopment() || allowTenantBootstrap)
     });
 }
 
+// Endpoint public pour récupérer le tenant ID d'un driver (utilisé par le frontend-driver)
+app.MapGet("/api/drivers/{driverId}/tenant", async (TracklyDbContext dbContext, string driverId) =>
+{
+    if (!Guid.TryParse(driverId, out var driverGuid))
+    {
+        return Results.BadRequest("ID driver invalide.");
+    }
+
+    var driver = await dbContext.Drivers
+        .AsNoTracking()
+        .FirstOrDefaultAsync(d => d.Id == driverGuid);
+
+    if (driver == null)
+    {
+        return Results.NotFound("Driver non trouvé.");
+    }
+
+    return Results.Ok(new { tenantId = driver.TenantId });
+});
+
 app.UseMiddleware<TenantMiddleware>();
 
 app.MapOrderEndpoints();

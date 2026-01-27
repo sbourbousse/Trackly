@@ -107,6 +107,9 @@ Cors__AllowedOrigins__1=https://trackly-frontend-driver-production.up.railway.ap
 # Environnement
 ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=http://0.0.0.0:$PORT
+
+# (Optionnel) Permet de créer/récupérer un tenant par défaut via /api/tenants/default
+ALLOW_TENANT_BOOTSTRAP=true
 ```
 
 **Option recommandé Railway** : utilisez une variable de référence vers le service Postgres :  
@@ -123,6 +126,9 @@ PUBLIC_SIGNALR_URL=https://trackly-backend-production.up.railway.app/hubs/tracki
 # Environnement
 NODE_ENV=production
 PORT=$PORT
+
+# (Optionnel) Forcer un tenant précis si vous ne voulez pas de bootstrap
+# PUBLIC_DEFAULT_TENANT_ID=<guid>
 ```
 
 **Option recommandé Railway** : si votre service backend s'appelle `backend`, utilisez :  
@@ -139,6 +145,9 @@ PUBLIC_SIGNALR_URL=https://trackly-backend-production.up.railway.app/hubs/tracki
 # Environnement
 NODE_ENV=production
 PORT=$PORT
+
+# (Optionnel) Forcer un tenant précis si vous ne voulez pas de bootstrap
+# PUBLIC_DEFAULT_TENANT_ID=<guid>
 ```
 
 **Option recommandé Railway** : si votre service backend s'appelle `backend`, utilisez :  

@@ -5,6 +5,7 @@ using Trackly.Backend.Features.Billing;
 using Trackly.Backend.Features.Deliveries;
 using Trackly.Backend.Features.Drivers;
 using Trackly.Backend.Features.Orders;
+using Trackly.Backend.Features.Tenants;
 using Trackly.Backend.Features.Tracking;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
@@ -75,6 +76,8 @@ builder.Services.AddDbContext<TracklyDbContext>(options =>
 
 var app = builder.Build();
 
+var allowTenantBootstrap = builder.Configuration.GetValue<bool>("ALLOW_TENANT_BOOTSTRAP");
+
 // Active CORS avant les autres middlewares
 app.UseCors();
 
@@ -95,8 +98,8 @@ using (var scope = app.Services.CreateScope())
 app.MapGet("/", () => "Trackly API");
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
 
-// Endpoint pour récupérer le tenant par défaut en développement
-if (app.Environment.IsDevelopment())
+// Endpoint pour récupérer le tenant par défaut (dev ou bootstrap explicite)
+if (app.Environment.IsDevelopment() || allowTenantBootstrap)
 {
     app.MapGet("/api/tenants/default", async (TracklyDbContext dbContext) =>
     {
@@ -107,7 +110,9 @@ if (app.Environment.IsDevelopment())
         
         if (tenant == null)
         {
-            return Results.NotFound("Aucun tenant trouvé. Exécutez le seed de la base de données.");
+            tenant = new Tenant { Name = "Default" };
+            dbContext.Tenants.Add(tenant);
+            await dbContext.SaveChangesAsync();
         }
         
         return Results.Ok(new { id = tenant.Id, name = tenant.Name });

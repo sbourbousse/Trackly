@@ -46,6 +46,6 @@ public sealed class TenantMiddleware(RequestDelegate next)
             return claimTenantId;
         }
 
-        return Guid.Empty;
+        return null;
     }
 }

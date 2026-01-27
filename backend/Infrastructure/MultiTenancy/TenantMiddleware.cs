@@ -16,7 +16,8 @@ public sealed class TenantMiddleware(RequestDelegate next)
             path.StartsWith("/api/tenants/register") ||
             path.StartsWith("/api/auth/register") ||
             path.StartsWith("/api/auth/login") ||
-            path.StartsWith("/api/drivers/") && path.EndsWith("/tenant"))
+            (path.StartsWith("/api/drivers/") && path.EndsWith("/tenant")) ||
+            path.StartsWith("/api/drivers/debug/"))
         {
             await next(context);
             return;

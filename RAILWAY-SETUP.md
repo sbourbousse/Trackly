@@ -173,9 +173,11 @@ PORT=$PORT
 # VITE_TENANT_BOOTSTRAP=true
 ```
 
-**Option recommandé Railway** : si votre service backend s'appelle `backend`, utilisez :  
-`PUBLIC_API_BASE_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}`  
-`PUBLIC_SIGNALR_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}/hubs/tracking`
+**Option recommandée Railway** : si votre service backend s'appelle `backend`, utilisez :  
+`VITE_API_BASE_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}`  
+`VITE_SIGNALR_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}/hubs/tracking`
+
+**Note importante** : Les variables `VITE_*` sont maintenant injectées au **runtime** (au démarrage du container) et non plus au build time. Cela permet de déployer la même image Docker sur différents environnements avec des URLs différentes.
 
 ### Étape 5 : Obtenir les URLs
 

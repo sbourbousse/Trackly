@@ -85,13 +85,15 @@ PORT=$PORT
 
 #### Frontend Driver
 ```env
-PUBLIC_API_BASE_URL=https://trackly-backend-production.up.railway.app
-PUBLIC_SIGNALR_URL=https://trackly-backend-production.up.railway.app/hubs/tracking
+VITE_API_BASE_URL=https://trackly-backend-production.up.railway.app
+VITE_SIGNALR_URL=https://trackly-backend-production.up.railway.app/hubs/tracking
 NODE_ENV=production
 PORT=$PORT
 ```
 
 **Important** : Remplacez les URLs par les URLs réelles après le premier déploiement.
+
+**Note** : Les variables `VITE_*` sont injectées au runtime (au démarrage du container), pas au build time.
 
 ## ✅ Vérification
 

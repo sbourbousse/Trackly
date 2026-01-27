@@ -1,6 +1,11 @@
-const baseUrl = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5257';
-console.info('[Driver] VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
-console.info('[Driver] baseUrl used:', baseUrl);
+import { getRuntimeConfig } from '../config';
+
+const config = getRuntimeConfig();
+const baseUrl = config.API_BASE_URL || 'http://localhost:5257';
+
+console.info('[Driver] Configuration:');
+console.info('[Driver] - API_BASE_URL:', config.API_BASE_URL || '(fallback to localhost)');
+console.info('[Driver] - baseUrl used:', baseUrl);
 
 // Récupère ou récupère le TenantId depuis le backend
 let cachedTenantId: string | null = null;
@@ -17,7 +22,8 @@ const getTenantId = async (): Promise<string | null> => {
 	}
 	
 	// Récupère depuis l'env si disponible
-	const envTenantId = import.meta.env.VITE_DEFAULT_TENANT_ID;
+	const config = getRuntimeConfig();
+	const envTenantId = config.DEFAULT_TENANT_ID;
 	if (envTenantId) {
 		cachedTenantId = envTenantId;
 		localStorage.setItem('trackly_tenant_id', envTenantId);
@@ -25,7 +31,8 @@ const getTenantId = async (): Promise<string | null> => {
 	}
 	
 	// En développement ou bootstrap explicite, récupère depuis l'API
-	if (import.meta.env.DEV || import.meta.env.VITE_TENANT_BOOTSTRAP === 'true') {
+	const allowBootstrap = import.meta.env.DEV || config.TENANT_BOOTSTRAP === 'true';
+	if (allowBootstrap) {
 		try {
 			const response = await fetch(`${baseUrl}/api/tenants/default`);
 			if (response.ok) {

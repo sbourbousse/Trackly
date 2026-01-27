@@ -58,10 +58,15 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddDbContext<TracklyDbContext>(options =>
 {
-    var connectionString = builder.Configuration.GetConnectionString("TracklyDb");
+    // Support pour Railway (DATABASE_URL) et configuration standard (.NET)
+    var connectionString = builder.Configuration.GetConnectionString("TracklyDb")
+        ?? Environment.GetEnvironmentVariable("DATABASE_URL");
+    
     if (string.IsNullOrWhiteSpace(connectionString))
     {
-        throw new InvalidOperationException("La chaîne de connexion TracklyDb est manquante.");
+        throw new InvalidOperationException(
+            "La chaîne de connexion TracklyDb est manquante. " +
+            "Configurez ConnectionStrings:TracklyDb ou la variable d'environnement DATABASE_URL.");
     }
 
     options.UseNpgsql(connectionString);
@@ -72,12 +77,17 @@ var app = builder.Build();
 // Active CORS avant les autres middlewares
 app.UseCors();
 
-if (app.Environment.IsDevelopment())
+// Exécute les migrations en développement et production
+using (var scope = app.Services.CreateScope())
 {
-    using var scope = app.Services.CreateScope();
     var dbContext = scope.ServiceProvider.GetRequiredService<TracklyDbContext>();
     await dbContext.Database.MigrateAsync();
-    await SeedData.SeedAsync(scope.ServiceProvider);
+    
+    // Seed uniquement en développement
+    if (app.Environment.IsDevelopment())
+    {
+        await SeedData.SeedAsync(scope.ServiceProvider);
+    }
 }
 
 // Endpoints publics (sans TenantMiddleware)
@@ -111,5 +121,12 @@ app.MapDriverEndpoints();
 
 // SignalR Hub pour le tracking temps réel
 app.MapHub<TrackingHub>("/hubs/tracking");
+
+// Configuration du port pour Railway et autres plateformes cloud
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    app.Urls.Add($"http://0.0.0.0:{port}");
+}
 
 app.Run();

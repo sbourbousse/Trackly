@@ -1,0 +1,16 @@
+# Configuration Railway pour Trackly
+# 
+# Railway détectera automatiquement les 3 services grâce aux fichiers railway.json dans chaque dossier :
+# - backend/railway.json (Backend .NET)
+# - frontend-business/railway.json (SvelteKit)
+# - frontend-driver/railway.json (Vite SPA)
+#
+# Pour déployer :
+# 1. Créez un nouveau projet Railway
+# 2. Connectez votre repository GitHub
+# 3. Railway détectera automatiquement les 3 services
+# 4. Ajoutez PostgreSQL comme service de base de données
+# 5. Configurez les variables d'environnement (voir RAILWAY-SETUP.md)
+#
+# Note: Railway détecte automatiquement les services basés sur les fichiers package.json et .csproj
+# Les fichiers railway.json dans chaque dossier fournissent la configuration spécifique

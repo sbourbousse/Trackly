@@ -10,9 +10,17 @@ public sealed class TrackingHub : Hub<ITrackingClient>
 {
     public override async Task OnConnectedAsync()
     {
-        // En développement, on peut se connecter sans TenantId
-        // En production, il faudra extraire le TenantId depuis le token JWT
-        // Pour l'instant, on accepte toutes les connexions
+        // Extrait le TenantId depuis les query parameters de l'URL
+        // Format: /hubs/tracking?tenantId=xxx
+        if (Context.GetHttpContext()?.Request.Query.TryGetValue("tenantId", out var tenantIdValue) == true)
+        {
+            if (Guid.TryParse(tenantIdValue, out var tenantId))
+            {
+                // Stocke le TenantId dans les items du contexte HTTP pour utilisation ultérieure
+                Context.GetHttpContext()!.Items["TenantId"] = tenantId;
+            }
+        }
+
         await base.OnConnectedAsync();
     }
 

@@ -109,6 +109,9 @@ ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=http://0.0.0.0:$PORT
 ```
 
+**Option recommandé Railway** : utilisez une variable de référence vers le service Postgres :  
+`DATABASE_URL=${{Postgres.DATABASE_URL}}`
+
 #### Frontend Business
 
 ```env
@@ -121,6 +124,10 @@ NODE_ENV=production
 PORT=$PORT
 ```
 
+**Option recommandé Railway** : si votre service backend s'appelle `backend`, utilisez :  
+`PUBLIC_API_BASE_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}`  
+`PUBLIC_SIGNALR_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}/hubs/tracking`
+
 #### Frontend Driver
 
 ```env
@@ -132,6 +139,10 @@ PUBLIC_SIGNALR_URL=https://trackly-backend-production.up.railway.app/hubs/tracki
 NODE_ENV=production
 PORT=$PORT
 ```
+
+**Option recommandé Railway** : si votre service backend s'appelle `backend`, utilisez :  
+`PUBLIC_API_BASE_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}`  
+`PUBLIC_SIGNALR_URL=https://${{backend.RAILWAY_PUBLIC_DOMAIN}}/hubs/tracking`
 
 ### Étape 5 : Obtenir les URLs
 

@@ -58,15 +58,15 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddDbContext<TracklyDbContext>(options =>
 {
-    // Support pour Railway (DATABASE_URL) et configuration standard (.NET)
-    var connectionString = builder.Configuration.GetConnectionString("TracklyDb")
-        ?? Environment.GetEnvironmentVariable("DATABASE_URL");
-    
+    // Priorité à DATABASE_URL (Railway), fallback sur la config .NET
+    var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+        ?? builder.Configuration.GetConnectionString("TracklyDb");
+
     if (string.IsNullOrWhiteSpace(connectionString))
     {
         throw new InvalidOperationException(
             "La chaîne de connexion TracklyDb est manquante. " +
-            "Configurez ConnectionStrings:TracklyDb ou la variable d'environnement DATABASE_URL.");
+            "Configurez DATABASE_URL (Railway) ou ConnectionStrings:TracklyDb.");
     }
 
     options.UseNpgsql(connectionString);

@@ -36,7 +36,7 @@ export const getDriverTenantId = async (driverId: string): Promise<string | null
 	return null;
 };
 
-const getTenantId = async (): Promise<string | null> => {
+export const getTenantId = async (): Promise<string | null> => {
 	// Utilise le cache si disponible
 	if (cachedTenantId) return cachedTenantId;
 	

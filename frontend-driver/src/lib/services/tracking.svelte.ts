@@ -1,12 +1,13 @@
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
 import { getRuntimeConfig } from '../config';
+import { getTenantId } from '../api/client';
 
 const config = getRuntimeConfig();
-const hubUrl = config.SIGNALR_URL || 'http://localhost:5257/hubs/tracking';
+const baseHubUrl = config.SIGNALR_URL || 'http://localhost:5257/hubs/tracking';
 
 console.info('[Driver] Configuration:');
 console.info('[Driver] - SIGNALR_URL:', config.SIGNALR_URL || '(fallback to localhost)');
-console.info('[Driver] - hubUrl used:', hubUrl);
+console.info('[Driver] - baseHubUrl used:', baseHubUrl);
 
 // État réactif
 let connection = $state<ReturnType<typeof HubConnectionBuilder.prototype.build> | null>(null);
@@ -27,6 +28,15 @@ export const trackingService = {
 		error = null;
 
 		try {
+			// Récupère le tenantId depuis le cache ou l'API
+			const tenantId = await getTenantId();
+			if (!tenantId) {
+				throw new Error('TenantId manquant. Veuillez vous connecter avec un driver ID valide.');
+			}
+
+			// Construit l'URL du hub avec le tenantId en query parameter
+			const hubUrl = `${baseHubUrl}?tenantId=${encodeURIComponent(tenantId)}`;
+
 			connection = new HubConnectionBuilder()
 				.withUrl(hubUrl)
 				.withAutomaticReconnect()

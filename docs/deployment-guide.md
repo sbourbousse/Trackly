@@ -72,6 +72,17 @@ Railway ne permet pas de déclarer une image GHCR dans `railway.json`. Pour util
 3. Image backend : `ghcr.io/<owner>/trackly-backend:latest`.
 4. Après chaque push sur `main`, utilisez **Redeploy** dans Railway.
 
+#### Redeploy automatique Railway (GHCR)
+
+Un workflow GitHub Actions est fourni : `.github/workflows/railway-redeploy.yml`.
+
+Secrets GitHub requis :
+- `RAILWAY_API_TOKEN`
+- `RAILWAY_ENVIRONMENT_ID`
+- `RAILWAY_SERVICE_ID_BACKEND`
+- `RAILWAY_SERVICE_ID_FRONTEND_BUSINESS`
+- `RAILWAY_SERVICE_ID_FRONTEND_DRIVER`
+
 #### 1.4 Configurer les variables d'environnement
 
 Dans les paramètres du service backend, ajoutez :

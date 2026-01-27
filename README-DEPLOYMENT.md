@@ -66,6 +66,17 @@ Si vous préférez déployer des images Docker pré-construites :
 3. Image backend : `ghcr.io/<owner>/trackly-backend:latest`.
 4. Pour mettre à jour : poussez un commit puis **Redeploy** dans Railway.
 
+## Redeploy automatique Railway (GHCR)
+
+Un workflow GitHub Actions est fourni : `.github/workflows/railway-redeploy.yml`.
+
+Secrets GitHub requis :
+- `RAILWAY_API_TOKEN`
+- `RAILWAY_ENVIRONMENT_ID`
+- `RAILWAY_SERVICE_ID_BACKEND`
+- `RAILWAY_SERVICE_ID_FRONTEND_BUSINESS`
+- `RAILWAY_SERVICE_ID_FRONTEND_DRIVER`
+
 ## Configuration des Frontends Vercel
 
 ### Variables d'environnement à ajouter

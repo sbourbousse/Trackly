@@ -90,6 +90,20 @@ Railway ne permet pas de déclarer une image GHCR dans `railway.json`/`railway.t
 5. Si les images sont privées, ajoutez des credentials GHCR (PAT avec `read:packages`) dans Railway.
 6. Pour déployer une nouvelle version : poussez un commit (les images sont mises à jour) puis **Redeploy** dans Railway.
 
+### Option 2 : Redeploy automatique Railway (GHCR)
+
+Si vos services utilisent **Docker Image / GHCR**, Railway ne redéploie pas automatiquement.  
+Un workflow GitHub Actions est fourni : `.github/workflows/railway-redeploy.yml`.
+
+Variables à créer dans **GitHub → Settings → Secrets and variables → Actions** :
+- `RAILWAY_API_TOKEN`
+- `RAILWAY_ENVIRONMENT_ID`
+- `RAILWAY_SERVICE_ID_BACKEND`
+- `RAILWAY_SERVICE_ID_FRONTEND_BUSINESS`
+- `RAILWAY_SERVICE_ID_FRONTEND_DRIVER`
+
+Le workflow se lance après **Build & push GHCR images** et appelle Railway pour redeployer.
+
 ### Étape 4 : Variables d'environnement
 
 #### Backend

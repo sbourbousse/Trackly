@@ -110,7 +110,8 @@ ASPNETCORE_URLS=http://0.0.0.0:$PORT
 ```
 
 **Option recommandé Railway** : utilisez une variable de référence vers le service Postgres :  
-`DATABASE_URL=${{Postgres.DATABASE_URL}}`
+`DATABASE_URL=${{Postgres.DATABASE_URL}}`  
+Le backend convertit automatiquement un `DATABASE_URL` au format `postgres://` si nécessaire.
 
 #### Frontend Business
 

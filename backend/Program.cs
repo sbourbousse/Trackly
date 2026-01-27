@@ -1,5 +1,6 @@
 using System.Text.Json.Serialization;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 using Trackly.Backend.Features.Billing;
 using Trackly.Backend.Features.Deliveries;
 using Trackly.Backend.Features.Drivers;
@@ -69,7 +70,7 @@ builder.Services.AddDbContext<TracklyDbContext>(options =>
             "Configurez DATABASE_URL (Railway) ou ConnectionStrings:TracklyDb.");
     }
 
-    options.UseNpgsql(connectionString);
+    options.UseNpgsql(NormalizeConnectionString(connectionString));
 });
 
 var app = builder.Build();
@@ -130,3 +131,33 @@ if (!string.IsNullOrEmpty(port))
 }
 
 app.Run();
+
+static string NormalizeConnectionString(string connectionString)
+{
+    if (connectionString.Contains("${{", StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException(
+            "DATABASE_URL semble être une variable Railway non résolue. " +
+            "Assurez-vous qu'elle pointe vers une vraie valeur ou une référence Railway valide.");
+    }
+
+    if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+        connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
+    {
+        var uri = new Uri(connectionString);
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var builder = new NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.IsDefaultPort ? 5432 : uri.Port,
+            Database = uri.AbsolutePath.TrimStart('/'),
+            Username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : string.Empty,
+            Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty,
+            SslMode = SslMode.Require
+        };
+
+        return builder.ConnectionString;
+    }
+
+    return connectionString;
+}

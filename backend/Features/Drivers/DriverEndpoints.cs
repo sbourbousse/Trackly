@@ -66,7 +66,9 @@ public static class DriverEndpoints
         var canCreate = await billingService.CanCreateDriverAsync(tenantContext.TenantId, cancellationToken);
         if (!canCreate)
         {
-            return Results.BadRequest("Limite de livreurs atteinte pour votre plan. Passez au plan Pro pour créer plus de livreurs.");
+            return Results.Problem(
+                "Limite de livreurs atteinte pour votre plan. Passez au plan Pro pour créer plus de livreurs.",
+                statusCode: StatusCodes.Status403Forbidden);
         }
 
         var driver = new Driver

@@ -51,6 +51,11 @@
 			href: '/deliveries/new'
 		},
 		{
+			title: 'Gérer les livreurs',
+			subtitle: 'Ajouter et voir les livreurs',
+			href: '/drivers'
+		},
+		{
 			title: 'Voir les commandes',
 			subtitle: 'Gérer les commandes',
 			href: '/orders'

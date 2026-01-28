@@ -7,6 +7,7 @@ namespace Trackly.Backend.Features.Billing;
 public sealed class BillingService(TracklyDbContext dbContext) : IBillingService
 {
     private const int StarterMonthlyDeliveryLimit = 25;
+    private const int StarterDriverLimit = 3;
 
     public async Task<bool> CanCreateDeliveryAsync(Guid tenantId, CancellationToken cancellationToken)
     {
@@ -29,5 +30,23 @@ public sealed class BillingService(TracklyDbContext dbContext) : IBillingService
                 cancellationToken);
 
         return deliveriesThisMonth < StarterMonthlyDeliveryLimit;
+    }
+
+    public async Task<bool> CanCreateDriverAsync(Guid tenantId, CancellationToken cancellationToken)
+    {
+        var tenant = await dbContext.Tenants
+            .AsNoTracking()
+            .FirstOrDefaultAsync(t => t.Id == tenantId, cancellationToken);
+
+        if (tenant == null || tenant.SubscriptionPlan == SubscriptionPlan.Pro)
+        {
+            return true;
+        }
+
+        var driverCount = await dbContext.Drivers
+            .AsNoTracking()
+            .CountAsync(d => d.TenantId == tenantId, cancellationToken);
+
+        return driverCount < StarterDriverLimit;
     }
 }

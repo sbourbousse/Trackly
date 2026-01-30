@@ -34,7 +34,7 @@
 				<SidebarTrigger class="-ms-2" />
 				<Separator orientation="vertical" class="h-5" />
 			</header>
-			<div class="flex-1 p-6">
+			<div class="min-w-0 flex-1 p-6">
 				{@render children()}
 			</div>
 		</SidebarInset>

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import TopNav from '$lib/components/TopNav.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { getOrders } from '$lib/api/orders';
 	import { getDrivers } from '$lib/api/drivers';
 	import { createDeliveriesBatch } from '$lib/api/deliveries';
@@ -97,7 +97,7 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-4xl flex-col gap-6">
+<div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
 	<PageHeader title="Nouvelle tournée" subtitle="Sélectionnez les commandes et assignez un livreur" />
 
 		{#if success}
@@ -191,7 +191,7 @@
 								<Button variant="link" href="/orders" class="px-1">Importer des commandes</Button>
 							</div>
 						{:else}
-							<div class="max-h-[400px] overflow-y-auto">
+							<div class="max-h-[400px] min-w-0 overflow-auto">
 								<Table>
 									<TableHeader>
 										<TableRow>

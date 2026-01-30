@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import TopNav from '$lib/components/TopNav.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { getOrder } from '$lib/api/orders';
 	import type { ApiOrderDetail } from '$lib/api/orders';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -102,7 +102,7 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-4xl flex-col gap-6">
+<div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
 	<PageHeader title="Détail de la commande" subtitle="Informations complètes et livraisons associées" />
 
 		{#if loading}
@@ -166,42 +166,44 @@
 							<Button variant="link" href="/deliveries/new" class="mt-2">Créer une livraison</Button>
 						</div>
 					{:else}
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Référence</TableHead>
-									<TableHead>Livreur</TableHead>
-									<TableHead>Statut</TableHead>
-									<TableHead class="tabular-nums">Créée le</TableHead>
-									<TableHead class="tabular-nums">Livrée le</TableHead>
-									<TableHead>Actions</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{#each order.deliveries as delivery}
+						<div class="min-w-0 overflow-x-auto">
+							<Table>
+								<TableHeader>
 									<TableRow>
-										<TableCell class="font-mono font-medium">
-											<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
-												{delivery.id.slice(0, 8).toUpperCase()}
-											</Button>
-										</TableCell>
-										<TableCell>{delivery.driverName ?? 'Non assigné'}</TableCell>
-										<TableCell>
-											<Badge variant={deliveryStatusVariant[delivery.status] ?? 'outline'}>
-												{deliveryStatusLabel[delivery.status] ?? delivery.status}
-											</Badge>
-										</TableCell>
-										<TableCell class="tabular-nums">{formatDate(delivery.createdAt)}</TableCell>
-										<TableCell class="tabular-nums">
-											{delivery.completedAt ? formatDate(delivery.completedAt) : '–'}
-										</TableCell>
-										<TableCell>
-											<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0">Voir détails</Button>
-										</TableCell>
+										<TableHead>Référence</TableHead>
+										<TableHead>Livreur</TableHead>
+										<TableHead>Statut</TableHead>
+										<TableHead class="tabular-nums">Créée le</TableHead>
+										<TableHead class="tabular-nums">Livrée le</TableHead>
+										<TableHead>Actions</TableHead>
 									</TableRow>
-								{/each}
-							</TableBody>
-						</Table>
+								</TableHeader>
+								<TableBody>
+									{#each order.deliveries as delivery}
+										<TableRow>
+											<TableCell class="font-mono font-medium">
+												<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
+													{delivery.id.slice(0, 8).toUpperCase()}
+												</Button>
+											</TableCell>
+											<TableCell>{delivery.driverName ?? 'Non assigné'}</TableCell>
+											<TableCell>
+												<Badge variant={deliveryStatusVariant[delivery.status] ?? 'outline'}>
+													{deliveryStatusLabel[delivery.status] ?? delivery.status}
+												</Badge>
+											</TableCell>
+											<TableCell class="tabular-nums">{formatDate(delivery.createdAt)}</TableCell>
+											<TableCell class="tabular-nums">
+												{delivery.completedAt ? formatDate(delivery.completedAt) : '–'}
+											</TableCell>
+											<TableCell>
+												<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0">Voir détails</Button>
+											</TableCell>
+										</TableRow>
+									{/each}
+								</TableBody>
+							</Table>
+						</div>
 					{/if}
 				</CardContent>
 			</Card>

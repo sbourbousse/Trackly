@@ -6,10 +6,14 @@
 		SidebarFooter,
 		SidebarGroup,
 		SidebarGroupContent,
+		SidebarGroupLabel,
 		SidebarHeader,
 		SidebarMenu,
 		SidebarMenuButton,
-		SidebarMenuItem
+		SidebarMenuItem,
+		SidebarMenuSub,
+		SidebarMenuSubButton,
+		SidebarMenuSubItem
 	} from '$lib/components/ui/sidebar';
 	import { Switch } from '$lib/components/ui/switch';
 	import { themeState, setTheme } from '$lib/stores/theme.svelte';
@@ -19,13 +23,9 @@
 	import UsersIcon from '@lucide/svelte/icons/users';
 	import MoonIcon from '@lucide/svelte/icons/moon';
 	import SunIcon from '@lucide/svelte/icons/sun';
-
-	const navItems = [
-		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboardIcon },
-		{ href: '/orders', label: 'Commandes', icon: PackageIcon },
-		{ href: '/deliveries', label: 'Tournées', icon: TruckIcon },
-		{ href: '/drivers', label: 'Livreurs', icon: UsersIcon }
-	];
+	import FilePlusIcon from '@lucide/svelte/icons/file-plus';
+	import UploadIcon from '@lucide/svelte/icons/upload';
+	import PlusCircleIcon from '@lucide/svelte/icons/plus-circle';
 
 	let pathname = $derived(page.url.pathname);
 	let isDark = $derived(themeState.value === 'dark');
@@ -44,21 +44,109 @@
 		<SidebarGroup>
 			<SidebarGroupContent>
 				<SidebarMenu>
-					{#each navItems as item}
-						<SidebarMenuItem>
-							<SidebarMenuButton
-								tooltipContent={item.label}
-								isActive={pathname === item.href || (item.href !== '/dashboard' && pathname.startsWith(item.href))}
-							>
-								{#snippet child({ props })}
-									<a href={item.href} {...props}>
-										<item.icon class="size-4 shrink-0" aria-hidden="true" />
-										<span>{item.label}</span>
-									</a>
-								{/snippet}
-							</SidebarMenuButton>
-						</SidebarMenuItem>
-					{/each}
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							tooltipContent="Dashboard"
+							isActive={pathname === '/dashboard'}
+						>
+							{#snippet child({ props })}
+								<a href="/dashboard" {...props}>
+									<LayoutDashboardIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Dashboard</span>
+								</a>
+							{/snippet}
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+				</SidebarMenu>
+			</SidebarGroupContent>
+		</SidebarGroup>
+
+		<SidebarGroup>
+			<SidebarGroupContent>
+				<SidebarMenu>
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							tooltipContent="Commandes"
+							isActive={pathname === '/orders'}
+						>
+							{#snippet child({ props })}
+								<a href="/orders" {...props}>
+									<PackageIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Commandes</span>
+								</a>
+							{/snippet}
+						</SidebarMenuButton>
+						<SidebarMenuSub>
+							<SidebarMenuSubItem>
+								<SidebarMenuSubButton href="/orders/new" isActive={pathname === '/orders/new'}>
+									<FilePlusIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Créer commande</span>
+								</SidebarMenuSubButton>
+							</SidebarMenuSubItem>
+							<SidebarMenuSubItem>
+								<SidebarMenuSubButton href="/orders/import" isActive={pathname === '/orders/import'}>
+									<UploadIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Importer commande</span>
+								</SidebarMenuSubButton>
+							</SidebarMenuSubItem>
+						</SidebarMenuSub>
+					</SidebarMenuItem>
+				</SidebarMenu>
+			</SidebarGroupContent>
+		</SidebarGroup>
+
+		<SidebarGroup>
+			<SidebarGroupContent>
+				<SidebarMenu>
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							tooltipContent="Tournées"
+							isActive={pathname === '/deliveries'}
+						>
+							{#snippet child({ props })}
+								<a href="/deliveries" {...props}>
+									<TruckIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Tournées</span>
+								</a>
+							{/snippet}
+						</SidebarMenuButton>
+						<SidebarMenuSub>
+							<SidebarMenuSubItem>
+								<SidebarMenuSubButton href="/deliveries/new" isActive={pathname === '/deliveries/new'}>
+									<PlusCircleIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Créer tournée</span>
+								</SidebarMenuSubButton>
+							</SidebarMenuSubItem>
+						</SidebarMenuSub>
+					</SidebarMenuItem>
+				</SidebarMenu>
+			</SidebarGroupContent>
+		</SidebarGroup>
+
+		<SidebarGroup>
+			<SidebarGroupContent>
+				<SidebarMenu>
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							tooltipContent="Livreurs"
+							isActive={pathname === '/drivers'}
+						>
+							{#snippet child({ props })}
+								<a href="/drivers" {...props}>
+									<UsersIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Livreurs</span>
+								</a>
+							{/snippet}
+						</SidebarMenuButton>
+						<SidebarMenuSub>
+							<SidebarMenuSubItem>
+								<SidebarMenuSubButton href="/drivers/new" isActive={pathname === '/drivers/new'}>
+									<PlusCircleIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Créer livreur</span>
+								</SidebarMenuSubButton>
+							</SidebarMenuSubItem>
+						</SidebarMenuSub>
+					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarGroupContent>
 		</SidebarGroup>

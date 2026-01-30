@@ -73,7 +73,7 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-6xl flex-col gap-6">
+<div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
 	<PageHeader title="Tournées" subtitle="Suivi des tournées et du temps réel chauffeur." />
 
 		<Card>
@@ -147,6 +147,7 @@
 				{#if deliveriesState.loading && !deliveriesState.routes.length}
 					<div class="py-8 text-center text-muted-foreground">Chargement des tournées...</div>
 				{:else}
+					<div class="min-w-0 overflow-x-auto">
 					<Table>
 						<TableHeader>
 							<TableRow>
@@ -194,6 +195,7 @@
 							{/each}
 						</TableBody>
 					</Table>
+					</div>
 				{/if}
 			</CardContent>
 		</Card>

@@ -118,7 +118,7 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-4xl flex-col gap-6">
+<div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
 	<PageHeader
 		title={delivery ? `Livraison ${delivery.id.slice(0, 8).toUpperCase()}` : 'Détail Livraison'}
 		subtitle="Détail de la livraison et suivi chauffeur."

@@ -38,7 +38,7 @@
 	});
 </script>
 
-<div class="mx-auto flex max-w-6xl flex-col gap-6">
+<div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
 	<PageHeader title="Livreurs" subtitle="Gérer vos livreurs" />
 
 		<Card>
@@ -74,24 +74,26 @@
 						<Button variant="link" href="/drivers/new" class="px-1">Ajouter un livreur</Button>
 					</div>
 				{:else}
-					<Table>
-						<TableHeader>
-							<TableRow>
-								<TableHead>Nom</TableHead>
-								<TableHead>Téléphone</TableHead>
-								<TableHead>ID</TableHead>
-							</TableRow>
-						</TableHeader>
-						<TableBody>
-							{#each drivers as driver}
+					<div class="min-w-0 overflow-x-auto">
+						<Table>
+							<TableHeader>
 								<TableRow>
-									<TableCell class="font-medium">{driver.name}</TableCell>
-									<TableCell>{driver.phone}</TableCell>
-									<TableCell class="font-mono text-sm text-muted-foreground">{driver.id}</TableCell>
+									<TableHead>Nom</TableHead>
+									<TableHead>Téléphone</TableHead>
+									<TableHead>ID</TableHead>
 								</TableRow>
-							{/each}
-						</TableBody>
-					</Table>
+							</TableHeader>
+							<TableBody>
+								{#each drivers as driver}
+									<TableRow>
+										<TableCell class="font-medium">{driver.name}</TableCell>
+										<TableCell>{driver.phone}</TableCell>
+										<TableCell class="font-mono text-sm text-muted-foreground">{driver.id}</TableCell>
+									</TableRow>
+								{/each}
+							</TableBody>
+						</Table>
+					</div>
 				{/if}
 			</CardContent>
 		</Card>

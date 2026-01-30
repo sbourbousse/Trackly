@@ -104,7 +104,7 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-4xl flex-col gap-6">
+<div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
 	<PageHeader title="Import commandes" subtitle="Ajoute des commandes depuis un fichier ou un plugin." />
 
 		<Card>
@@ -203,29 +203,31 @@
 						<CardTitle>2. Aperçu des données ({parsedRows.length} ligne(s))</CardTitle>
 					</CardHeader>
 					<CardContent class="space-y-4">
-						<Table>
-							<TableHeader>
-								<TableRow>
-									<TableHead>Client</TableHead>
-									<TableHead>Adresse</TableHead>
-								</TableRow>
-							</TableHeader>
-							<TableBody>
-								{#each parsedRows.slice(0, 10) as row}
+						<div class="min-w-0 overflow-x-auto">
+							<Table>
+								<TableHeader>
 									<TableRow>
-										<TableCell>{row.customerName}</TableCell>
-										<TableCell>{row.address}</TableCell>
+										<TableHead>Client</TableHead>
+										<TableHead>Adresse</TableHead>
 									</TableRow>
-								{/each}
-								{#if parsedRows.length > 10}
-									<TableRow>
-										<TableCell colspan="2" class="text-center text-muted-foreground">
-											... et {parsedRows.length - 10} autre(s) ligne(s)
-										</TableCell>
-									</TableRow>
-								{/if}
-							</TableBody>
-						</Table>
+								</TableHeader>
+								<TableBody>
+									{#each parsedRows.slice(0, 10) as row}
+										<TableRow>
+											<TableCell>{row.customerName}</TableCell>
+											<TableCell>{row.address}</TableCell>
+										</TableRow>
+									{/each}
+									{#if parsedRows.length > 10}
+										<TableRow>
+											<TableCell colspan="2" class="text-center text-muted-foreground">
+												... et {parsedRows.length - 10} autre(s) ligne(s)
+											</TableCell>
+										</TableRow>
+									{/if}
+								</TableBody>
+							</Table>
+						</div>
 						<div class="flex justify-end">
 							<Button type="button" onclick={handleImport} disabled={isUploading}>
 								{isUploading ? 'Import en cours...' : `Importer ${parsedRows.length} commande(s)`}

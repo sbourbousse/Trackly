@@ -1,5 +1,5 @@
 <script lang="ts">
-	import TopNav from '$lib/components/TopNav.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { getDrivers } from '$lib/api/drivers';
 	import type { ApiDriver } from '$lib/api/drivers';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -38,9 +38,8 @@
 	});
 </script>
 
-<div class="min-h-screen bg-background p-6 pb-12">
-	<div class="mx-auto flex max-w-6xl flex-col gap-6">
-		<TopNav title="Livreurs" subtitle="Gérer vos livreurs" />
+<div class="mx-auto flex max-w-6xl flex-col gap-6">
+	<PageHeader title="Livreurs" subtitle="Gérer vos livreurs" />
 
 		<Card>
 			<CardHeader class="space-y-1">
@@ -96,5 +95,4 @@
 				{/if}
 			</CardContent>
 		</Card>
-	</div>
 </div>

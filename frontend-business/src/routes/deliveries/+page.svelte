@@ -1,5 +1,5 @@
 <script lang="ts">
-	import TopNav from '$lib/components/TopNav.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { deleteDeliveriesBatch } from '$lib/api/deliveries';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -73,9 +73,8 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background p-6 pb-12">
-	<div class="mx-auto flex max-w-6xl flex-col gap-6">
-		<TopNav title="Tournées" subtitle="Suivi des tournées et du temps réel chauffeur." />
+<div class="mx-auto flex max-w-6xl flex-col gap-6">
+	<PageHeader title="Tournées" subtitle="Suivi des tournées et du temps réel chauffeur." />
 
 		<Card>
 			<CardHeader class="space-y-1">
@@ -198,5 +197,4 @@
 				{/if}
 			</CardContent>
 		</Card>
-	</div>
 </div>

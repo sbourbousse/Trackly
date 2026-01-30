@@ -1,5 +1,5 @@
 <script lang="ts">
-	import TopNav from '$lib/components/TopNav.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { goto } from '$app/navigation';
 	import { createOrder } from '$lib/api/orders';
 	import { ordersActions } from '$lib/stores/orders.svelte';
@@ -41,9 +41,8 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background p-6 pb-12">
-	<div class="mx-auto flex max-w-2xl flex-col gap-6">
-		<TopNav title="Nouvelle commande" subtitle="Créer une nouvelle commande à livrer." />
+<div class="mx-auto flex max-w-2xl flex-col gap-6">
+	<PageHeader title="Nouvelle commande" subtitle="Créer une nouvelle commande à livrer." />
 
 		<Card>
 			<CardHeader>
@@ -97,5 +96,4 @@
 				</form>
 			</CardContent>
 		</Card>
-	</div>
 </div>

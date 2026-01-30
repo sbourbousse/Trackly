@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
-	import TopNav from '$lib/components/TopNav.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { createDriver } from '$lib/api/drivers';
 	import type { CreateDriverRequest } from '$lib/api/drivers';
 
@@ -50,8 +50,8 @@
 	}
 </script>
 
-<div class="page">
-	<TopNav title="Nouveau livreur" subtitle="Ajouter un livreur à votre équipe" />
+<div class="mx-auto flex max-w-2xl flex-col gap-6">
+	<PageHeader title="Nouveau livreur" subtitle="Ajouter un livreur à votre équipe" />
 
 	{#if success}
 		<div class="success-message" style="padding: 1rem; background: #efe; color: #3c3; border-radius: 4px; margin-bottom: 1rem;">

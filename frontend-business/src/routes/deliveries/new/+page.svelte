@@ -97,9 +97,8 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background p-6 pb-12">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6">
-		<TopNav title="Nouvelle tournée" subtitle="Sélectionnez les commandes et assignez un livreur" />
+<div class="mx-auto flex max-w-4xl flex-col gap-6">
+	<PageHeader title="Nouvelle tournée" subtitle="Sélectionnez les commandes et assignez un livreur" />
 
 		{#if success}
 			<Alert class="border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
@@ -253,5 +252,4 @@
 				</div>
 			</form>
 		{/if}
-	</div>
 </div>

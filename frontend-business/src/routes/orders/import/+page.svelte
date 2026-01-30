@@ -1,5 +1,5 @@
 <script lang="ts">
-	import TopNav from '$lib/components/TopNav.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { importOrders, type ImportOrderRequest } from '$lib/api/orders';
 	import { parseCsv, type ParsedCsvRow } from '$lib/utils/csvParser';
 	import { ordersActions } from '$lib/stores/orders.svelte';
@@ -104,9 +104,8 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background p-6 pb-12">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6">
-		<TopNav title="Import commandes" subtitle="Ajoute des commandes depuis un fichier ou un plugin." />
+<div class="mx-auto flex max-w-4xl flex-col gap-6">
+	<PageHeader title="Import commandes" subtitle="Ajoute des commandes depuis un fichier ou un plugin." />
 
 		<Card>
 			<CardHeader class="flex flex-row flex-wrap items-center justify-between gap-4">
@@ -242,5 +241,4 @@
 				</CardContent>
 			</Card>
 		{/if}
-	</div>
 </div>

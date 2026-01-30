@@ -1,5 +1,5 @@
 <script lang="ts">
-	import TopNav from '$lib/components/TopNav.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -65,9 +65,8 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background p-6 pb-12">
-	<div class="mx-auto flex max-w-6xl flex-col gap-6">
-		<TopNav title="Trackly Business" subtitle="Vue rapide des tournées et livraisons." />
+<div class="mx-auto flex max-w-6xl flex-col gap-6">
+	<PageHeader title="Trackly Business" subtitle="Vue rapide des tournées et livraisons." />
 		<Badge variant="secondary" class="w-fit">Plan Starter · 7 livraisons restantes</Badge>
 
 		<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -156,5 +155,4 @@
 				{/if}
 			</CardContent>
 		</Card>
-	</div>
 </div>

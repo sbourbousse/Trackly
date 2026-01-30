@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import TopNav from '$lib/components/TopNav.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import Map from '$lib/components/Map.svelte';
 	import { trackingActions, trackingState } from '$lib/realtime/tracking.svelte';
 	import { getDelivery, deleteDelivery } from '$lib/api/deliveries';
@@ -118,12 +118,11 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background p-6 pb-12">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6">
-		<TopNav
-			title={delivery ? `Livraison ${delivery.id.slice(0, 8).toUpperCase()}` : 'Détail Livraison'}
-			subtitle="Détail de la livraison et suivi chauffeur."
-		/>
+<div class="mx-auto flex max-w-4xl flex-col gap-6">
+	<PageHeader
+		title={delivery ? `Livraison ${delivery.id.slice(0, 8).toUpperCase()}` : 'Détail Livraison'}
+		subtitle="Détail de la livraison et suivi chauffeur."
+	/>
 
 		{#if loading}
 			<Card>
@@ -255,5 +254,4 @@
 				</CardContent>
 			</Card>
 		{/if}
-	</div>
 </div>

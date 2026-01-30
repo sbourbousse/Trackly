@@ -102,9 +102,8 @@
 	}
 </script>
 
-<div class="min-h-screen bg-background p-6 pb-12">
-	<div class="mx-auto flex max-w-4xl flex-col gap-6">
-		<TopNav title="Détail de la commande" subtitle="Informations complètes et livraisons associées" />
+<div class="mx-auto flex max-w-4xl flex-col gap-6">
+	<PageHeader title="Détail de la commande" subtitle="Informations complètes et livraisons associées" />
 
 		{#if loading}
 			<Card>
@@ -207,5 +206,4 @@
 				</CardContent>
 			</Card>
 		{/if}
-	</div>
 </div>

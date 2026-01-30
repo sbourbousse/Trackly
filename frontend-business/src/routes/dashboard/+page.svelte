@@ -1,8 +1,19 @@
 <script lang="ts">
 	import TopNav from '$lib/components/TopNav.svelte';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import {
+		Table,
+		TableBody,
+		TableCell,
+		TableHead,
+		TableHeader,
+		TableRow
+	} from '$lib/components/ui/table';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
-	import { onMount } from 'svelte';
+	import { cn } from '$lib/utils';
 
 	let didInit = $state(false);
 
@@ -13,144 +24,137 @@
 		ordersActions.loadOrders();
 	});
 
-	// Calculer les KPIs depuis les vraies données
 	const kpis = $derived([
 		{
 			label: 'Livraisons du mois',
 			value: deliveriesState.routes.length.toString(),
-			trend: `${deliveriesState.routes.filter(d => d.status === 'Livree').length} livrées`
+			trend: `${deliveriesState.routes.filter((d) => d.status === 'Livree').length} livrées`
 		},
 		{
-			label: 'Tournees en cours',
-			value: deliveriesState.routes.filter(d => d.status === 'En cours').length.toString(),
-			trend: deliveriesState.lastUpdateAt ? `Dernière mise à jour: ${deliveriesState.lastUpdateAt}` : ''
+			label: 'Tournées en cours',
+			value: deliveriesState.routes.filter((d) => d.status === 'En cours').length.toString(),
+			trend: deliveriesState.lastUpdateAt ? `Dernière MAJ: ${deliveriesState.lastUpdateAt}` : ''
 		},
 		{
 			label: 'Commandes',
 			value: ordersState.items.length.toString(),
-			trend: `${ordersState.items.filter(o => o.status === 'En attente').length} en attente`
+			trend: `${ordersState.items.filter((o) => o.status === 'En attente').length} en attente`
 		},
 		{
-			label: 'Taux de reussite',
-			value: deliveriesState.routes.length > 0
-				? `${Math.round((deliveriesState.routes.filter(d => d.status === 'Livree').length / deliveriesState.routes.length) * 100)}%`
-				: '0%',
+			label: 'Taux de réussite',
+			value:
+				deliveriesState.routes.length > 0
+					? `${Math.round((deliveriesState.routes.filter((d) => d.status === 'Livree').length / deliveriesState.routes.length) * 100)}%`
+					: '0%',
 			trend: 'Objectif: 98%'
 		}
 	]);
 
 	const actions = [
-		{
-			title: 'Importer des commandes',
-			subtitle: 'CSV, Shopify, Woo',
-			href: '/orders/import'
-		},
-		{
-			title: 'Creer une tournee',
-			subtitle: 'Optimiser l ordre de passage',
-			href: '/deliveries/new'
-		},
-		{
-			title: 'Gérer les livreurs',
-			subtitle: 'Ajouter et voir les livreurs',
-			href: '/drivers'
-		},
-		{
-			title: 'Voir les commandes',
-			subtitle: 'Gérer les commandes',
-			href: '/orders'
-		},
-		{
-			title: 'Voir les tournees',
-			subtitle: 'Suivre les livraisons',
-			href: '/deliveries'
-		}
+		{ title: 'Importer des commandes', subtitle: 'CSV, Shopify, Woo', href: '/orders/import' },
+		{ title: 'Créer une tournée', subtitle: "Optimiser l'ordre de passage", href: '/deliveries/new' },
+		{ title: 'Gérer les livreurs', subtitle: 'Ajouter et voir les livreurs', href: '/drivers' },
+		{ title: 'Voir les commandes', subtitle: 'Gérer les commandes', href: '/orders' },
+		{ title: 'Voir les tournées', subtitle: 'Suivre les livraisons', href: '/deliveries' }
 	];
+
+	function statusVariant(status: string) {
+		if (status === 'Livree') return 'default';
+		if (status === 'En cours' || status === 'Prevue') return 'secondary';
+		return 'outline';
+	}
 </script>
 
-<div class="page">
-	<TopNav title="Trackly Business" subtitle="Vue rapide des tournees et livraisons." />
-	<div class="status-pill">Plan Starter · 7 livraisons restantes</div>
+<div class="min-h-screen bg-background p-6 pb-12">
+	<div class="mx-auto flex max-w-6xl flex-col gap-6">
+		<TopNav title="Trackly Business" subtitle="Vue rapide des tournées et livraisons." />
+		<Badge variant="secondary" class="w-fit">Plan Starter · 7 livraisons restantes</Badge>
 
-	<section class="grid">
-		{#each kpis as kpi}
-			<div class="card">
-				<h3>{kpi.label}</h3>
-				<div class="value">{kpi.value}</div>
-				<div class="trend">{kpi.trend}</div>
-			</div>
-		{/each}
-	</section>
+		<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+			{#each kpis as kpi}
+				<Card>
+					<CardHeader class="pb-2">
+						<CardTitle class="text-sm font-medium text-muted-foreground">{kpi.label}</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<div class="text-2xl font-bold">{kpi.value}</div>
+						<p class="text-xs text-muted-foreground">{kpi.trend}</p>
+					</CardContent>
+				</Card>
+			{/each}
+		</section>
 
-	<section class="actions">
-		{#each actions as action}
-			<a href={action.href} class="action-button" style="text-decoration: none; color: inherit;">
-				<div>
-					<div>{action.title}</div>
-					<span>{action.subtitle}</span>
-				</div>
-				<span>→</span>
-			</a>
-		{/each}
-	</section>
+		<section class="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+			{#each actions as action}
+				<Button
+					variant="outline"
+					class="h-auto flex-row justify-between gap-4 px-4 py-4 text-left"
+					href={action.href}
+				>
+					<div class="flex flex-col gap-0.5">
+						<span class="font-semibold">{action.title}</span>
+						<span class="text-xs font-normal text-muted-foreground">{action.subtitle}</span>
+					</div>
+					<span class="text-muted-foreground">→</span>
+				</Button>
+			{/each}
+		</section>
 
-	<section class="panel">
-		<div class="panel-header">
-			<h2>Tournees recentes</h2>
-			<span class="status-pill">Temps reel</span>
-		</div>
-		{#if deliveriesState.loading && !deliveriesState.routes.length}
-			<div style="padding: 2rem; text-align: center;">Chargement des tournees...</div>
-		{:else if deliveriesState.error}
-			<div class="error-message" style="padding: 1rem; background: #fee; color: #c33; border-radius: 4px;">
-				{deliveriesState.error}
-			</div>
-		{:else if deliveriesState.routes.length === 0}
-			<div style="padding: 2rem; text-align: center; color: #666;">
-				Aucune tournee pour le moment. <a href="/deliveries/new" class="secondary-link">Créer une tournee</a>
-			</div>
-		{:else}
-			<table class="table">
-				<thead>
-					<tr>
-						<th>Tournee</th>
-						<th>Chauffeur</th>
-						<th>Arrets</th>
-						<th>Statut</th>
-						<th>ETA</th>
-					</tr>
-				</thead>
-				<tbody>
-					{#each deliveriesState.routes.slice(0, 5) as delivery}
-						<tr>
-							<td>
-								<a class="secondary-link" href={`/deliveries/${delivery.id}`}>
-									{delivery.route}
-								</a>
-							</td>
-							<td>{delivery.driver}</td>
-							<td class="mono">{delivery.stops}</td>
-							<td>
-								<span
-									class="badge {delivery.status === 'Livree'
-										? 'success'
-										: delivery.status === 'En cours'
-											? 'warning'
-											: 'warning'}"
-								>
-									{delivery.status}
-								</span>
-							</td>
-							<td class="mono">{delivery.eta}</td>
-						</tr>
-					{/each}
-				</tbody>
-			</table>
-			{#if deliveriesState.routes.length > 5}
-				<div style="padding: 1rem; text-align: center;">
-					<a href="/deliveries" class="secondary-link">Voir toutes les tournees ({deliveriesState.routes.length})</a>
-				</div>
-			{/if}
-		{/if}
-	</section>
+		<Card>
+			<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+				<CardTitle>Tournées récentes</CardTitle>
+				<Badge variant="secondary">Temps réel</Badge>
+			</CardHeader>
+			<CardContent>
+				{#if deliveriesState.loading && !deliveriesState.routes.length}
+					<div class="py-8 text-center text-muted-foreground">Chargement des tournées...</div>
+				{:else if deliveriesState.error}
+					<div class="rounded-md border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
+						{deliveriesState.error}
+					</div>
+				{:else if deliveriesState.routes.length === 0}
+					<div class="py-8 text-center text-muted-foreground">
+						Aucune tournée pour le moment.
+						<Button variant="link" href="/deliveries/new" class="px-1">Créer une tournée</Button>
+					</div>
+				{:else}
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead>Tournée</TableHead>
+								<TableHead>Chauffeur</TableHead>
+								<TableHead>Arrêts</TableHead>
+								<TableHead>Statut</TableHead>
+								<TableHead class="tabular-nums">ETA</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{#each deliveriesState.routes.slice(0, 5) as delivery}
+								<TableRow>
+									<TableCell>
+										<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
+											{delivery.route}
+										</Button>
+									</TableCell>
+									<TableCell>{delivery.driver}</TableCell>
+									<TableCell class="tabular-nums">{delivery.stops}</TableCell>
+									<TableCell>
+										<Badge variant={statusVariant(delivery.status)}>{delivery.status}</Badge>
+									</TableCell>
+									<TableCell class="tabular-nums">{delivery.eta}</TableCell>
+								</TableRow>
+							{/each}
+						</TableBody>
+					</Table>
+					{#if deliveriesState.routes.length > 5}
+						<div class="mt-4 text-center">
+							<Button variant="link" href="/deliveries">
+								Voir toutes les tournées ({deliveriesState.routes.length})
+							</Button>
+						</div>
+					{/if}
+				{/if}
+			</CardContent>
+		</Card>
+	</div>
 </div>

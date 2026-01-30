@@ -1,8 +1,13 @@
 <script lang="ts">
 	import favicon from '$lib/assets/favicon.svg';
+	import { initTheme } from '$lib/stores/theme.svelte';
 	import '../app.css';
 
 	let { children } = $props();
+
+	$effect(() => {
+		if (typeof document !== 'undefined') initTheme();
+	});
 </script>
 
 <svelte:head>

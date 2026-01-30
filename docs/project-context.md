@@ -72,7 +72,7 @@ Version : Svelte 5 obligatoire (Runes API).
 
 Gestion d'état : Utiliser $state pour la réactivité, $derived pour les calculs de tournées et $effect pour les interactions avec la carte.
 
-UI Library : shadcn-svelte ou Tailwind CSS pour la rapidité d'exécution.
+UI Library : shadcn-svelte (thème stone + teal, Inter, radius small) et Tailwind CSS v4 pour le frontend-business.
 
 Spécificités Drivers (Interface Livreur)
 Mode : PWA (Progressive Web App) pour accès à la géolocalisation native sans frais de store.

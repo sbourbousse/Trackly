@@ -286,12 +286,12 @@
 										aria-label="Tout sélectionner"
 									/>
 								</TableHead>
-								<TableHead>Ref</TableHead>
+								<TableHead>Statut</TableHead>
 								<TableHead>Date</TableHead>
+								<TableHead>Ref</TableHead>
 								<TableHead>Client</TableHead>
 								<TableHead>Tél.</TableHead>
 								<TableHead>Adresse</TableHead>
-								<TableHead>Statut</TableHead>
 								<TableHead class="tabular-nums">Livraisons</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -310,10 +310,8 @@
 											onCheckedChange={() => toggleSelection(order.id)}
 										/>
 									</TableCell>
-									<TableCell class="tabular-nums font-medium" onclick={(e) => e.stopPropagation()}>
-										<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
-											{order.ref}
-										</Button>
+									<TableCell>
+										<StatusBadge type="order" status={order.status} />
 									</TableCell>
 									<TableCell class="tabular-nums text-muted-foreground whitespace-nowrap">
 										{order.orderDate
@@ -326,12 +324,14 @@
 												})
 											: '—'}
 									</TableCell>
+									<TableCell class="tabular-nums font-medium" onclick={(e) => e.stopPropagation()}>
+										<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
+											{order.ref}
+										</Button>
+									</TableCell>
 									<TableCell>{order.client}</TableCell>
 									<TableCell class="text-muted-foreground whitespace-nowrap">{order.phoneNumber ?? '—'}</TableCell>
 									<TableCell>{order.address}</TableCell>
-									<TableCell>
-										<StatusBadge type="order" status={order.status} />
-									</TableCell>
 									<TableCell class="tabular-nums">{order.deliveries}</TableCell>
 								</TableRow>
 							{/each}

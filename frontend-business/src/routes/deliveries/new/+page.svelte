@@ -205,9 +205,9 @@
 													aria-label="Tout sélectionner"
 												/>
 											</TableHead>
+											<TableHead>Statut</TableHead>
 											<TableHead>Client</TableHead>
 											<TableHead>Adresse</TableHead>
-											<TableHead>Statut</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
@@ -225,11 +225,11 @@
 														onCheckedChange={() => toggleOrder(order.id)}
 													/>
 												</TableCell>
-												<TableCell>{order.customerName}</TableCell>
-												<TableCell>{order.address}</TableCell>
 												<TableCell>
 													<StatusBadge type="order" status={order.status} />
 												</TableCell>
+												<TableCell>{order.customerName}</TableCell>
+												<TableCell>{order.address}</TableCell>
 											</TableRow>
 										{/each}
 									</TableBody>

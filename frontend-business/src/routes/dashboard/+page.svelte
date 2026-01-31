@@ -169,23 +169,19 @@
 								<Table>
 									<TableHeader>
 										<TableRow>
+											<TableHead>Statut</TableHead>
+											<TableHead>Date commande</TableHead>
 											<TableHead>Réf.</TableHead>
 											<TableHead>Client</TableHead>
 											<TableHead>Adresse</TableHead>
-											<TableHead>Date commande</TableHead>
-											<TableHead>Statut</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
 										{#each commandesEnAttente.slice(0, 10) as order}
 											<TableRow>
 												<TableCell>
-													<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
-														{order.ref}
-													</Button>
+													<StatusBadge type="order" status={order.status} />
 												</TableCell>
-												<TableCell>{order.client}</TableCell>
-												<TableCell class="max-w-[200px] truncate">{order.address}</TableCell>
 												<TableCell class="tabular-nums text-muted-foreground">
 													{order.orderDate
 														? new Date(order.orderDate).toLocaleDateString('fr-FR', {
@@ -196,8 +192,12 @@
 														: '–'}
 												</TableCell>
 												<TableCell>
-													<StatusBadge type="order" status={order.status} />
+													<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
+														{order.ref}
+													</Button>
 												</TableCell>
+												<TableCell>{order.client}</TableCell>
+												<TableCell class="max-w-[200px] truncate">{order.address}</TableCell>
 											</TableRow>
 										{/each}
 									</TableBody>
@@ -247,16 +247,20 @@
 										<Table>
 											<TableHeader>
 												<TableRow>
+													<TableHead>Statut</TableHead>
+													<TableHead class="tabular-nums">ETA</TableHead>
 													<TableHead>Tournée</TableHead>
 													<TableHead>Chauffeur</TableHead>
 													<TableHead>Arrêts</TableHead>
-													<TableHead>Statut</TableHead>
-													<TableHead class="tabular-nums">ETA</TableHead>
 												</TableRow>
 											</TableHeader>
 											<TableBody>
 												{#each routesPrevues.slice(0, 5) as delivery}
 													<TableRow>
+														<TableCell>
+															<StatusBadge type="delivery" status={delivery.status} />
+														</TableCell>
+														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 														<TableCell>
 															<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
 																{delivery.route}
@@ -264,10 +268,6 @@
 														</TableCell>
 														<TableCell>{delivery.driver}</TableCell>
 														<TableCell class="tabular-nums">{delivery.stops}</TableCell>
-														<TableCell>
-															<StatusBadge type="delivery" status={delivery.status} />
-														</TableCell>
-														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 													</TableRow>
 												{/each}
 											</TableBody>
@@ -300,16 +300,20 @@
 										<Table>
 											<TableHeader>
 												<TableRow>
+													<TableHead>Statut</TableHead>
+													<TableHead class="tabular-nums">ETA</TableHead>
 													<TableHead>Tournée</TableHead>
 													<TableHead>Chauffeur</TableHead>
 													<TableHead>Arrêts</TableHead>
-													<TableHead>Statut</TableHead>
-													<TableHead class="tabular-nums">ETA</TableHead>
 												</TableRow>
 											</TableHeader>
 											<TableBody>
 												{#each routesEnCours.slice(0, 5) as delivery}
 													<TableRow>
+														<TableCell>
+															<StatusBadge type="delivery" status={delivery.status} />
+														</TableCell>
+														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 														<TableCell>
 															<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
 																{delivery.route}
@@ -317,10 +321,6 @@
 														</TableCell>
 														<TableCell>{delivery.driver}</TableCell>
 														<TableCell class="tabular-nums">{delivery.stops}</TableCell>
-														<TableCell>
-															<StatusBadge type="delivery" status={delivery.status} />
-														</TableCell>
-														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 													</TableRow>
 												{/each}
 											</TableBody>

@@ -147,23 +147,17 @@
 							<Table>
 								<TableHeader>
 									<TableRow>
-										<TableHead>Référence</TableHead>
-										<TableHead>Livreur</TableHead>
 										<TableHead>Statut</TableHead>
 										<TableHead class="tabular-nums">Créée le</TableHead>
 										<TableHead class="tabular-nums">Livrée le</TableHead>
+										<TableHead>Référence</TableHead>
+										<TableHead>Livreur</TableHead>
 										<TableHead>Actions</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{#each order.deliveries as delivery}
 										<TableRow>
-											<TableCell class="font-mono font-medium">
-												<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
-													{delivery.id.slice(0, 8).toUpperCase()}
-												</Button>
-											</TableCell>
-											<TableCell>{delivery.driverName ?? 'Non assigné'}</TableCell>
 											<TableCell>
 												<StatusBadge type="delivery" status={delivery.status} />
 											</TableCell>
@@ -171,6 +165,12 @@
 											<TableCell class="tabular-nums">
 												{delivery.completedAt ? formatDate(delivery.completedAt) : '–'}
 											</TableCell>
+											<TableCell class="font-mono font-medium">
+												<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
+													{delivery.id.slice(0, 8).toUpperCase()}
+												</Button>
+											</TableCell>
+											<TableCell>{delivery.driverName ?? 'Non assigné'}</TableCell>
 											<TableCell>
 												<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0">Voir détails</Button>
 											</TableCell>

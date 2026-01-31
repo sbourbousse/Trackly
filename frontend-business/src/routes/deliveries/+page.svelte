@@ -254,11 +254,11 @@
 										aria-label="Tout sélectionner"
 									/>
 								</TableHead>
+								<TableHead>Statut</TableHead>
+								<TableHead class="tabular-nums">ETA</TableHead>
 								<TableHead>Tournée</TableHead>
 								<TableHead>Chauffeur</TableHead>
 								<TableHead>Arrêts</TableHead>
-								<TableHead>Statut</TableHead>
-								<TableHead class="tabular-nums">ETA</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -276,6 +276,10 @@
 											onCheckedChange={() => toggleSelection(delivery.id)}
 										/>
 									</TableCell>
+									<TableCell>
+										<StatusBadge type="delivery" status={delivery.status} />
+									</TableCell>
+									<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 									<TableCell onclick={(e) => e.stopPropagation()}>
 										<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
 											{delivery.route}
@@ -283,10 +287,6 @@
 									</TableCell>
 									<TableCell>{delivery.driver}</TableCell>
 									<TableCell class="tabular-nums">{delivery.stops}</TableCell>
-									<TableCell>
-										<StatusBadge type="delivery" status={delivery.status} />
-									</TableCell>
-									<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 								</TableRow>
 							{/each}
 						</TableBody>

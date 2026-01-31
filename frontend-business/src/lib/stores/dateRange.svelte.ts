@@ -40,10 +40,12 @@ export const dateRangeActions = {
 		const start = value.start;
 		const end = value.end;
 		if (!start || !end) return;
-		// Conserver la plage horaire pour toute plage de jours (plus de reset sur multi-jours)
-		if (!dateRangeState.timeRange && !dateRangeState.useManualTime) {
+		// Journée entière = pas de filtre horaire (timeRange null). Sinon appliquer le créneau.
+		if (dateRangeState.timePreset === 'journee') {
+			dateRangeState.timeRange = null;
+		} else if (!dateRangeState.timeRange && !dateRangeState.useManualTime) {
 			const presetRange = TIME_PRESET_RANGES[dateRangeState.timePreset];
-			dateRangeState.timeRange = presetRange ?? { start: '00:00', end: '23:59' };
+			dateRangeState.timeRange = presetRange ?? { start: '08:00', end: '20:00' };
 		}
 	},
 	setTimeRange(value: { start: string; end: string } | null) {

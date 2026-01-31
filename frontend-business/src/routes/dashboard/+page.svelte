@@ -17,6 +17,7 @@
 	import {
 		dateRangeActions,
 		dateRangeState,
+		isSingleDay,
 		type DateFilterType,
 		type TimePreset,
 		TIME_PRESET_RANGES
@@ -241,71 +242,73 @@
 									onValueChange={onDateRangeChange}
 								/>
 							</div>
-							<div class="border-input flex min-w-[200px] flex-col gap-3 border-l p-3">
-								<p class="text-muted-foreground text-xs font-medium">Plage horaire</p>
-								<label class="flex items-center gap-2 text-sm">
-									<Checkbox
-										checked={dateRangeState.useManualTime}
-										onCheckedChange={(v) => {
-											dateRangeActions.setUseManualTime(v === true);
-											onTimeChange();
-										}}
-									/>
-									Heures personnalisées
-								</label>
-								{#if dateRangeState.useManualTime}
-									<div class="flex items-center gap-1">
-										<select
-											class="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm"
-											value={dateRangeState.timeRange?.start ?? '08:00'}
-											onchange={(e) => {
-												const v = (e.target as HTMLSelectElement).value;
-												dateRangeActions.setTimeRange({
-													...dateRangeState.timeRange!,
-													start: v
-												});
+							{#if isSingleDay()}
+								<div class="border-input flex min-w-[200px] flex-col gap-3 border-l p-3">
+									<p class="text-muted-foreground text-xs font-medium">Plage horaire</p>
+									<label class="flex items-center gap-2 text-sm">
+										<Checkbox
+											checked={dateRangeState.useManualTime}
+											onCheckedChange={(v) => {
+												dateRangeActions.setUseManualTime(v === true);
 												onTimeChange();
 											}}
+										/>
+										Heures personnalisées
+									</label>
+									{#if dateRangeState.useManualTime}
+										<div class="flex items-center gap-1">
+											<select
+												class="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm"
+												value={dateRangeState.timeRange?.start ?? '08:00'}
+												onchange={(e) => {
+													const v = (e.target as HTMLSelectElement).value;
+													dateRangeActions.setTimeRange({
+														...dateRangeState.timeRange!,
+														start: v
+													});
+													onTimeChange();
+												}}
+											>
+												{#each HOUR_OPTIONS as opt}
+													<option value={opt.value}>{opt.label}</option>
+												{/each}
+											</select>
+											<span class="text-muted-foreground text-sm">–</span>
+											<select
+												class="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm"
+												value={dateRangeState.timeRange?.end ?? '20:00'}
+												onchange={(e) => {
+													const v = (e.target as HTMLSelectElement).value;
+													dateRangeActions.setTimeRange({
+														...dateRangeState.timeRange!,
+														end: v
+													});
+													onTimeChange();
+												}}
+											>
+												{#each HOUR_OPTIONS as opt}
+													<option value={opt.value}>{opt.label}</option>
+												{/each}
+											</select>
+										</div>
+									{:else}
+										<select
+											class="border-input bg-background h-8 w-full rounded-md border px-2 text-sm"
+											value={dateRangeState.timePreset}
+											onchange={(e) => {
+												const v = (e.target as HTMLSelectElement).value as TimePreset;
+												dateRangeActions.setTimePreset(v);
+												onTimeChange();
+											}}
+											aria-label="Créneau horaire"
 										>
-											{#each HOUR_OPTIONS as opt}
+											{#each TIME_PRESET_OPTIONS as opt}
 												<option value={opt.value}>{opt.label}</option>
 											{/each}
 										</select>
-										<span class="text-muted-foreground text-sm">–</span>
-										<select
-											class="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm"
-											value={dateRangeState.timeRange?.end ?? '20:00'}
-											onchange={(e) => {
-												const v = (e.target as HTMLSelectElement).value;
-												dateRangeActions.setTimeRange({
-													...dateRangeState.timeRange!,
-													end: v
-												});
-												onTimeChange();
-											}}
-										>
-											{#each HOUR_OPTIONS as opt}
-												<option value={opt.value}>{opt.label}</option>
-											{/each}
-										</select>
-									</div>
-								{:else}
-									<select
-										class="border-input bg-background h-8 w-full rounded-md border px-2 text-sm"
-										value={dateRangeState.timePreset}
-										onchange={(e) => {
-											const v = (e.target as HTMLSelectElement).value as TimePreset;
-											dateRangeActions.setTimePreset(v);
-											onTimeChange();
-										}}
-										aria-label="Créneau horaire"
-									>
-										{#each TIME_PRESET_OPTIONS as opt}
-											<option value={opt.value}>{opt.label}</option>
-										{/each}
-									</select>
-								{/if}
-							</div>
+									{/if}
+								</div>
+							{/if}
 						</div>
 					</PopoverContent>
 				</PopoverRoot>

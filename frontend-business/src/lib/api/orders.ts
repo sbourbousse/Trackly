@@ -18,6 +18,8 @@ export type OrdersListFilters = {
 export type ImportOrderRequest = {
 	customerName: string;
 	address: string;
+	phoneNumber?: string | null;
+	internalComment?: string | null;
 	orderDate?: string | null;
 };
 
@@ -28,12 +30,14 @@ export type ImportOrdersResponse = {
 };
 
 function ordersQueryParams(filters?: OrdersListFilters | OrderStatsListFilters): string {
-	if (!filters || (!filters.dateFrom && !filters.dateTo && !filters.dateFilter)) return '';
+	if (!filters) return '';
 	const entries = [
 		filters.dateFrom && ['dateFrom', filters.dateFrom],
 		filters.dateTo && ['dateTo', filters.dateTo],
-		filters.dateFilter && ['dateFilter', filters.dateFilter]
+		filters.dateFilter && ['dateFilter', filters.dateFilter],
+		filters.search && ['search', filters.search]
 	].filter((x): x is [string, string] => Boolean(x));
+	if (entries.length === 0) return '';
 	return `?${new URLSearchParams(Object.fromEntries(entries))}`;
 }
 
@@ -57,6 +61,8 @@ export const getOrdersStats = async (filters?: OrderStatsListFilters) => {
 export type CreateOrderRequest = {
 	customerName: string;
 	address: string;
+	phoneNumber?: string | null;
+	internalComment?: string | null;
 	orderDate?: string | null;
 };
 
@@ -66,6 +72,8 @@ export const createOrder = async (request: CreateOrderRequest) => {
 		body: JSON.stringify({
 			customerName: request.customerName,
 			address: request.address,
+			phoneNumber: request.phoneNumber || null,
+			internalComment: request.internalComment || null,
 			orderDate: request.orderDate || null
 		})
 	});

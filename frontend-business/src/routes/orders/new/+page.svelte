@@ -2,7 +2,9 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { goto } from '$app/navigation';
 	import { createOrder } from '$lib/api/orders';
+	import { geocodeAddress } from '$lib/api/geocode';
 	import { ordersActions } from '$lib/stores/orders.svelte';
+	import Map from '$lib/components/Map.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -24,6 +26,8 @@
 
 	let customerName = $state('');
 	let address = $state('');
+	let phoneNumber = $state('');
+	let internalComment = $state('');
 	let orderDateOpen = $state(false);
 	let orderDateValue = $state<CalendarDate>(today(getLocalTimeZone()));
 	let orderHour = $state('09');
@@ -32,8 +36,45 @@
 	let orderMinuteOpen = $state(false);
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
+	let geocodeResult = $state<{ lat: number; lng: number; displayName: string } | null>(null);
+	let geocodeLoading = $state(false);
+	let geocodeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 
 	const orderTime = $derived(`${orderHour.padStart(2, '0')}:${orderMinute.padStart(2, '0')}`);
+
+	const mapCenter = $derived(
+		geocodeResult ? ([geocodeResult.lat, geocodeResult.lng] as [number, number]) : ([48.8566, 2.3522] as [number, number])
+	);
+	const mapMarkers = $derived(
+		geocodeResult
+			? [{ lat: geocodeResult.lat, lng: geocodeResult.lng, label: geocodeResult.displayName }]
+			: []
+	);
+
+	function scheduleGeocode() {
+		if (geocodeDebounceTimer) clearTimeout(geocodeDebounceTimer);
+		geocodeDebounceTimer = setTimeout(async () => {
+			const addr = address.trim();
+			if (addr.length < 3) {
+				geocodeResult = null;
+				return;
+			}
+			geocodeLoading = true;
+			geocodeResult = null;
+			try {
+				const res = await geocodeAddress(addr);
+				if (res.lat != null && res.lng != null) {
+					geocodeResult = { lat: res.lat, lng: res.lng, displayName: res.displayName ?? addr };
+				} else {
+					geocodeResult = null;
+				}
+			} catch {
+				geocodeResult = null;
+			} finally {
+				geocodeLoading = false;
+			}
+		}, 400);
+	}
 
 	function orderDateToApiString(d: CalendarDate): string {
 		const y = d.year;
@@ -63,6 +104,8 @@
 			await createOrder({
 				customerName: customerName.trim(),
 				address: address.trim(),
+				phoneNumber: phoneNumber.trim() || null,
+				internalComment: internalComment.trim() || null,
 				orderDate: `${orderDateToApiString(orderDateValue)}T${orderTime}`
 			});
 			await ordersActions.loadOrders();
@@ -208,12 +251,55 @@
 						<textarea
 							id="address"
 							bind:value={address}
+							oninput={() => scheduleGeocode()}
 							placeholder="Ex: 12 Rue des Tanneurs, 75003 Paris"
 							required
 							disabled={submitting}
 							rows="3"
 							class="border-input ring-offset-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-20 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 resize-y"
 						></textarea>
+						{#if geocodeLoading}
+							<p class="text-muted-foreground text-xs">Recherche de la position sur la carte…</p>
+						{:else if geocodeResult}
+							<p class="text-muted-foreground text-xs">Marqueur affiché sur la carte ci-dessous.</p>
+						{:else if address.trim().length >= 3}
+							<p class="text-muted-foreground text-xs">Aucun résultat pour cette adresse.</p>
+						{/if}
+					</div>
+
+					<div class="space-y-2">
+						<Label for="phone">Téléphone</Label>
+						<Input
+							id="phone"
+							type="tel"
+							bind:value={phoneNumber}
+							placeholder="Ex: 06 12 34 56 78"
+							disabled={submitting}
+						/>
+					</div>
+
+					<div class="space-y-2">
+						<Label for="comment">Commentaire interne</Label>
+						<textarea
+							id="comment"
+							bind:value={internalComment}
+							placeholder="Note interne (non visible par le client)"
+							disabled={submitting}
+							rows="2"
+							class="border-input ring-offset-background placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-ring/50 flex min-h-14 w-full rounded-md border bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50 resize-y"
+						></textarea>
+					</div>
+
+					<div class="space-y-2">
+						<Label>Aperçu sur la carte</Label>
+						<div class="overflow-hidden rounded-md border">
+							<Map
+								center={mapCenter}
+								zoom={geocodeResult ? 15 : 11}
+								height="220px"
+								deliveryMarkers={mapMarkers}
+							/>
+						</div>
 					</div>
 
 					{#if error}

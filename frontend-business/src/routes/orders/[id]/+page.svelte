@@ -139,6 +139,18 @@
 							<p class="text-sm font-medium text-muted-foreground">Adresse</p>
 							<p class="font-medium">{order.address}</p>
 						</div>
+						{#if order.phoneNumber}
+							<div class="space-y-1">
+								<p class="text-sm font-medium text-muted-foreground">Téléphone</p>
+								<p class="font-medium">{order.phoneNumber}</p>
+							</div>
+						{/if}
+						{#if order.internalComment}
+							<div class="space-y-1 sm:col-span-2">
+								<p class="text-sm font-medium text-muted-foreground">Commentaire interne</p>
+								<p class="rounded-md border bg-muted/30 p-3 text-sm">{order.internalComment}</p>
+							</div>
+						{/if}
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Statut</p>
 							<Badge variant={statusVariant[order.status] ?? 'outline'}>

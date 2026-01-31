@@ -6,6 +6,8 @@ export type OrderItem = {
 	ref: string;
 	client: string;
 	address: string;
+	phoneNumber?: string | null;
+	internalComment?: string | null;
 	orderDate: string | null;
 	status: OrderStatus;
 	deliveries: number;
@@ -38,7 +40,8 @@ export const ordersActions = {
 		try {
 			const { getOrders } = await import('$lib/api/orders');
 			const { getListFilters } = await import('$lib/stores/dateRange.svelte');
-			const payload = filters ?? getListFilters();
+			const base = getListFilters();
+			const payload = filters ? { ...base, ...filters } : base;
 			const orders = await getOrders(payload);
 
 			ordersState.items = orders.map((order) => ({
@@ -46,6 +49,8 @@ export const ordersActions = {
 				ref: order.id.slice(0, 8).toUpperCase(),
 				client: order.customerName,
 				address: order.address,
+				phoneNumber: order.phoneNumber ?? null,
+				internalComment: order.internalComment ?? null,
 				orderDate: order.orderDate ?? null,
 				status: order.status as OrderStatus,
 				deliveries: 1

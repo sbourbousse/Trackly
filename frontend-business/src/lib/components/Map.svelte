@@ -3,7 +3,7 @@
 	import { browser } from '$app/environment';
 
 	let mapContainer: HTMLDivElement;
-	let map: any = null;
+	let map = $state<any>(null);
 	let markers: any[] = [];
 	let trackingMarker: any = null;
 	let trackingCircle: any = null;
@@ -96,9 +96,18 @@
 		updateTrackingMarker();
 	});
 
+	// Recentrer la carte quand center ou zoom changent (ex. après géocodage)
+	$effect(() => {
+		if (map && center && zoom != null) {
+			map.setView(center, zoom);
+		}
+	});
+
 	// Mettre à jour les markers de livraison
 	function updateDeliveryMarkers() {
 		if (!L || !map || !DefaultIcon || !createTrackingIcon) return;
+		const icon = DefaultIcon;
+		const trackingIcon = createTrackingIcon;
 
 		// Supprimer les anciens markers
 		markers.forEach(marker => marker.remove());
@@ -108,8 +117,8 @@
 		deliveryMarkers.forEach((markerData) => {
 			const marker = L.marker([markerData.lat, markerData.lng], {
 				icon: markerData.color === 'red' 
-					? createTrackingIcon('red')
-					: DefaultIcon
+					? trackingIcon('red')
+					: icon
 			}).addTo(map);
 
 			if (markerData.label) {
@@ -119,10 +128,15 @@
 			markers.push(marker);
 		});
 
-		// Ajuster la vue pour voir tous les markers
+		// Recentrer la vue : un seul marqueur → setView ; plusieurs → fitBounds
 		if (markers.length > 0 && map && L) {
-			const group = new L.FeatureGroup(markers);
-			map.fitBounds(group.getBounds().pad(0.1));
+			if (markers.length === 1) {
+				const pos = markers[0].getLatLng();
+				map.setView([pos.lat, pos.lng], map.getZoom());
+			} else {
+				const group = new L.FeatureGroup(markers);
+				map.fitBounds(group.getBounds().pad(0.1));
+			}
 		}
 	}
 

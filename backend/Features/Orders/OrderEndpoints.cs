@@ -55,6 +55,8 @@ public static class OrderEndpoints
             TenantId = tenantContext.TenantId,
             CustomerName = request.CustomerName.Trim(),
             Address = request.Address.Trim(),
+            PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim(),
+            InternalComment = string.IsNullOrWhiteSpace(request.InternalComment) ? null : request.InternalComment.Trim(),
             OrderDate = orderDate,
             Status = OrderStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow
@@ -118,6 +120,8 @@ public static class OrderEndpoints
                 TenantId = tenantContext.TenantId,
                 CustomerName = orderRequest.CustomerName.Trim(),
                 Address = orderRequest.Address.Trim(),
+                PhoneNumber = string.IsNullOrWhiteSpace(orderRequest.PhoneNumber) ? null : orderRequest.PhoneNumber.Trim(),
+                InternalComment = string.IsNullOrWhiteSpace(orderRequest.InternalComment) ? null : orderRequest.InternalComment.Trim(),
                 OrderDate = orderDate,
                 Status = OrderStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow
@@ -138,7 +142,7 @@ public static class OrderEndpoints
     }
 
     /// <summary>
-    /// Filtres optionnels : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate".
+    /// Filtres optionnels : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate", search = texte (client, adresse, téléphone, commentaire).
     /// </summary>
     private static async Task<IResult> GetOrders(
         TracklyDbContext dbContext,
@@ -146,6 +150,7 @@ public static class OrderEndpoints
         DateTimeOffset? dateFrom,
         DateTimeOffset? dateTo,
         string? dateFilter,
+        string? search,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -156,6 +161,16 @@ public static class OrderEndpoints
         var query = dbContext.Orders
             .AsNoTracking()
             .Where(o => o.TenantId == tenantContext.TenantId && o.DeletedAt == null);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLowerInvariant();
+            query = query.Where(o =>
+                (o.CustomerName != null && o.CustomerName.ToLower().Contains(term)) ||
+                (o.Address != null && o.Address.ToLower().Contains(term)) ||
+                (o.PhoneNumber != null && o.PhoneNumber.ToLower().Contains(term)) ||
+                (o.InternalComment != null && o.InternalComment.ToLower().Contains(term)));
+        }
 
         var useOrderDate = string.Equals(dateFilter, "OrderDate", StringComparison.OrdinalIgnoreCase);
 
@@ -314,6 +329,8 @@ public static class OrderEndpoints
             order.Id,
             order.CustomerName,
             order.Address,
+            order.PhoneNumber,
+            order.InternalComment,
             order.OrderDate,
             order.Status,
             order.CreatedAt,
@@ -466,7 +483,7 @@ public static class OrderEndpoints
     }
 
     private static OrderResponse ToResponse(Order order) =>
-        new(order.Id, order.CustomerName, order.Address, order.OrderDate, order.Status, order.CreatedAt);
+        new(order.Id, order.CustomerName, order.Address, order.PhoneNumber, order.InternalComment, order.OrderDate, order.Status, order.CreatedAt);
 
     /// <summary>
     /// Parse la date/heure et retourne toujours un DateTimeOffset en UTC (requis par Npgsql).

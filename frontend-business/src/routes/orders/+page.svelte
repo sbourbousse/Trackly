@@ -26,11 +26,22 @@
 	};
 
 	let didInit = $state(false);
+	let searchQuery = $state('');
+	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let selectedIds = $state<Set<string>>(new Set());
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
 	let showCascadeWarning = $state(false);
 	let forceDeleteDeliveries = $state(false);
+
+	function applySearch() {
+		ordersActions.loadOrders({ search: searchQuery.trim() || undefined });
+	}
+
+	function onSearchInput() {
+		if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
+		searchDebounceTimer = setTimeout(applySearch, 300);
+	}
 
 	$effect(() => {
 		if (didInit) return;
@@ -97,7 +108,13 @@
 						<p class="text-sm text-muted-foreground">Dernière synchro: {ordersState.lastSyncAt}</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
-						<Input type="search" placeholder="Rechercher une commande" class="h-9 w-48" />
+						<Input
+							type="search"
+							placeholder="Rechercher (client, adresse, tél., commentaire…)"
+							class="h-9 w-64 min-w-0 sm:w-72"
+							bind:value={searchQuery}
+							oninput={onSearchInput}
+						/>
 						<Button variant="outline" size="sm" href="/orders/import">Importer CSV</Button>
 						<Button
 							variant="outline"
@@ -174,6 +191,7 @@
 								<TableHead>Ref</TableHead>
 								<TableHead>Date</TableHead>
 								<TableHead>Client</TableHead>
+								<TableHead>Tél.</TableHead>
 								<TableHead>Adresse</TableHead>
 								<TableHead>Statut</TableHead>
 								<TableHead class="tabular-nums">Livraisons</TableHead>
@@ -211,6 +229,7 @@
 											: '—'}
 									</TableCell>
 									<TableCell>{order.client}</TableCell>
+									<TableCell class="text-muted-foreground whitespace-nowrap">{order.phoneNumber ?? '—'}</TableCell>
 									<TableCell>{order.address}</TableCell>
 									<TableCell>
 										<Badge variant={statusVariant[order.status] ?? 'outline'}>{order.status}</Badge>

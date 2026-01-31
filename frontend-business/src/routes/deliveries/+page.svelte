@@ -1,4 +1,8 @@
 <script lang="ts">
+	import { DropdownMenu } from 'bits-ui';
+	import MoreVerticalIcon from '@lucide/svelte/icons/more-vertical';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import XIcon from '@lucide/svelte/icons/x';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { dateRangeState, getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
@@ -204,31 +208,42 @@
 				{/if}
 
 				{#if selectedIds.size > 0}
-					<div
-						class="flex flex-wrap items-center justify-between gap-4 rounded-md border bg-primary px-4 py-3 text-primary-foreground"
-					>
-						<span class="font-medium">
+					<div class="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/50 px-3 py-2">
+						<span class="text-sm text-muted-foreground">
 							{selectedIds.size} tournée{selectedIds.size > 1 ? 's' : ''} sélectionnée{selectedIds.size > 1 ? 's' : ''}
 						</span>
-						<div class="flex gap-2">
-							<Button
-								variant="secondary"
-								size="sm"
-								onclick={clearSelection}
-								disabled={deleting}
-								class="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger
+								class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+								aria-label="Actions sur la sélection"
 							>
-								Annuler
-							</Button>
-							<Button
-								variant="destructive"
-								size="sm"
-								onclick={handleDeleteSelected}
-								disabled={deleting}
-							>
-								{deleting ? 'Suppression...' : `Supprimer ${selectedIds.size}`}
-							</Button>
-						</div>
+								<MoreVerticalIcon class="size-4" />
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Portal>
+								<DropdownMenu.Content
+									class="z-50 min-w-[10rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+									sideOffset={4}
+									align="end"
+								>
+									<DropdownMenu.Item
+										class="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+										onSelect={clearSelection}
+										disabled={deleting}
+									>
+										<XIcon class="size-4" />
+										Désélectionner
+									</DropdownMenu.Item>
+									<DropdownMenu.Item
+										class="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+										onSelect={handleDeleteSelected}
+										disabled={deleting}
+									>
+										<Trash2Icon class="size-4" />
+										{deleting ? 'Suppression...' : `Supprimer (${selectedIds.size})`}
+									</DropdownMenu.Item>
+								</DropdownMenu.Content>
+							</DropdownMenu.Portal>
+						</DropdownMenu.Root>
 					</div>
 				{/if}
 

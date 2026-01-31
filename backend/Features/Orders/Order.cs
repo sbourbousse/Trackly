@@ -8,6 +8,7 @@ public sealed class Order : ITenantIsolated
     public Guid TenantId { get; set; }
     public string CustomerName { get; set; } = string.Empty;
     public string Address { get; set; } = string.Empty;
+    public DateTimeOffset? OrderDate { get; set; }
     public OrderStatus Status { get; set; } = OrderStatus.Pending;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? DeletedAt { get; set; }

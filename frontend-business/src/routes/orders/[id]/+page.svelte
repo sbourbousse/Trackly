@@ -146,6 +146,20 @@
 							</Badge>
 						</div>
 						<div class="space-y-1">
+							<p class="text-sm font-medium text-muted-foreground">Date et heure de la commande</p>
+							<p class="font-medium">
+								{order.orderDate
+									? new Date(order.orderDate).toLocaleString('fr-FR', {
+											day: '2-digit',
+											month: '2-digit',
+											year: 'numeric',
+											hour: '2-digit',
+											minute: '2-digit'
+										})
+									: '—'}
+							</p>
+						</div>
+						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Date de création</p>
 							<p class="font-medium">{formatDate(order.createdAt)}</p>
 						</div>

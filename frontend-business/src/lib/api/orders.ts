@@ -4,12 +4,14 @@ export type ApiOrder = {
 	id: string;
 	customerName: string;
 	address: string;
+	orderDate: string | null;
 	status: string;
 };
 
 export type ImportOrderRequest = {
 	customerName: string;
 	address: string;
+	orderDate?: string | null;
 };
 
 export type ImportOrdersResponse = {
@@ -25,6 +27,7 @@ export const getOrders = async () => {
 export type CreateOrderRequest = {
 	customerName: string;
 	address: string;
+	orderDate?: string | null;
 };
 
 export const createOrder = async (request: CreateOrderRequest) => {
@@ -32,7 +35,8 @@ export const createOrder = async (request: CreateOrderRequest) => {
 		method: 'POST',
 		body: JSON.stringify({
 			customerName: request.customerName,
-			address: request.address
+			address: request.address,
+			orderDate: request.orderDate || null
 		})
 	});
 };
@@ -41,6 +45,7 @@ export type ApiOrderDetail = {
 	id: string;
 	customerName: string;
 	address: string;
+	orderDate: string | null;
 	status: string;
 	createdAt: string;
 	deliveries: ApiOrderDelivery[];

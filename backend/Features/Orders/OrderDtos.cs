@@ -2,7 +2,7 @@ using Trackly.Backend.Features.Deliveries;
 
 namespace Trackly.Backend.Features.Orders;
 
-public sealed record CreateOrderRequest(string CustomerName, string Address);
+public sealed record CreateOrderRequest(string CustomerName, string Address, string? OrderDate = null);
 
 public sealed record ImportOrdersRequest(List<CreateOrderRequest> Orders);
 
@@ -27,6 +27,7 @@ public sealed record OrderResponse(
     Guid Id,
     string CustomerName,
     string Address,
+    DateTimeOffset? OrderDate,
     OrderStatus Status,
     DateTimeOffset CreatedAt);
 
@@ -42,6 +43,7 @@ public sealed record OrderDetailResponse(
     Guid Id,
     string CustomerName,
     string Address,
+    DateTimeOffset? OrderDate,
     OrderStatus Status,
     DateTimeOffset CreatedAt,
     List<OrderDeliveryInfo> Deliveries);

@@ -8,11 +8,48 @@
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { Root as PopoverRoot, Content as PopoverContent, Trigger as PopoverTrigger } from '$lib/components/ui/popover';
+	import { Calendar } from '$lib/components/ui/calendar';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date';
+
+	const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => ({
+		value: String(i).padStart(2, '0'),
+		label: `${String(i).padStart(2, '0')}h`
+	}));
+	const MINUTE_OPTIONS = [0, 10, 20, 30, 40, 50].map((m) => ({
+		value: String(m).padStart(2, '0'),
+		label: String(m).padStart(2, '0')
+	}));
 
 	let customerName = $state('');
 	let address = $state('');
+	let orderDateOpen = $state(false);
+	let orderDateValue = $state<CalendarDate>(today(getLocalTimeZone()));
+	let orderHour = $state('09');
+	let orderMinute = $state('00');
+	let orderHourOpen = $state(false);
+	let orderMinuteOpen = $state(false);
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
+
+	const orderTime = $derived(`${orderHour.padStart(2, '0')}:${orderMinute.padStart(2, '0')}`);
+
+	function orderDateToApiString(d: CalendarDate): string {
+		const y = d.year;
+		const m = String(d.month).padStart(2, '0');
+		const day = String(d.day).padStart(2, '0');
+		return `${y}-${m}-${day}`;
+	}
+
+	function formatOrderDateLabel(d: CalendarDate): string {
+		return d.toDate(getLocalTimeZone()).toLocaleDateString('fr-FR', {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric'
+		});
+	}
 
 	async function handleSubmit(event: SubmitEvent) {
 		event.preventDefault();
@@ -25,7 +62,8 @@
 		try {
 			await createOrder({
 				customerName: customerName.trim(),
-				address: address.trim()
+				address: address.trim(),
+				orderDate: `${orderDateToApiString(orderDateValue)}T${orderTime}`
 			});
 			await ordersActions.loadOrders();
 			goto('/orders');
@@ -61,6 +99,109 @@
 							required
 							disabled={submitting}
 						/>
+					</div>
+					<div class="grid gap-4 sm:grid-cols-2">
+						<div class="space-y-2">
+							<Label for="orderDate">Date de la commande</Label>
+							<PopoverRoot bind:open={orderDateOpen}>
+								<PopoverTrigger id="orderDate">
+									{#snippet child({ props }: { props: Record<string, unknown> })}
+										<Button
+											{...props}
+											variant="outline"
+											class="w-full justify-between font-normal"
+											disabled={submitting}
+										>
+											{formatOrderDateLabel(orderDateValue)}
+											<ChevronDownIcon class="size-4 opacity-50" />
+										</Button>
+									{/snippet}
+								</PopoverTrigger>
+								<PopoverContent class="w-auto overflow-hidden p-0" align="start">
+									<Calendar
+										value={orderDateValue}
+										onValueChange={(v: DateValue | undefined) => {
+											if (v !== undefined) orderDateValue = new CalendarDate(v.year, v.month, v.day);
+											orderDateOpen = false;
+										}}
+									/>
+								</PopoverContent>
+							</PopoverRoot>
+						</div>
+						<div class="flex gap-2">
+							<div class="space-y-2 flex-1">
+								<Label for="orderHour">Heures</Label>
+								<PopoverRoot bind:open={orderHourOpen}>
+									<PopoverTrigger id="orderHour">
+										{#snippet child({ props }: { props: Record<string, unknown> })}
+											<Button
+												{...props}
+												variant="outline"
+												class="w-full justify-between font-normal"
+												disabled={submitting}
+											>
+												{orderHour.padStart(2, '0')}h
+												<ChevronDownIcon class="size-4 opacity-50" />
+											</Button>
+										{/snippet}
+									</PopoverTrigger>
+									<PopoverContent class="w-auto p-0" align="start">
+										<div class="max-h-56 overflow-y-auto py-1">
+											{#each HOUR_OPTIONS as opt}
+												<button
+													type="button"
+													class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {orderHour === opt.value
+														? 'bg-accent text-accent-foreground'
+														: ''}"
+													onclick={() => {
+														orderHour = opt.value;
+														orderHourOpen = false;
+													}}
+												>
+													{opt.label}
+												</button>
+											{/each}
+										</div>
+									</PopoverContent>
+								</PopoverRoot>
+							</div>
+							<div class="space-y-2 flex-1">
+								<Label for="orderMinute">Minutes</Label>
+								<PopoverRoot bind:open={orderMinuteOpen}>
+									<PopoverTrigger id="orderMinute">
+										{#snippet child({ props }: { props: Record<string, unknown> })}
+											<Button
+												{...props}
+												variant="outline"
+												class="w-full justify-between font-normal"
+												disabled={submitting}
+											>
+												{orderMinute.padStart(2, '0')}
+												<ChevronDownIcon class="size-4 opacity-50" />
+											</Button>
+										{/snippet}
+									</PopoverTrigger>
+									<PopoverContent class="w-auto p-0" align="start">
+										<div class="max-h-56 overflow-y-auto py-1">
+											{#each MINUTE_OPTIONS as opt}
+												<button
+													type="button"
+													class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {orderMinute === opt.value
+														? 'bg-accent text-accent-foreground'
+														: ''}"
+													onclick={() => {
+														orderMinute = opt.value;
+														orderMinuteOpen = false;
+													}}
+												>
+													{opt.label}
+												</button>
+											{/each}
+										</div>
+									</PopoverContent>
+								</PopoverRoot>
+							</div>
+						</div>
 					</div>
 					<div class="space-y-2">
 						<Label for="address">Adresse de livraison *</Label>

@@ -47,12 +47,14 @@ public static class OrderEndpoints
                 statusCode: StatusCodes.Status403Forbidden);
         }
 
+        var orderDate = ParseOrderDate(request.OrderDate);
         var order = new Order
         {
             Id = Guid.NewGuid(),
             TenantId = tenantContext.TenantId,
             CustomerName = request.CustomerName.Trim(),
             Address = request.Address.Trim(),
+            OrderDate = orderDate,
             Status = OrderStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -108,12 +110,14 @@ public static class OrderEndpoints
                 continue;
             }
 
+            var orderDate = ParseOrderDate(orderRequest.OrderDate);
             var order = new Order
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenantContext.TenantId,
                 CustomerName = orderRequest.CustomerName.Trim(),
                 Address = orderRequest.Address.Trim(),
+                OrderDate = orderDate,
                 Status = OrderStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow
             };
@@ -208,6 +212,7 @@ public static class OrderEndpoints
             order.Id,
             order.CustomerName,
             order.Address,
+            order.OrderDate,
             order.Status,
             order.CreatedAt,
             deliveriesWithDriver));
@@ -359,5 +364,26 @@ public static class OrderEndpoints
     }
 
     private static OrderResponse ToResponse(Order order) =>
-        new(order.Id, order.CustomerName, order.Address, order.Status, order.CreatedAt);
+        new(order.Id, order.CustomerName, order.Address, order.OrderDate, order.Status, order.CreatedAt);
+
+    /// <summary>
+    /// Parse la date/heure et retourne toujours un DateTimeOffset en UTC (requis par Npgsql).
+    /// </summary>
+    private static DateTimeOffset? ParseOrderDate(string? orderDateStr)
+    {
+        if (string.IsNullOrWhiteSpace(orderDateStr)) return null;
+        if (DateTimeOffset.TryParse(orderDateStr, null, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var dt))
+            return ToUtc(dt);
+        if (DateTimeOffset.TryParse(orderDateStr, out var dtLocal))
+            return ToUtc(dtLocal);
+        if (DateOnly.TryParse(orderDateStr, out var d))
+            return new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        return null;
+    }
+
+    private static DateTimeOffset ToUtc(DateTimeOffset value)
+    {
+        var utc = value.UtcDateTime;
+        return new DateTimeOffset(utc.Ticks, TimeSpan.Zero);
+    }
 }

@@ -172,6 +172,7 @@
 									/>
 								</TableHead>
 								<TableHead>Ref</TableHead>
+								<TableHead>Date</TableHead>
 								<TableHead>Client</TableHead>
 								<TableHead>Adresse</TableHead>
 								<TableHead>Statut</TableHead>
@@ -197,6 +198,17 @@
 										<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
 											{order.ref}
 										</Button>
+									</TableCell>
+									<TableCell class="tabular-nums text-muted-foreground whitespace-nowrap">
+										{order.orderDate
+											? new Date(order.orderDate).toLocaleString('fr-FR', {
+													day: '2-digit',
+													month: '2-digit',
+													year: 'numeric',
+													hour: '2-digit',
+													minute: '2-digit'
+												})
+											: '—'}
 									</TableCell>
 									<TableCell>{order.client}</TableCell>
 									<TableCell>{order.address}</TableCell>

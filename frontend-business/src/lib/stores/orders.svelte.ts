@@ -5,6 +5,7 @@ export type OrderItem = {
 	ref: string;
 	client: string;
 	address: string;
+	orderDate: string | null;
 	status: OrderStatus;
 	deliveries: number;
 };
@@ -42,6 +43,7 @@ export const ordersActions = {
 				ref: order.id.slice(0, 8).toUpperCase(),
 				client: order.customerName,
 				address: order.address,
+				orderDate: order.orderDate ?? null,
 				status: order.status as OrderStatus,
 				deliveries: 1
 			}));

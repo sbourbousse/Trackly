@@ -82,10 +82,15 @@
 		error = null;
 		importResult = null;
 		try {
-			const ordersToImport: ImportOrderRequest[] = parsedRows.map((row) => ({
-				customerName: row.customerName,
-				address: row.address
-			}));
+			const ordersToImport: ImportOrderRequest[] = parsedRows.map((row) => {
+				const r = row as Record<string, string>;
+				const dateVal = r.orderDate ?? r.date ?? r.order_date ?? '';
+				return {
+					customerName: row.customerName,
+					address: row.address,
+					orderDate: dateVal.trim() || undefined
+				};
+			});
 			const result = await importOrders(ordersToImport);
 			importResult = { created: result.created, errors: result.errors };
 			await ordersActions.loadOrders();

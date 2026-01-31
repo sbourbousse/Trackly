@@ -31,37 +31,43 @@
 >
 	{#snippet children({ months, weekdays })}
 		{#each months as month}
-			<div class="flex flex-col gap-4 p-3">
-				<div class="flex items-center justify-between">
+			<div class="flex w-[276px] max-w-full flex-col gap-4 p-3">
+				<div class="flex items-center justify-between gap-2">
 					<RangeCalendarPrimitive.PrevButton
-						class="inline-flex size-9 items-center justify-center rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+						class="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
 					>
 						<ChevronLeftIcon class="size-4" />
 						<span class="sr-only">Mois précédent</span>
 					</RangeCalendarPrimitive.PrevButton>
-					<RangeCalendarPrimitive.Heading class="text-sm font-medium" />
+					<RangeCalendarPrimitive.Heading class="min-w-[120px] shrink-0 text-center text-sm font-medium" />
 					<RangeCalendarPrimitive.NextButton
-						class="inline-flex size-9 items-center justify-center rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
+						class="inline-flex size-9 shrink-0 items-center justify-center rounded-md text-sm font-medium hover:bg-accent hover:text-accent-foreground disabled:pointer-events-none disabled:opacity-50"
 					>
 						<ChevronRightIcon class="size-4" />
 						<span class="sr-only">Mois suivant</span>
 					</RangeCalendarPrimitive.NextButton>
 				</div>
-				<RangeCalendarPrimitive.Grid class="w-full border-collapse space-y-1">
+				<RangeCalendarPrimitive.Grid class="w-[252px] table-fixed border-collapse">
 					<RangeCalendarPrimitive.GridHead>
-						{#each weekdays as day}
-							<RangeCalendarPrimitive.HeadCell
-								class="text-muted-foreground w-9 rounded-md p-0 text-center text-xs font-normal"
-							>
-								{day}
-							</RangeCalendarPrimitive.HeadCell>
-						{/each}
+						<tr>
+							{#each weekdays as day}
+								<RangeCalendarPrimitive.HeadCell
+									class="text-muted-foreground w-9 min-w-[36px] max-w-[36px] rounded-md p-0 text-center text-xs font-normal"
+								>
+									{day}
+								</RangeCalendarPrimitive.HeadCell>
+							{/each}
+						</tr>
 					</RangeCalendarPrimitive.GridHead>
 					<RangeCalendarPrimitive.GridBody>
 						{#each month.weeks as weekDates}
-							<RangeCalendarPrimitive.GridRow class="mt-2 flex w-full">
+							<RangeCalendarPrimitive.GridRow class="mt-2">
 								{#each weekDates as date}
-									<RangeCalendarPrimitive.Cell {date} month={month.value}>
+									<RangeCalendarPrimitive.Cell
+										{date}
+										month={month.value}
+										class="w-9 min-w-[36px] max-w-[36px] p-0 align-middle"
+									>
 										{#snippet children({ disabled, unavailable, selected })}
 											<RangeCalendarPrimitive.Day
 												class={cn(

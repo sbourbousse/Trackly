@@ -82,11 +82,13 @@
 			attributionControl: true
 		}).setView(center, zoom);
 
-		// Ajouter les tuiles OpenStreetMap
+		// Tuiles OpenStreetMap (usage policy: https://operations.osmfoundation.org/policies/tiles/)
+		// keepBuffer: 2 = moins de tuiles en mémoire hors vue, réduit la bande passante au pan
 		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 			maxZoom: 19,
-			subdomains: ['a', 'b', 'c']
+			subdomains: ['a', 'b', 'c'],
+			keepBuffer: 2
 		}).addTo(map);
 
 		// Ajouter les markers de livraison

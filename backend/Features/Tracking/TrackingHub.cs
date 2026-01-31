@@ -1,5 +1,8 @@
 using Microsoft.AspNetCore.SignalR;
-using Trackly.Backend.Infrastructure.MultiTenancy;
+using Microsoft.EntityFrameworkCore;
+using Trackly.Backend.Features.Deliveries;
+using Trackly.Backend.Features.Orders;
+using Trackly.Backend.Infrastructure.Data;
 
 namespace Trackly.Backend.Features.Tracking;
 
@@ -8,6 +11,13 @@ namespace Trackly.Backend.Features.Tracking;
 /// </summary>
 public sealed class TrackingHub : Hub<ITrackingClient>
 {
+    private readonly IServiceScopeFactory _scopeFactory;
+
+    public TrackingHub(IServiceScopeFactory scopeFactory)
+    {
+        _scopeFactory = scopeFactory;
+    }
+
     public override async Task OnConnectedAsync()
     {
         // Extrait le TenantId depuis les query parameters de l'URL
@@ -16,8 +26,8 @@ public sealed class TrackingHub : Hub<ITrackingClient>
         {
             if (Guid.TryParse(tenantIdValue, out var tenantId))
             {
-                // Stocke le TenantId dans les items du contexte HTTP pour utilisation ultérieure
-                Context.GetHttpContext()!.Items["TenantId"] = tenantId;
+                // Stocke le TenantId dans le contexte de la connexion (dispo dans JoinDeliveryGroup, etc.)
+                Context.Items["TenantId"] = tenantId;
             }
         }
 
@@ -25,10 +35,28 @@ public sealed class TrackingHub : Hub<ITrackingClient>
     }
 
     /// <summary>
-    /// Permet à un driver de rejoindre le groupe de tracking pour une livraison
+    /// Permet à un driver de rejoindre le groupe de tracking pour une livraison.
+    /// Passe la livraison en statut InProgress si elle est encore Pending (pour que la carte business affiche la tournée).
     /// </summary>
     public async Task JoinDeliveryGroup(Guid deliveryId)
     {
+        var tenantId = Context.Items["TenantId"] as Guid?;
+        if (tenantId.HasValue)
+        {
+            using (var scope = _scopeFactory.CreateScope())
+            {
+                var db = scope.ServiceProvider.GetRequiredService<TracklyDbContext>();
+                var delivery = await db.Deliveries
+                    .FirstOrDefaultAsync(d => d.Id == deliveryId && d.TenantId == tenantId.Value && d.DeletedAt == null);
+                if (delivery != null && delivery.Status == DeliveryStatus.Pending)
+                {
+                    delivery.Status = DeliveryStatus.InProgress;
+                    await db.SaveChangesAsync();
+                    await OrderStatusService.UpdateOrderStatusAsync(delivery.OrderId, db);
+                }
+            }
+        }
+
         await Groups.AddToGroupAsync(Context.ConnectionId, $"delivery-{deliveryId}");
     }
 

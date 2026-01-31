@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/public';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+import { getTenantId } from '$lib/api/client';
 
 export type TrackingPoint = {
 	lat: number;
@@ -18,9 +19,10 @@ export let trackingState = $state({
 
 let connection: ReturnType<typeof HubConnectionBuilder.prototype.build> | null = null;
 
-const getHubUrl = () => {
-	return env.PUBLIC_SIGNALR_URL || 'http://localhost:5257/hubs/tracking';
-};
+/** URL du hub SignalR (dérivée de l'API si PUBLIC_SIGNALR_URL non défini). */
+function getHubBaseUrl(): string {
+	return env.PUBLIC_SIGNALR_URL || `${env.PUBLIC_API_BASE_URL || 'http://localhost:5257'}/hubs/tracking`;
+}
 
 export const trackingActions = {
 	async connect() {
@@ -39,26 +41,27 @@ export const trackingActions = {
 				return;
 			}
 
+			const baseUrl = getHubBaseUrl();
+			const tenantId = await getTenantId();
+			const hubUrl = tenantId ? `${baseUrl}?tenantId=${encodeURIComponent(tenantId)}` : baseUrl;
+
 			// Créer une nouvelle connexion si nécessaire
 			if (!connection) {
 				connection = new HubConnectionBuilder()
-					.withUrl(getHubUrl())
+					.withUrl(hubUrl)
 					.withAutomaticReconnect()
 					.configureLogging(LogLevel.Warning)
 					.build();
 
 				connection.on('LocationUpdated', (deliveryId: string, lat: number, lng: number, timestamp: string) => {
-					const pt = {
+					const pt: TrackingPoint = {
 						lat,
 						lng,
 						updatedAt: timestamp || new Date().toISOString()
 					};
 					trackingState.point = pt;
 					if (deliveryId) {
-						trackingState.pointsByDeliveryId = {
-							...trackingState.pointsByDeliveryId,
-							[deliveryId]: pt
-						};
+						trackingState.pointsByDeliveryId = { ...trackingState.pointsByDeliveryId, [deliveryId]: pt };
 					}
 				});
 

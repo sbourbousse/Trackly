@@ -49,9 +49,12 @@
 		if (ids.length === 0) return;
 		if (!trackingState.isConnected && !trackingState.isConnecting) {
 			trackingActions.connect().then(() => {
-				if (trackingState.isConnected && ids.length > 0) {
-					trackingActions.joinDeliveryGroups(ids);
-				}
+				// Court délai pour laisser le hub être prêt avant de rejoindre les groupes
+				setTimeout(() => {
+					if (trackingState.isConnected && ids.length > 0) {
+						trackingActions.joinDeliveryGroups(ids);
+					}
+				}, 200);
 			});
 		} else if (trackingState.isConnected && ids.length > 0) {
 			trackingActions.joinDeliveryGroups(ids);
@@ -106,6 +109,8 @@
 				<span>{inProgressIds.length} tournée(s) en cours</span>
 				{#if markersForMap.length > 0}
 					<span>– {markersForMap.length} position(s) reçue(s)</span>
+				{:else if trackingState.isConnected}
+					<span>– En attente des positions GPS (ouvrez l’app chauffeur sur une livraison en cours)</span>
 				{/if}
 			</div>
 			<div class="min-h-[500px] overflow-hidden rounded-lg border">

@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { createEventDispatcher, onMount } from 'svelte';
-	import { getDelivery, completeDelivery } from '../lib/api/deliveries';
+	import { getDelivery, startDelivery, completeDelivery } from '../lib/api/deliveries';
 	import { gpsService } from '../lib/services/gps.svelte';
 	import { trackingService } from '../lib/services/tracking.svelte';
 	import Map from '../lib/components/Map.svelte';
@@ -52,6 +52,9 @@
 		if (!delivery) return;
 
 		try {
+			// Passe la livraison en "en cours" côté backend (pour que la carte business affiche la tournée)
+			await startDelivery(deliveryId);
+			await loadDelivery(); // Rafraîchit le détail pour afficher le statut "En cours"
 			await gpsService.start();
 			await trackingService.connect(deliveryId);
 			isTracking = true;

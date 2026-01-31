@@ -1,4 +1,5 @@
-export type OrderStatus = 'En attente' | 'En cours' | 'Livree';
+/** Statuts possibles (API = Pending, Planned, InTransit, Delivered, Cancelled ; affichage FR = En attente, etc.). */
+export type OrderStatus = 'En attente' | 'En cours' | 'Livree' | 'Pending' | 'Planned' | 'InTransit' | 'Delivered' | 'Cancelled';
 
 export type OrderItem = {
 	id: string;
@@ -30,13 +31,15 @@ export const ordersActions = {
 	setLastSyncAt(time: string) {
 		ordersState.lastSyncAt = time;
 	},
-	async loadOrders() {
+	async loadOrders(filters?: import('$lib/api/orders').OrdersListFilters) {
 		ordersState.loading = true;
 		ordersState.error = null;
 		
 		try {
 			const { getOrders } = await import('$lib/api/orders');
-			const orders = await getOrders();
+			const { getListFilters } = await import('$lib/stores/dateRange.svelte');
+			const payload = filters ?? getListFilters();
+			const orders = await getOrders(payload);
 
 			ordersState.items = orders.map((order) => ({
 				id: order.id,

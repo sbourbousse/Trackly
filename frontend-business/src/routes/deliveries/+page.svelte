@@ -1,7 +1,15 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import { dateRangeActions, dateRangeState } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { deleteDeliveriesBatch } from '$lib/api/deliveries';
+
+	async function onDateFilterChange(e: Event) {
+		const target = e.target as HTMLSelectElement;
+		const value = target.value as 'CreatedAt' | 'OrderDate';
+		dateRangeActions.setDateFilter(value);
+		await deliveriesActions.loadDeliveries();
+	}
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
@@ -87,12 +95,24 @@
 						</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
+						<label class="flex items-center gap-1.5 text-sm text-muted-foreground">
+							<span>Filtrer par :</span>
+							<select
+								class="border-input bg-background ring-offset-background focus-visible:ring-ring h-9 rounded-md border px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+								value={dateRangeState.dateFilter}
+								onchange={onDateFilterChange}
+								aria-label="Type de filtre date"
+							>
+								<option value="CreatedAt">Date de création</option>
+								<option value="OrderDate">Date commande</option>
+							</select>
+						</label>
 						<Input type="search" placeholder="Filtrer par chauffeur" class="h-9 w-48 rounded-full" />
 						<Button variant="outline" size="sm">Voir la carte</Button>
 						<Button
 							variant="outline"
 							size="sm"
-							onclick={deliveriesActions.loadDeliveries}
+							onclick={() => deliveriesActions.loadDeliveries()}
 							disabled={deliveriesState.loading}
 						>
 							{deliveriesState.loading ? 'Chargement...' : 'Actualiser'}

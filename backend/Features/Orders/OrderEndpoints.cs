@@ -15,6 +15,7 @@ public static class OrderEndpoints
         group.MapPost("/", CreateOrder);
         group.MapPost("/import", ImportOrders);
         group.MapGet("/", GetOrders);
+        group.MapGet("/stats", GetOrdersStats);
         group.MapGet("/{id:guid}", GetOrder);
         group.MapDelete("/{id:guid}", DeleteOrder);
         group.MapPost("/batch/delete", DeleteOrdersBatch);
@@ -136,9 +137,15 @@ public static class OrderEndpoints
         });
     }
 
+    /// <summary>
+    /// Filtres optionnels : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate".
+    /// </summary>
     private static async Task<IResult> GetOrders(
         TracklyDbContext dbContext,
         TenantContext tenantContext,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        string? dateFilter,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -146,14 +153,109 @@ public static class OrderEndpoints
             return Results.BadRequest("TenantId manquant.");
         }
 
-        var orders = await dbContext.Orders
+        var query = dbContext.Orders
             .AsNoTracking()
-            .Where(o => o.DeletedAt == null)
+            .Where(o => o.TenantId == tenantContext.TenantId && o.DeletedAt == null);
+
+        var useOrderDate = string.Equals(dateFilter, "OrderDate", StringComparison.OrdinalIgnoreCase);
+
+        if (dateFrom.HasValue)
+        {
+            if (useOrderDate)
+                query = query.Where(o => o.OrderDate != null && o.OrderDate.Value >= dateFrom.Value);
+            else
+                query = query.Where(o => o.CreatedAt >= dateFrom.Value);
+        }
+
+        if (dateTo.HasValue)
+        {
+            if (useOrderDate)
+                query = query.Where(o => o.OrderDate != null && o.OrderDate.Value <= dateTo.Value);
+            else
+                query = query.Where(o => o.CreatedAt <= dateTo.Value);
+        }
+
+        var orders = await query
             .OrderByDescending(order => order.CreatedAt)
             .Select(order => ToResponse(order))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(orders);
+    }
+
+    /// <summary>
+    /// Stats pour le graphique : ByDay si plage multi-jours, ByHour si un seul jour.
+    /// Filtres : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate".
+    /// </summary>
+    private static async Task<IResult> GetOrdersStats(
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        string? dateFilter,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var query = dbContext.Orders
+            .AsNoTracking()
+            .Where(o => o.TenantId == tenantContext.TenantId && o.DeletedAt == null);
+
+        var useOrderDate = string.Equals(dateFilter, "OrderDate", StringComparison.OrdinalIgnoreCase);
+
+        if (dateFrom.HasValue)
+        {
+            if (useOrderDate)
+                query = query.Where(o => o.OrderDate != null && o.OrderDate.Value >= dateFrom.Value);
+            else
+                query = query.Where(o => o.CreatedAt >= dateFrom.Value);
+        }
+
+        if (dateTo.HasValue)
+        {
+            if (useOrderDate)
+                query = query.Where(o => o.OrderDate != null && o.OrderDate.Value <= dateTo.Value);
+            else
+                query = query.Where(o => o.CreatedAt <= dateTo.Value);
+        }
+
+        if (!dateFrom.HasValue || !dateTo.HasValue)
+        {
+            return Results.Ok(new OrderStatsResponse());
+        }
+
+        var singleDay = dateFrom.Value.UtcDateTime.Date == dateTo.Value.UtcDateTime.Date;
+
+        if (singleDay)
+        {
+            var byHour = await query
+                .Select(o => useOrderDate ? o.OrderDate!.Value.Hour : o.CreatedAt.Hour)
+                .ToListAsync(cancellationToken);
+            var hourCounts = Enumerable.Range(0, 24)
+                .Select(h => new OrderCountByHour($"{h:D2}:00", byHour.Count(x => x == h)))
+                .ToList();
+            return Results.Ok(new OrderStatsResponse { ByHour = hourCounts });
+        }
+
+        var ordersForDay = await query
+            .Select(o => useOrderDate ? o.OrderDate!.Value.Date : o.CreatedAt.Date)
+            .ToListAsync(cancellationToken);
+        var countByDate = ordersForDay
+            .GroupBy(d => d)
+            .ToDictionary(g => g.Key, g => g.Count());
+        var start = dateFrom!.Value.UtcDateTime.Date;
+        var end = dateTo!.Value.UtcDateTime.Date;
+        var byDay = new List<OrderCountByDay>();
+        for (var d = start; d <= end; d = d.AddDays(1))
+        {
+            var key = d.ToString("yyyy-MM-dd");
+            var count = countByDate.TryGetValue(d, out var c) ? c : 0;
+            byDay.Add(new OrderCountByDay(key, count));
+        }
+        return Results.Ok(new OrderStatsResponse { ByDay = byDay });
     }
 
     private static async Task<IResult> GetOrder(

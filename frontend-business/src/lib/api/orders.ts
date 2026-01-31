@@ -8,6 +8,13 @@ export type ApiOrder = {
 	status: string;
 };
 
+/** Filtres optionnels pour la liste des commandes (passés en query). */
+export type OrdersListFilters = {
+	dateFrom?: string;
+	dateTo?: string;
+	dateFilter?: 'CreatedAt' | 'OrderDate';
+};
+
 export type ImportOrderRequest = {
 	customerName: string;
 	address: string;
@@ -20,8 +27,31 @@ export type ImportOrdersResponse = {
 	orders: ApiOrder[];
 };
 
-export const getOrders = async () => {
-	return await apiFetch<ApiOrder[]>('/api/orders');
+function ordersQueryParams(filters?: OrdersListFilters | OrderStatsListFilters): string {
+	if (!filters || (!filters.dateFrom && !filters.dateTo && !filters.dateFilter)) return '';
+	const entries = [
+		filters.dateFrom && ['dateFrom', filters.dateFrom],
+		filters.dateTo && ['dateTo', filters.dateTo],
+		filters.dateFilter && ['dateFilter', filters.dateFilter]
+	].filter((x): x is [string, string] => Boolean(x));
+	return `?${new URLSearchParams(Object.fromEntries(entries))}`;
+}
+
+export type OrderStatsListFilters = OrdersListFilters;
+
+export type OrderStatsResponse = {
+	byDay: { date: string; count: number }[];
+	byHour: { hour: string; count: number }[];
+};
+
+export const getOrders = async (filters?: OrdersListFilters) => {
+	const path = `/api/orders${ordersQueryParams(filters)}`;
+	return await apiFetch<ApiOrder[]>(path);
+};
+
+export const getOrdersStats = async (filters?: OrderStatsListFilters) => {
+	const path = `/api/orders/stats${ordersQueryParams(filters)}`;
+	return await apiFetch<OrderStatsResponse>(path);
 };
 
 export type CreateOrderRequest = {

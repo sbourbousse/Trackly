@@ -47,3 +47,16 @@ public sealed record OrderDetailResponse(
     OrderStatus Status,
     DateTimeOffset CreatedAt,
     List<OrderDeliveryInfo> Deliveries);
+
+/// <summary>
+/// Agrégation commandes pour le graphique : par jour ou par heure selon la plage.
+/// </summary>
+public sealed record OrderStatsResponse
+{
+    public List<OrderCountByDay> ByDay { get; init; } = new();
+    public List<OrderCountByHour> ByHour { get; init; } = new();
+}
+
+public sealed record OrderCountByDay(string Date, int Count);
+
+public sealed record OrderCountByHour(string Hour, int Count);

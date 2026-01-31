@@ -1,4 +1,5 @@
-export type DeliveryStatus = 'Prevue' | 'En cours' | 'Livree' | 'Retard';
+/** Statuts possibles (API = Pending, InProgress, Completed, Failed ; affichage FR = Prévue, En cours, Livrée, Échec). */
+export type DeliveryStatus = 'Prevue' | 'En cours' | 'Livree' | 'Retard' | 'Pending' | 'InProgress' | 'Completed' | 'Failed';
 
 export type DeliveryRoute = {
 	id: string;
@@ -39,13 +40,15 @@ export const deliveriesActions = {
 	setLastUpdateAt(time: string) {
 		deliveriesState.lastUpdateAt = time;
 	},
-	async loadDeliveries() {
+	async loadDeliveries(filters?: import('$lib/api/deliveries').DeliveriesListFilters) {
 		deliveriesState.loading = true;
 		deliveriesState.error = null;
 		
 		try {
 			const { getDeliveries } = await import('$lib/api/deliveries');
-			const deliveries = await getDeliveries();
+			const { getListFilters } = await import('$lib/stores/dateRange.svelte');
+			const payload = filters ?? getListFilters();
+			const deliveries = await getDeliveries(payload);
 
 			deliveriesState.routes = deliveries.map((delivery) => ({
 				id: delivery.id,

@@ -24,9 +24,16 @@ public static class DeliveryEndpoints
         return app;
     }
 
+    /// <summary>
+    /// Filtres optionnels : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate".
+    /// OrderDate filtre sur la date de la commande associée.
+    /// </summary>
     private static async Task<IResult> GetDeliveries(
         TracklyDbContext dbContext,
         TenantContext tenantContext,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        string? dateFilter,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -34,9 +41,34 @@ public static class DeliveryEndpoints
             return Results.BadRequest("TenantId manquant.");
         }
 
-        var deliveries = await dbContext.Deliveries
+        var useOrderDate = string.Equals(dateFilter, "OrderDate", StringComparison.OrdinalIgnoreCase);
+
+        IQueryable<Delivery> query = dbContext.Deliveries
             .AsNoTracking()
-            .Where(d => d.TenantId == tenantContext.TenantId && d.DeletedAt == null)
+            .Where(d => d.TenantId == tenantContext.TenantId && d.DeletedAt == null);
+
+        if (useOrderDate && (dateFrom.HasValue || dateTo.HasValue))
+        {
+            query = query.Join(
+                dbContext.Orders,
+                d => d.OrderId,
+                o => o.Id,
+                (d, o) => new { Delivery = d, Order = o })
+                .Where(x => x.Order.DeletedAt == null)
+                .Where(x => x.Order.OrderDate != null
+                    && (!dateFrom.HasValue || x.Order.OrderDate.Value >= dateFrom.Value)
+                    && (!dateTo.HasValue || x.Order.OrderDate.Value <= dateTo.Value))
+                .Select(x => x.Delivery);
+        }
+        else if (!useOrderDate)
+        {
+            if (dateFrom.HasValue)
+                query = query.Where(d => d.CreatedAt >= dateFrom.Value);
+            if (dateTo.HasValue)
+                query = query.Where(d => d.CreatedAt <= dateTo.Value);
+        }
+
+        var deliveries = await query
             .OrderByDescending(d => d.CreatedAt)
             .Select(d => ToResponse(d))
             .ToListAsync(cancellationToken);

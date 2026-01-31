@@ -1,31 +1,39 @@
-# Application de la migration AddDeletedAtToDelivery
+# Application des migrations
 
-## Base de données cible
-Les migrations s'appliquent à la base de données spécifiée dans `appsettings.Development.json` :
-- **Base de données** : `trackly_dev`
-- **Host** : `localhost:5432`
-- **Utilisateur** : `trackly`
+## Base de données
+- **Locale** : `appsettings.Development.json` ou variable `ConnectionStrings__TracklyDb`
+- **Railway** : variable d'environnement `DATABASE_URL`
 
-## Étapes pour appliquer la migration
+## Appliquer toutes les migrations
 
-1. **Arrêter le backend** (processus en cours d'exécution)
-
-2. **Créer la migration** (si elle n'existe pas) :
-   ```powershell
-   cd backend
-   dotnet ef migrations add AddDeletedAtToDelivery
-   ```
-
-3. **Appliquer la migration** :
+1. Arrêter le backend.
+2. À la racine du projet backend :
    ```powershell
    dotnet ef database update
    ```
+3. Redémarrer le backend.
 
-4. **Redémarrer le backend**
+## Si la colonne "InternalComment" (ou "PhoneNumber") manque sur "Orders"
 
-## Alternative : Application manuelle en SQL
+Si `dotnet ef database update` indique « déjà à jour » mais que l’app échoue avec *column "InternalComment" of relation "Orders" does not exist*, la migration a été enregistrée sans que les colonnes aient été créées (ex. base Railway). Exécuter le script SQL suivant sur la base :
 
-Si vous ne pouvez pas arrêter le backend, exécutez directement en SQL :
+**Fichier** : `Migrations/Manual_AddPhoneAndCommentToOrder.sql`
+
+```sql
+ALTER TABLE "Orders"
+ADD COLUMN IF NOT EXISTS "PhoneNumber" text NULL;
+
+ALTER TABLE "Orders"
+ADD COLUMN IF NOT EXISTS "InternalComment" text NULL;
+```
+
+- **Railway** : Dashboard → votre base → onglet Query → coller le SQL → Run.
+- **psql** : `psql "<DATABASE_URL>" -f Migrations/Manual_AddPhoneAndCommentToOrder.sql`
+- **pgAdmin / autre client** : ouvrir le fichier et exécuter.
+
+## Référence : migration AddDeletedAtToDelivery (manuel)
+
+Si besoin d’appliquer manuellement la colonne `DeletedAt` sur `Deliveries` :
 
 ```sql
 ALTER TABLE "Deliveries" 

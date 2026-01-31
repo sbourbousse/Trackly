@@ -53,7 +53,7 @@
 ### Setup
 - [x] Initialiser projet SvelteKit
 - [x] Configurer Svelte 5 avec Runes
-- [ ] Installer shadcn-svelte ou Tailwind CSS
+- [x] Installer shadcn-svelte ou Tailwind CSS (thème stone + teal, Inter, radius small)
 - [x] Configurer client HTTP (fetch/axios) pour appels API
 - [x] Configurer client SignalR pour temps réel
 

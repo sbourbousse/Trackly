@@ -1,17 +1,36 @@
 <script lang="ts">
-	import TopNav from '$lib/components/TopNav.svelte';
-	import {
-		deliveriesActions,
-		deliveriesState,
-		type DeliveryRoute
-	} from '$lib/stores/deliveries.svelte';
-	import { deleteDelivery, deleteDeliveriesBatch } from '$lib/api/deliveries';
+	import PageHeader from '$lib/components/PageHeader.svelte';
+	import { dateRangeActions, dateRangeState } from '$lib/stores/dateRange.svelte';
+	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
+	import { deleteDeliveriesBatch } from '$lib/api/deliveries';
 
-	const statusClass: Record<string, string> = {
-		Prevue: 'warning',
-		'En cours': 'warning',
-		Livree: 'success',
-		Retard: 'danger'
+	async function onDateFilterChange(e: Event) {
+		const target = e.target as HTMLSelectElement;
+		const value = target.value as 'CreatedAt' | 'OrderDate';
+		dateRangeActions.setDateFilter(value);
+		await deliveriesActions.loadDeliveries();
+	}
+	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { Input } from '$lib/components/ui/input';
+	import {
+		Table,
+		TableBody,
+		TableCell,
+		TableHead,
+		TableHeader,
+		TableRow
+	} from '$lib/components/ui/table';
+	import { cn } from '$lib/utils';
+
+	const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+		Prevue: 'secondary',
+		'En cours': 'secondary',
+		Livree: 'default',
+		Retard: 'destructive'
 	};
 
 	let didInit = $state(false);
@@ -27,11 +46,8 @@
 
 	function toggleSelection(id: string) {
 		const newSet = new Set(selectedIds);
-		if (newSet.has(id)) {
-			newSet.delete(id);
-		} else {
-			newSet.add(id);
-		}
+		if (newSet.has(id)) newSet.delete(id);
+		else newSet.add(id);
 		selectedIds = newSet;
 	}
 
@@ -39,7 +55,7 @@
 		if (selectedIds.size === deliveriesState.routes.length) {
 			selectedIds = new Set();
 		} else {
-			selectedIds = new Set(deliveriesState.routes.map(d => d.id));
+			selectedIds = new Set(deliveriesState.routes.map((d) => d.id));
 		}
 	}
 
@@ -49,15 +65,10 @@
 
 	async function handleDeleteSelected() {
 		if (selectedIds.size === 0) return;
-
 		const count = selectedIds.size;
-		if (!confirm(`Êtes-vous sûr de vouloir supprimer ${count} tournée${count > 1 ? 's' : ''} ?`)) {
-			return;
-		}
-
+		if (!confirm(`Êtes-vous sûr de vouloir supprimer ${count} tournée${count > 1 ? 's' : ''} ?`)) return;
 		deleting = true;
 		deleteError = null;
-
 		try {
 			await deleteDeliveriesBatch({ ids: Array.from(selectedIds) });
 			clearSelection();
@@ -70,157 +81,142 @@
 	}
 </script>
 
-<div class="page">
-	<TopNav title="Tournees" subtitle="Suivi des tournees et du temps reel chauffeur." />
+<div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
+	<PageHeader title="Tournées" subtitle="Suivi des tournées et du temps réel chauffeur." />
 
-	<section class="panel">
-		<div class="panel-toolbar">
-			<div>
-				<h2>Tournees du jour</h2>
-				<p class="footer-note">
-					{deliveriesState.routes.length} tournee{deliveriesState.routes.length > 1 ? 's' : ''} 
-					{deliveriesState.lastUpdateAt ? `· Dernière mise à jour: ${deliveriesState.lastUpdateAt}` : ''}
-				</p>
-			</div>
-			<div class="controls">
-				<input class="search-input" type="search" placeholder="Filtrer par chauffeur" />
-				<button class="ghost-button" type="button">Voir la carte</button>
-				<button 
-					class="ghost-button" 
-					type="button" 
-					onclick={deliveriesActions.loadDeliveries}
-					disabled={deliveriesState.loading}
-				>
-					{deliveriesState.loading ? 'Chargement...' : 'Actualiser'}
-				</button>
-				<a href="/deliveries/new" class="primary-button" style="text-decoration: none; display: inline-block;">Nouvelle tournee</a>
-			</div>
-		</div>
-
-		{#if deliveriesState.error}
-			<div class="error-message" style="padding: 1rem; background: #fee; color: #c33; border-radius: 4px; margin-bottom: 1rem;">
-				{deliveriesState.error}
-			</div>
-		{/if}
-
-		{#if deleteError}
-			<div class="error-message" style="padding: 1rem; background: #fee; color: #c33; border-radius: 4px; margin-bottom: 1rem;">
-				{deleteError}
-			</div>
-		{/if}
-
-		{#if selectedIds.size > 0}
-			<div class="selection-bar" style="padding: 1rem; background: var(--primary, #2563eb); color: white; border-radius: 4px; margin-bottom: 1rem; display: flex; justify-content: space-between; align-items: center;">
-				<div>
-					<strong>{selectedIds.size}</strong> tournée{selectedIds.size > 1 ? 's' : ''} sélectionnée{selectedIds.size > 1 ? 's' : ''}
+		<Card>
+			<CardHeader class="space-y-1">
+				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+					<div>
+						<CardTitle>Tournées du jour</CardTitle>
+						<p class="text-sm text-muted-foreground">
+							{deliveriesState.routes.length} tournée{deliveriesState.routes.length > 1 ? 's' : ''}
+							{deliveriesState.lastUpdateAt ? ` · Dernière MAJ: ${deliveriesState.lastUpdateAt}` : ''}
+						</p>
+					</div>
+					<div class="flex flex-wrap items-center gap-2">
+						<label class="flex items-center gap-1.5 text-sm text-muted-foreground">
+							<span>Filtrer par :</span>
+							<select
+								class="border-input bg-background ring-offset-background focus-visible:ring-ring h-9 rounded-md border px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+								value={dateRangeState.dateFilter}
+								onchange={onDateFilterChange}
+								aria-label="Type de filtre date"
+							>
+								<option value="CreatedAt">Date de création</option>
+								<option value="OrderDate">Date commande</option>
+							</select>
+						</label>
+						<Input type="search" placeholder="Filtrer par chauffeur" class="h-9 w-48 rounded-full" />
+						<Button variant="outline" size="sm">Voir la carte</Button>
+						<Button
+							variant="outline"
+							size="sm"
+							onclick={() => deliveriesActions.loadDeliveries()}
+							disabled={deliveriesState.loading}
+						>
+							{deliveriesState.loading ? 'Chargement...' : 'Actualiser'}
+						</Button>
+						<Button size="sm" href="/deliveries/new">Nouvelle tournée</Button>
+					</div>
 				</div>
-				<div style="display: flex; gap: 0.5rem;">
-					<button
-						class="ghost-button"
-						type="button"
-						onclick={clearSelection}
-						disabled={deleting}
-						style="background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3);"
-					>
-						Annuler
-					</button>
-					<button
-						class="primary-button"
-						type="button"
-						onclick={handleDeleteSelected}
-						disabled={deleting}
-						style="background: #dc2626; color: white; border: none;"
-					>
-						{deleting ? 'Suppression...' : `Supprimer ${selectedIds.size} tournée${selectedIds.size > 1 ? 's' : ''}`}
-					</button>
-				</div>
-			</div>
-		{/if}
+			</CardHeader>
+			<CardContent class="space-y-4">
+				{#if deliveriesState.error}
+					<Alert variant="destructive">
+						<AlertTitle>Erreur</AlertTitle>
+						<AlertDescription>{deliveriesState.error}</AlertDescription>
+					</Alert>
+				{/if}
+				{#if deleteError}
+					<Alert variant="destructive">
+						<AlertTitle>Erreur</AlertTitle>
+						<AlertDescription>{deleteError}</AlertDescription>
+					</Alert>
+				{/if}
 
-		{#if deliveriesState.loading && !deliveriesState.routes.length}
-			<div style="padding: 2rem; text-align: center;">Chargement des tournees...</div>
-		{:else}
-		<table class="table">
-							<thead>
-								<tr>
-									<th style="width: 40px;">
-										<input
-											type="checkbox"
-											checked={selectedIds.size === deliveriesState.routes.length && deliveriesState.routes.length > 0}
-											onchange={toggleSelectAll}
-											title="Tout sélectionner"
+				{#if selectedIds.size > 0}
+					<div
+						class="flex flex-wrap items-center justify-between gap-4 rounded-md border bg-primary px-4 py-3 text-primary-foreground"
+					>
+						<span class="font-medium">
+							{selectedIds.size} tournée{selectedIds.size > 1 ? 's' : ''} sélectionnée{selectedIds.size > 1 ? 's' : ''}
+						</span>
+						<div class="flex gap-2">
+							<Button
+								variant="secondary"
+								size="sm"
+								onclick={clearSelection}
+								disabled={deleting}
+								class="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
+							>
+								Annuler
+							</Button>
+							<Button
+								variant="destructive"
+								size="sm"
+								onclick={handleDeleteSelected}
+								disabled={deleting}
+							>
+								{deleting ? 'Suppression...' : `Supprimer ${selectedIds.size}`}
+							</Button>
+						</div>
+					</div>
+				{/if}
+
+				{#if deliveriesState.loading && !deliveriesState.routes.length}
+					<div class="py-8 text-center text-muted-foreground">Chargement des tournées...</div>
+				{:else}
+					<div class="min-w-0 overflow-x-auto">
+					<Table>
+						<TableHeader>
+							<TableRow>
+								<TableHead class="w-10">
+									<Checkbox
+										checked={selectedIds.size === deliveriesState.routes.length && deliveriesState.routes.length > 0}
+										onCheckedChange={toggleSelectAll}
+										aria-label="Tout sélectionner"
+									/>
+								</TableHead>
+								<TableHead>Tournée</TableHead>
+								<TableHead>Chauffeur</TableHead>
+								<TableHead>Arrêts</TableHead>
+								<TableHead>Statut</TableHead>
+								<TableHead class="tabular-nums">ETA</TableHead>
+							</TableRow>
+						</TableHeader>
+						<TableBody>
+							{#each deliveriesState.routes as delivery}
+								<TableRow
+									class={cn(
+										'cursor-pointer transition-colors hover:bg-muted/50',
+										selectedIds.has(delivery.id) && 'bg-primary/5'
+									)}
+									onclick={() => toggleSelection(delivery.id)}
+								>
+									<TableCell class="w-10" onclick={(e) => e.stopPropagation()}>
+										<Checkbox
+											checked={selectedIds.has(delivery.id)}
+											onCheckedChange={() => toggleSelection(delivery.id)}
 										/>
-									</th>
-									<th>Tournee</th>
-									<th>Chauffeur</th>
-									<th>Arrets</th>
-									<th>Statut</th>
-									<th>ETA</th>
-								</tr>
-							</thead>
-							<tbody>
-								{#each deliveriesState.routes as delivery}
-									<tr style="cursor: pointer;" onclick={() => toggleSelection(delivery.id)} class:selected={selectedIds.has(delivery.id)}>
-										<td onclick={(e) => e.stopPropagation()}>
-											<input
-												type="checkbox"
-												checked={selectedIds.has(delivery.id)}
-												onchange={() => toggleSelection(delivery.id)}
-												onclick={(e) => e.stopPropagation()}
-											/>
-										</td>
-										<td>
-											<a class="secondary-link" href={`/deliveries/${delivery.id}`} onclick={(e) => e.stopPropagation()}>
-												{delivery.route}
-											</a>
-										</td>
-										<td>{delivery.driver}</td>
-										<td class="mono">{delivery.stops}</td>
-										<td>
-											<span class="badge {statusClass[delivery.status] || 'warning'}">
-												{delivery.status}
-											</span>
-										</td>
-										<td class="mono">{delivery.eta}</td>
-									</tr>
-								{/each}
-							</tbody>
-		</table>
-		{/if}
-	</section>
+									</TableCell>
+									<TableCell onclick={(e) => e.stopPropagation()}>
+										<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
+											{delivery.route}
+										</Button>
+									</TableCell>
+									<TableCell>{delivery.driver}</TableCell>
+									<TableCell class="tabular-nums">{delivery.stops}</TableCell>
+									<TableCell>
+										<Badge variant={statusVariant[delivery.status] ?? 'outline'}>{delivery.status}</Badge>
+									</TableCell>
+									<TableCell class="tabular-nums">{delivery.eta}</TableCell>
+								</TableRow>
+							{/each}
+						</TableBody>
+					</Table>
+					</div>
+				{/if}
+			</CardContent>
+		</Card>
 </div>
-
-<style>
-	tr.selected {
-		background-color: rgba(37, 99, 235, 0.1);
-	}
-
-	tr:hover {
-		background-color: rgba(0, 0, 0, 0.02);
-	}
-
-	tr.selected:hover {
-		background-color: rgba(37, 99, 235, 0.15);
-	}
-
-	.selection-bar {
-		animation: slideDown 0.2s ease-out;
-	}
-
-	@keyframes slideDown {
-		from {
-			opacity: 0;
-			transform: translateY(-10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-
-	input[type="checkbox"] {
-		cursor: pointer;
-		width: 18px;
-		height: 18px;
-	}
-</style>

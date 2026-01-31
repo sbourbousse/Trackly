@@ -2,7 +2,12 @@ using Trackly.Backend.Features.Deliveries;
 
 namespace Trackly.Backend.Features.Orders;
 
-public sealed record CreateOrderRequest(string CustomerName, string Address);
+public sealed record CreateOrderRequest(
+    string CustomerName,
+    string Address,
+    string? PhoneNumber = null,
+    string? InternalComment = null,
+    string? OrderDate = null);
 
 public sealed record ImportOrdersRequest(List<CreateOrderRequest> Orders);
 
@@ -27,6 +32,9 @@ public sealed record OrderResponse(
     Guid Id,
     string CustomerName,
     string Address,
+    string? PhoneNumber,
+    string? InternalComment,
+    DateTimeOffset? OrderDate,
     OrderStatus Status,
     DateTimeOffset CreatedAt);
 
@@ -42,6 +50,22 @@ public sealed record OrderDetailResponse(
     Guid Id,
     string CustomerName,
     string Address,
+    string? PhoneNumber,
+    string? InternalComment,
+    DateTimeOffset? OrderDate,
     OrderStatus Status,
     DateTimeOffset CreatedAt,
     List<OrderDeliveryInfo> Deliveries);
+
+/// <summary>
+/// Agrégation commandes pour le graphique : par jour ou par heure selon la plage.
+/// </summary>
+public sealed record OrderStatsResponse
+{
+    public List<OrderCountByDay> ByDay { get; init; } = new();
+    public List<OrderCountByHour> ByHour { get; init; } = new();
+}
+
+public sealed record OrderCountByDay(string Date, int Count);
+
+public sealed record OrderCountByHour(string Hour, int Count);

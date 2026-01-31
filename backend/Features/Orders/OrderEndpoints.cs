@@ -15,6 +15,7 @@ public static class OrderEndpoints
         group.MapPost("/", CreateOrder);
         group.MapPost("/import", ImportOrders);
         group.MapGet("/", GetOrders);
+        group.MapGet("/stats", GetOrdersStats);
         group.MapGet("/{id:guid}", GetOrder);
         group.MapDelete("/{id:guid}", DeleteOrder);
         group.MapPost("/batch/delete", DeleteOrdersBatch);
@@ -47,12 +48,16 @@ public static class OrderEndpoints
                 statusCode: StatusCodes.Status403Forbidden);
         }
 
+        var orderDate = ParseOrderDate(request.OrderDate);
         var order = new Order
         {
             Id = Guid.NewGuid(),
             TenantId = tenantContext.TenantId,
             CustomerName = request.CustomerName.Trim(),
             Address = request.Address.Trim(),
+            PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim(),
+            InternalComment = string.IsNullOrWhiteSpace(request.InternalComment) ? null : request.InternalComment.Trim(),
+            OrderDate = orderDate,
             Status = OrderStatus.Pending,
             CreatedAt = DateTimeOffset.UtcNow
         };
@@ -108,12 +113,16 @@ public static class OrderEndpoints
                 continue;
             }
 
+            var orderDate = ParseOrderDate(orderRequest.OrderDate);
             var order = new Order
             {
                 Id = Guid.NewGuid(),
                 TenantId = tenantContext.TenantId,
                 CustomerName = orderRequest.CustomerName.Trim(),
                 Address = orderRequest.Address.Trim(),
+                PhoneNumber = string.IsNullOrWhiteSpace(orderRequest.PhoneNumber) ? null : orderRequest.PhoneNumber.Trim(),
+                InternalComment = string.IsNullOrWhiteSpace(orderRequest.InternalComment) ? null : orderRequest.InternalComment.Trim(),
+                OrderDate = orderDate,
                 Status = OrderStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow
             };
@@ -132,9 +141,16 @@ public static class OrderEndpoints
         });
     }
 
+    /// <summary>
+    /// Filtres optionnels : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate", search = texte (client, adresse, téléphone, commentaire).
+    /// </summary>
     private static async Task<IResult> GetOrders(
         TracklyDbContext dbContext,
         TenantContext tenantContext,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        string? dateFilter,
+        string? search,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -142,14 +158,119 @@ public static class OrderEndpoints
             return Results.BadRequest("TenantId manquant.");
         }
 
-        var orders = await dbContext.Orders
+        var query = dbContext.Orders
             .AsNoTracking()
-            .Where(o => o.DeletedAt == null)
+            .Where(o => o.TenantId == tenantContext.TenantId && o.DeletedAt == null);
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLowerInvariant();
+            query = query.Where(o =>
+                (o.CustomerName != null && o.CustomerName.ToLower().Contains(term)) ||
+                (o.Address != null && o.Address.ToLower().Contains(term)) ||
+                (o.PhoneNumber != null && o.PhoneNumber.ToLower().Contains(term)) ||
+                (o.InternalComment != null && o.InternalComment.ToLower().Contains(term)));
+        }
+
+        var useOrderDate = string.Equals(dateFilter, "OrderDate", StringComparison.OrdinalIgnoreCase);
+
+        if (dateFrom.HasValue)
+        {
+            if (useOrderDate)
+                query = query.Where(o => o.OrderDate != null && o.OrderDate.Value >= dateFrom.Value);
+            else
+                query = query.Where(o => o.CreatedAt >= dateFrom.Value);
+        }
+
+        if (dateTo.HasValue)
+        {
+            if (useOrderDate)
+                query = query.Where(o => o.OrderDate != null && o.OrderDate.Value <= dateTo.Value);
+            else
+                query = query.Where(o => o.CreatedAt <= dateTo.Value);
+        }
+
+        var orders = await query
             .OrderByDescending(order => order.CreatedAt)
             .Select(order => ToResponse(order))
             .ToListAsync(cancellationToken);
 
         return Results.Ok(orders);
+    }
+
+    /// <summary>
+    /// Stats pour le graphique : ByDay si plage multi-jours, ByHour si un seul jour.
+    /// Filtres : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate".
+    /// </summary>
+    private static async Task<IResult> GetOrdersStats(
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        string? dateFilter,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var query = dbContext.Orders
+            .AsNoTracking()
+            .Where(o => o.TenantId == tenantContext.TenantId && o.DeletedAt == null);
+
+        var useOrderDate = string.Equals(dateFilter, "OrderDate", StringComparison.OrdinalIgnoreCase);
+
+        if (dateFrom.HasValue)
+        {
+            if (useOrderDate)
+                query = query.Where(o => o.OrderDate != null && o.OrderDate.Value >= dateFrom.Value);
+            else
+                query = query.Where(o => o.CreatedAt >= dateFrom.Value);
+        }
+
+        if (dateTo.HasValue)
+        {
+            if (useOrderDate)
+                query = query.Where(o => o.OrderDate != null && o.OrderDate.Value <= dateTo.Value);
+            else
+                query = query.Where(o => o.CreatedAt <= dateTo.Value);
+        }
+
+        if (!dateFrom.HasValue || !dateTo.HasValue)
+        {
+            return Results.Ok(new OrderStatsResponse());
+        }
+
+        var singleDay = dateFrom.Value.UtcDateTime.Date == dateTo.Value.UtcDateTime.Date;
+
+        if (singleDay)
+        {
+            var byHour = await query
+                .Select(o => useOrderDate ? o.OrderDate!.Value.Hour : o.CreatedAt.Hour)
+                .ToListAsync(cancellationToken);
+            var hourCounts = Enumerable.Range(0, 24)
+                .Select(h => new OrderCountByHour($"{h:D2}:00", byHour.Count(x => x == h)))
+                .ToList();
+            return Results.Ok(new OrderStatsResponse { ByHour = hourCounts });
+        }
+
+        var ordersForDay = await query
+            .Select(o => useOrderDate ? o.OrderDate!.Value.Date : o.CreatedAt.Date)
+            .ToListAsync(cancellationToken);
+        var countByDate = ordersForDay
+            .GroupBy(d => d)
+            .ToDictionary(g => g.Key, g => g.Count());
+        var start = dateFrom!.Value.UtcDateTime.Date;
+        var end = dateTo!.Value.UtcDateTime.Date;
+        var byDay = new List<OrderCountByDay>();
+        for (var d = start; d <= end; d = d.AddDays(1))
+        {
+            var key = d.ToString("yyyy-MM-dd");
+            var count = countByDate.TryGetValue(d, out var c) ? c : 0;
+            byDay.Add(new OrderCountByDay(key, count));
+        }
+        return Results.Ok(new OrderStatsResponse { ByDay = byDay });
     }
 
     private static async Task<IResult> GetOrder(
@@ -208,6 +329,9 @@ public static class OrderEndpoints
             order.Id,
             order.CustomerName,
             order.Address,
+            order.PhoneNumber,
+            order.InternalComment,
+            order.OrderDate,
             order.Status,
             order.CreatedAt,
             deliveriesWithDriver));
@@ -359,5 +483,26 @@ public static class OrderEndpoints
     }
 
     private static OrderResponse ToResponse(Order order) =>
-        new(order.Id, order.CustomerName, order.Address, order.Status, order.CreatedAt);
+        new(order.Id, order.CustomerName, order.Address, order.PhoneNumber, order.InternalComment, order.OrderDate, order.Status, order.CreatedAt);
+
+    /// <summary>
+    /// Parse la date/heure et retourne toujours un DateTimeOffset en UTC (requis par Npgsql).
+    /// </summary>
+    private static DateTimeOffset? ParseOrderDate(string? orderDateStr)
+    {
+        if (string.IsNullOrWhiteSpace(orderDateStr)) return null;
+        if (DateTimeOffset.TryParse(orderDateStr, null, System.Globalization.DateTimeStyles.AssumeUniversal | System.Globalization.DateTimeStyles.AdjustToUniversal, out var dt))
+            return ToUtc(dt);
+        if (DateTimeOffset.TryParse(orderDateStr, out var dtLocal))
+            return ToUtc(dtLocal);
+        if (DateOnly.TryParse(orderDateStr, out var d))
+            return new DateTimeOffset(d.ToDateTime(TimeOnly.MinValue), TimeSpan.Zero);
+        return null;
+    }
+
+    private static DateTimeOffset ToUtc(DateTimeOffset value)
+    {
+        var utc = value.UtcDateTime;
+        return new DateTimeOffset(utc.Ticks, TimeSpan.Zero);
+    }
 }

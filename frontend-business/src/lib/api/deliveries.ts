@@ -5,11 +5,30 @@ export type ApiDelivery = {
 	orderId: string;
 	driverId: string;
 	status: string;
+	createdAt?: string;
 	completedAt: string | null;
 };
 
-export const getDeliveries = async () => {
-	return await apiFetch<ApiDelivery[]>('/api/deliveries');
+/** Filtres optionnels pour la liste des livraisons (passés en query). */
+export type DeliveriesListFilters = {
+	dateFrom?: string;
+	dateTo?: string;
+	dateFilter?: 'CreatedAt' | 'OrderDate';
+};
+
+export const getDeliveries = async (filters?: DeliveriesListFilters) => {
+	const path = filters && (filters.dateFrom ?? filters.dateTo ?? filters.dateFilter)
+		? `/api/deliveries?${new URLSearchParams(
+				Object.fromEntries(
+					[
+						filters.dateFrom && ['dateFrom', filters.dateFrom],
+						filters.dateTo && ['dateTo', filters.dateTo],
+						filters.dateFilter && ['dateFilter', filters.dateFilter]
+					].filter((x): x is [string, string] => Boolean(x))
+				)
+			)}`
+		: '/api/deliveries';
+	return await apiFetch<ApiDelivery[]>(path);
 };
 
 export type ApiDeliveryDetail = {

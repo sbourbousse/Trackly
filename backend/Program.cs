@@ -8,6 +8,7 @@ using Trackly.Backend.Features.Auth;
 using Trackly.Backend.Features.Billing;
 using Trackly.Backend.Features.Deliveries;
 using Trackly.Backend.Features.Drivers;
+using Trackly.Backend.Features.Geocode;
 using Trackly.Backend.Features.Orders;
 using Trackly.Backend.Features.Tenants;
 using Trackly.Backend.Features.Tracking;
@@ -113,6 +114,13 @@ builder.Services
     });
 
 builder.Services.AddAuthorization();
+
+// Client HTTP nommé pour le géocodage Nominatim (User-Agent requis par leur politique d'utilisation)
+builder.Services.AddHttpClient("Nominatim", client =>
+{
+    client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
+    client.DefaultRequestHeaders.Add("User-Agent", "Trackly/1.0 (contact@trackly.app)");
+});
 
 var app = builder.Build();
 
@@ -287,6 +295,7 @@ app.UseMiddleware<TenantMiddleware>();
 app.MapOrderEndpoints();
 app.MapDeliveryEndpoints();
 app.MapDriverEndpoints();
+app.MapGeocodeEndpoints();
 
 // SignalR Hub pour le tracking temps réel
 app.MapHub<TrackingHub>("/hubs/tracking");

@@ -1,37 +1,48 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
+	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
-	import { page } from '$app/stores';
-	import TopNav from '$lib/components/TopNav.svelte';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { getOrder } from '$lib/api/orders';
 	import type { ApiOrderDetail } from '$lib/api/orders';
+	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import {
+		Table,
+		TableBody,
+		TableCell,
+		TableHead,
+		TableHeader,
+		TableRow
+	} from '$lib/components/ui/table';
 
 	let order = $state<ApiOrderDetail | null>(null);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 
-	const statusClass: Record<string, string> = {
-		Pending: 'warning',
-		Planned: 'info',
-		InTransit: 'warning',
-		Delivered: 'success',
-		Cancelled: 'danger',
-		'0': 'warning', // Pending
-		'1': 'info', // Planned
-		'2': 'warning', // InTransit
-		'3': 'success', // Delivered
-		'4': 'danger' // Cancelled
+	const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+		Pending: 'secondary',
+		Planned: 'outline',
+		InTransit: 'secondary',
+		Delivered: 'default',
+		Cancelled: 'destructive',
+		'0': 'secondary',
+		'1': 'outline',
+		'2': 'secondary',
+		'3': 'default',
+		'4': 'destructive'
 	};
 
-	const deliveryStatusClass: Record<string, string> = {
-		Pending: 'warning',
-		InProgress: 'warning',
-		Completed: 'success',
-		Failed: 'danger',
-		'0': 'warning', // Pending
-		'1': 'warning', // InProgress
-		'2': 'success', // Completed
-		'3': 'danger' // Failed
+	const deliveryStatusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
+		Pending: 'secondary',
+		InProgress: 'secondary',
+		Completed: 'default',
+		Failed: 'destructive',
+		'0': 'secondary',
+		'1': 'secondary',
+		'2': 'default',
+		'3': 'destructive'
 	};
 
 	const statusLabel: Record<string, string> = {
@@ -58,28 +69,30 @@
 		'3': 'Échouée'
 	};
 
-	onMount(async () => {
-		const orderId = $page.params.id;
+	$effect(() => {
+		const orderId = page.params.id;
 		if (!orderId) {
 			error = 'ID de commande manquant';
 			return;
 		}
-
+		let cancelled = false;
 		loading = true;
 		error = null;
-
-		try {
-			order = await getOrder(orderId);
-		} catch (err) {
-			error = err instanceof Error ? err.message : 'Erreur lors du chargement';
-		} finally {
-			loading = false;
-		}
+		getOrder(orderId)
+			.then((data) => {
+				if (!cancelled) order = data;
+			})
+			.catch((err) => {
+				if (!cancelled) error = err instanceof Error ? err.message : 'Erreur lors du chargement';
+			})
+			.finally(() => {
+				if (!cancelled) loading = false;
+			});
+		return () => { cancelled = true; };
 	});
 
 	function formatDate(dateString: string) {
-		const date = new Date(dateString);
-		return date.toLocaleDateString('fr-FR', {
+		return new Date(dateString).toLocaleDateString('fr-FR', {
 			day: '2-digit',
 			month: '2-digit',
 			year: 'numeric',
@@ -89,119 +102,136 @@
 	}
 </script>
 
-<div class="page">
-	<TopNav title="Détail de la commande" subtitle="Informations complètes et livraisons associées" />
+<div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
+	<PageHeader title="Détail de la commande" subtitle="Informations complètes et livraisons associées" />
 
-	{#if loading}
-		<div style="padding: 2rem; text-align: center;">Chargement...</div>
-	{:else if error}
-		<div class="error-message" style="padding: 1rem; background: #fee; color: #c33; border-radius: 4px; margin-bottom: 1rem;">
-			{error}
-		</div>
-		<div style="margin-top: 1rem;">
-			<button class="ghost-button" onclick={() => goto('/orders')}>Retour à la liste</button>
-		</div>
-	{:else if order}
-		<section class="panel">
-			<div class="panel-header">
-				<div>
-					<h2>Informations de la commande</h2>
-					<p class="footer-note">Référence: {order.id.slice(0, 8).toUpperCase()}</p>
-				</div>
-				<div class="controls">
-					<button class="ghost-button" onclick={() => goto('/orders')}>Retour</button>
-					<a href="/deliveries/new" class="primary-button" style="text-decoration: none; display: inline-block;">
-						Créer une livraison
-					</a>
-				</div>
-			</div>
+		{#if loading}
+			<Card>
+				<CardContent class="py-8 text-center text-muted-foreground">Chargement...</CardContent>
+			</Card>
+		{:else if error}
+			<Alert variant="destructive">
+				<AlertTitle>Erreur</AlertTitle>
+				<AlertDescription>{error}</AlertDescription>
+			</Alert>
+			<Button variant="outline" onclick={() => goto('/orders')}>Retour à la liste</Button>
+		{:else if order}
+			<Card>
+				<CardHeader class="flex flex-row flex-wrap items-start justify-between gap-4">
+					<div>
+						<CardTitle>Informations de la commande</CardTitle>
+						<p class="mt-1 text-sm text-muted-foreground">
+							Référence: {order.id.slice(0, 8).toUpperCase()}
+						</p>
+					</div>
+					<div class="flex gap-2">
+						<Button variant="outline" size="sm" onclick={() => goto('/orders')}>Retour</Button>
+						<Button size="sm" href="/deliveries/new">Créer une livraison</Button>
+					</div>
+				</CardHeader>
+				<CardContent>
+					<div class="grid gap-6 sm:grid-cols-2">
+						<div class="space-y-1">
+							<p class="text-sm font-medium text-muted-foreground">Client</p>
+							<p class="text-lg font-medium">{order.customerName}</p>
+						</div>
+						<div class="space-y-1">
+							<p class="text-sm font-medium text-muted-foreground">Adresse</p>
+							<p class="font-medium">{order.address}</p>
+						</div>
+						{#if order.phoneNumber}
+							<div class="space-y-1">
+								<p class="text-sm font-medium text-muted-foreground">Téléphone</p>
+								<p class="font-medium">{order.phoneNumber}</p>
+							</div>
+						{/if}
+						{#if order.internalComment}
+							<div class="space-y-1 sm:col-span-2">
+								<p class="text-sm font-medium text-muted-foreground">Commentaire interne</p>
+								<p class="rounded-md border bg-muted/30 p-3 text-sm">{order.internalComment}</p>
+							</div>
+						{/if}
+						<div class="space-y-1">
+							<p class="text-sm font-medium text-muted-foreground">Statut</p>
+							<Badge variant={statusVariant[order.status] ?? 'outline'}>
+								{statusLabel[order.status] ?? order.status}
+							</Badge>
+						</div>
+						<div class="space-y-1">
+							<p class="text-sm font-medium text-muted-foreground">Date et heure de la commande</p>
+							<p class="font-medium">
+								{order.orderDate
+									? new Date(order.orderDate).toLocaleString('fr-FR', {
+											day: '2-digit',
+											month: '2-digit',
+											year: 'numeric',
+											hour: '2-digit',
+											minute: '2-digit'
+										})
+									: '—'}
+							</p>
+						</div>
+						<div class="space-y-1">
+							<p class="text-sm font-medium text-muted-foreground">Date de création</p>
+							<p class="font-medium">{formatDate(order.createdAt)}</p>
+						</div>
+					</div>
+				</CardContent>
+			</Card>
 
-			<div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; padding: 1.5rem;">
-				<div>
-					<label style="display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Client</label>
-					<div style="font-weight: 500; font-size: 1.125rem;">{order.customerName}</div>
-				</div>
-				<div>
-					<label style="display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Adresse</label>
-					<div style="font-weight: 500;">{order.address}</div>
-				</div>
-				<div>
-					<label style="display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Statut</label>
-					<span class="badge {statusClass[order.status] || 'warning'}">
-						{statusLabel[order.status] || order.status}
-					</span>
-				</div>
-				<div>
-					<label style="display: block; font-size: 0.875rem; color: var(--text-muted); margin-bottom: 0.25rem;">Date de création</label>
-					<div style="font-weight: 500;">{formatDate(order.createdAt)}</div>
-				</div>
-			</div>
-		</section>
-
-		<section class="panel" style="margin-top: 1.5rem;">
-			<div class="panel-header">
-				<h2>Livraisons associées</h2>
-				<span class="status-pill">{order.deliveries.length} livraison{order.deliveries.length > 1 ? 's' : ''}</span>
-			</div>
-
-			{#if order.deliveries.length === 0}
-				<div style="padding: 2rem; text-align: center; color: var(--text-muted);">
-					Aucune livraison associée à cette commande.
-					<br />
-					<a href="/deliveries/new" class="secondary-link" style="margin-top: 0.5rem; display: inline-block;">
-						Créer une livraison
-					</a>
-				</div>
-			{:else}
-				<table class="table">
-					<thead>
-						<tr>
-							<th>Référence</th>
-							<th>Livreur</th>
-							<th>Statut</th>
-							<th>Créée le</th>
-							<th>Livrée le</th>
-							<th>Actions</th>
-						</tr>
-					</thead>
-					<tbody>
-						{#each order.deliveries as delivery}
-							<tr>
-								<td class="mono">
-									<a class="secondary-link" href={`/deliveries/${delivery.id}`}>
-										{delivery.id.slice(0, 8).toUpperCase()}
-									</a>
-								</td>
-								<td>{delivery.driverName || 'Non assigné'}</td>
-								<td>
-									<span class="badge {deliveryStatusClass[delivery.status] || 'warning'}">
-										{deliveryStatusLabel[delivery.status] || delivery.status}
-									</span>
-								</td>
-								<td class="mono">{formatDate(delivery.createdAt)}</td>
-								<td class="mono">
-									{delivery.completedAt ? formatDate(delivery.completedAt) : '-'}
-								</td>
-								<td>
-									<a class="secondary-link" href={`/deliveries/${delivery.id}`}>
-										Voir détails
-									</a>
-								</td>
-							</tr>
-						{/each}
-					</tbody>
-				</table>
-			{/if}
-		</section>
-	{/if}
+			<Card>
+				<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
+					<CardTitle>Livraisons associées</CardTitle>
+					<Badge variant="secondary">{order.deliveries.length} livraison{order.deliveries.length > 1 ? 's' : ''}</Badge>
+				</CardHeader>
+				<CardContent>
+					{#if order.deliveries.length === 0}
+						<div class="py-8 text-center text-muted-foreground">
+							Aucune livraison associée à cette commande.
+							<br />
+							<Button variant="link" href="/deliveries/new" class="mt-2">Créer une livraison</Button>
+						</div>
+					{:else}
+						<div class="min-w-0 overflow-x-auto">
+							<Table>
+								<TableHeader>
+									<TableRow>
+										<TableHead>Référence</TableHead>
+										<TableHead>Livreur</TableHead>
+										<TableHead>Statut</TableHead>
+										<TableHead class="tabular-nums">Créée le</TableHead>
+										<TableHead class="tabular-nums">Livrée le</TableHead>
+										<TableHead>Actions</TableHead>
+									</TableRow>
+								</TableHeader>
+								<TableBody>
+									{#each order.deliveries as delivery}
+										<TableRow>
+											<TableCell class="font-mono font-medium">
+												<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
+													{delivery.id.slice(0, 8).toUpperCase()}
+												</Button>
+											</TableCell>
+											<TableCell>{delivery.driverName ?? 'Non assigné'}</TableCell>
+											<TableCell>
+												<Badge variant={deliveryStatusVariant[delivery.status] ?? 'outline'}>
+													{deliveryStatusLabel[delivery.status] ?? delivery.status}
+												</Badge>
+											</TableCell>
+											<TableCell class="tabular-nums">{formatDate(delivery.createdAt)}</TableCell>
+											<TableCell class="tabular-nums">
+												{delivery.completedAt ? formatDate(delivery.completedAt) : '–'}
+											</TableCell>
+											<TableCell>
+												<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0">Voir détails</Button>
+											</TableCell>
+										</TableRow>
+									{/each}
+								</TableBody>
+							</Table>
+						</div>
+					{/if}
+				</CardContent>
+			</Card>
+		{/if}
 </div>
-
-<style>
-	.status-pill {
-		background: var(--border, #e5e7eb);
-		padding: 0.25rem 0.75rem;
-		border-radius: 12px;
-		font-size: 0.875rem;
-		font-weight: 500;
-	}
-</style>

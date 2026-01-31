@@ -1,10 +1,14 @@
-export type OrderStatus = 'En attente' | 'En cours' | 'Livree';
+/** Statuts possibles (API = Pending, Planned, InTransit, Delivered, Cancelled ; affichage FR = En attente, etc.). */
+export type OrderStatus = 'En attente' | 'En cours' | 'Livree' | 'Pending' | 'Planned' | 'InTransit' | 'Delivered' | 'Cancelled';
 
 export type OrderItem = {
 	id: string;
 	ref: string;
 	client: string;
 	address: string;
+	phoneNumber?: string | null;
+	internalComment?: string | null;
+	orderDate: string | null;
 	status: OrderStatus;
 	deliveries: number;
 };
@@ -29,19 +33,25 @@ export const ordersActions = {
 	setLastSyncAt(time: string) {
 		ordersState.lastSyncAt = time;
 	},
-	async loadOrders() {
+	async loadOrders(filters?: import('$lib/api/orders').OrdersListFilters) {
 		ordersState.loading = true;
 		ordersState.error = null;
 		
 		try {
 			const { getOrders } = await import('$lib/api/orders');
-			const orders = await getOrders();
+			const { getListFilters } = await import('$lib/stores/dateRange.svelte');
+			const base = getListFilters();
+			const payload = filters ? { ...base, ...filters } : base;
+			const orders = await getOrders(payload);
 
 			ordersState.items = orders.map((order) => ({
 				id: order.id,
 				ref: order.id.slice(0, 8).toUpperCase(),
 				client: order.customerName,
 				address: order.address,
+				phoneNumber: order.phoneNumber ?? null,
+				internalComment: order.internalComment ?? null,
+				orderDate: order.orderDate ?? null,
 				status: order.status as OrderStatus,
 				deliveries: 1
 			}));

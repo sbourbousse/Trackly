@@ -26,6 +26,7 @@
 	import FilePlusIcon from '@lucide/svelte/icons/file-plus';
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import PlusCircleIcon from '@lucide/svelte/icons/plus-circle';
+	import MapPinIcon from '@lucide/svelte/icons/map-pin';
 
 	let pathname = $derived(page.url.pathname);
 	let isDark = $derived(themeState.value === 'dark');
@@ -67,7 +68,7 @@
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							tooltipContent="Commandes"
-							isActive={pathname === '/orders'}
+							isActive={pathname === '/orders' || pathname.startsWith('/orders/')}
 						>
 							{#snippet child({ props })}
 								<a href="/orders" {...props}>
@@ -77,6 +78,12 @@
 							{/snippet}
 						</SidebarMenuButton>
 						<SidebarMenuSub>
+							<SidebarMenuSubItem>
+								<SidebarMenuSubButton href="/orders/map" isActive={pathname === '/orders/map'}>
+									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Carte</span>
+								</SidebarMenuSubButton>
+							</SidebarMenuSubItem>
 							<SidebarMenuSubItem>
 								<SidebarMenuSubButton href="/orders/new" isActive={pathname === '/orders/new'}>
 									<FilePlusIcon class="size-4 shrink-0" aria-hidden="true" />
@@ -101,7 +108,7 @@
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							tooltipContent="Tournées"
-							isActive={pathname === '/deliveries'}
+							isActive={pathname === '/deliveries' || pathname.startsWith('/deliveries/')}
 						>
 							{#snippet child({ props })}
 								<a href="/deliveries" {...props}>
@@ -111,6 +118,12 @@
 							{/snippet}
 						</SidebarMenuButton>
 						<SidebarMenuSub>
+							<SidebarMenuSubItem>
+								<SidebarMenuSubButton href="/deliveries/map" isActive={pathname === '/deliveries/map'}>
+									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Carte</span>
+								</SidebarMenuSubButton>
+							</SidebarMenuSubItem>
 							<SidebarMenuSubItem>
 								<SidebarMenuSubButton href="/deliveries/new" isActive={pathname === '/deliveries/new'}>
 									<PlusCircleIcon class="size-4 shrink-0" aria-hidden="true" />
@@ -129,7 +142,7 @@
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							tooltipContent="Livreurs"
-							isActive={pathname === '/drivers'}
+							isActive={pathname === '/drivers' || pathname.startsWith('/drivers/')}
 						>
 							{#snippet child({ props })}
 								<a href="/drivers" {...props}>
@@ -139,6 +152,12 @@
 							{/snippet}
 						</SidebarMenuButton>
 						<SidebarMenuSub>
+							<SidebarMenuSubItem>
+								<SidebarMenuSubButton href="/drivers/map" isActive={pathname === '/drivers/map'}>
+									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Carte (temps réel)</span>
+								</SidebarMenuSubButton>
+							</SidebarMenuSubItem>
 							<SidebarMenuSubItem>
 								<SidebarMenuSubButton href="/drivers/new" isActive={pathname === '/drivers/new'}>
 									<PlusCircleIcon class="size-4 shrink-0" aria-hidden="true" />

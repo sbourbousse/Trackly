@@ -7,7 +7,7 @@
 	import type { ApiOrder } from '$lib/api/orders';
 	import type { ApiDriver } from '$lib/api/drivers';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
-	import { Badge } from '$lib/components/ui/badge';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -205,9 +205,9 @@
 													aria-label="Tout sélectionner"
 												/>
 											</TableHead>
+											<TableHead>Statut</TableHead>
 											<TableHead>Client</TableHead>
 											<TableHead>Adresse</TableHead>
-											<TableHead>Statut</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
@@ -225,11 +225,11 @@
 														onCheckedChange={() => toggleOrder(order.id)}
 													/>
 												</TableCell>
+												<TableCell>
+													<StatusBadge type="order" status={order.status} />
+												</TableCell>
 												<TableCell>{order.customerName}</TableCell>
 												<TableCell>{order.address}</TableCell>
-												<TableCell>
-													<Badge variant="secondary">En attente</Badge>
-												</TableCell>
 											</TableRow>
 										{/each}
 									</TableBody>

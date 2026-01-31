@@ -1,6 +1,7 @@
 /**
  * Store "plage de travail" : plage de dates, plage horaire (créneaux rapides ou manuelle),
- * et type de filtre (création vs date commande). Les heures s'appliquent à toute plage de jours.
+ * et type de filtre (création vs date commande).
+ * Les heures ne s'appliquent qu'au cas "un seul jour" ou au créneau "nuit" en multi-jours.
  */
 import { CalendarDate, getLocalTimeZone, today } from '@internationalized/date';
 import type { DateRange } from 'bits-ui';
@@ -13,6 +14,8 @@ export type TimePreset = 'matin' | 'aprem' | 'nuit' | 'journee';
 const defaultStart = today(getLocalTimeZone());
 const defaultEnd = defaultStart;
 
+const STORAGE_KEY = 'trackly-date-range';
+
 /** Valeurs plage horaire pour chaque créneau (nuit : fin à 6h = lendemain). */
 export const TIME_PRESET_RANGES: Record<TimePreset, { start: string; end: string } | null> = {
 	matin: { start: '06:00', end: '14:00' },
@@ -21,18 +24,27 @@ export const TIME_PRESET_RANGES: Record<TimePreset, { start: string; end: string
 	journee: null
 };
 
-export let dateRangeState = $state({
-	/** Plage de dates (sélection calendrier). */
-	dateRange: { start: defaultStart, end: defaultEnd } as DateRange,
-	/** Plage horaire. S'applique à toute plage de jours. Nuit = 22h → 6h lendemain. Null = journée entière. */
-	timeRange: null as { start: string; end: string } | null,
-	/** Créneau rapide sélectionné (désactivé si useManualTime). */
-	timePreset: 'journee' as TimePreset,
-	/** Si true, affiche les selects heure de début/fin au lieu du select créneau. */
-	useManualTime: false,
-	/** Type de filtre pour l'API (date de création ou date commande). */
-	dateFilter: 'CreatedAt' as DateFilterType
-});
+function parseCalendarDate(s: string | null): CalendarDate | undefined {
+	if (!s) return undefined;
+	const [y, m, d] = s.split('-').map(Number);
+	if (!y || !m || !d) return undefined;
+	return new CalendarDate(y, m, d);
+}
+
+function getDefaultState() {
+	return {
+		dateRange: { start: defaultStart, end: defaultEnd } as DateRange,
+		timeRange: null as { start: string; end: string } | null,
+		timePreset: 'journee' as TimePreset,
+		useManualTime: false,
+		dateFilter: 'CreatedAt' as DateFilterType
+	};
+}
+
+export let dateRangeState = $state(getDefaultState());
+
+/** Objet réactif : ready = true une fois la période restaurée depuis localStorage (côté client). Évite d'afficher brièvement la valeur par défaut. */
+export const dateRangeUI = $state({ ready: false });
 
 export const dateRangeActions = {
 	setDateRange(value: DateRange) {
@@ -40,13 +52,36 @@ export const dateRangeActions = {
 		const start = value.start;
 		const end = value.end;
 		if (!start || !end) return;
-		// Journée entière = pas de filtre horaire (timeRange null). Sinon appliquer le créneau.
+
+		const isMultiDay =
+			start.year !== end.year || start.month !== end.month || start.day !== end.day;
+
+		// Multi-jours : on n'applique les heures que pour le créneau "nuit". Sinon journée entière.
+		if (isMultiDay) {
+			if (dateRangeState.timePreset !== 'nuit') {
+				dateRangeState.timeRange = null;
+				dateRangeState.timePreset = 'journee';
+				dateRangeState.useManualTime = false;
+			} else {
+				dateRangeState.timeRange = TIME_PRESET_RANGES.nuit;
+			}
+			return;
+		}
+
+		// Un seul jour : conserver le créneau ou journée entière.
 		if (dateRangeState.timePreset === 'journee') {
 			dateRangeState.timeRange = null;
 		} else if (!dateRangeState.timeRange && !dateRangeState.useManualTime) {
 			const presetRange = TIME_PRESET_RANGES[dateRangeState.timePreset];
 			dateRangeState.timeRange = presetRange ?? { start: '08:00', end: '20:00' };
 		}
+	},
+	/** Sélection "Toute période" : pas de filtre de dates. */
+	setAllPeriod() {
+		dateRangeState.dateRange = { start: undefined, end: undefined } as DateRange;
+		dateRangeState.timeRange = null;
+		dateRangeState.timePreset = 'journee';
+		dateRangeState.useManualTime = false;
 	},
 	setTimeRange(value: { start: string; end: string } | null) {
 		dateRangeState.timeRange = value;
@@ -100,6 +135,57 @@ export const dateRangeActions = {
 				end: new CalendarDate(ye, me, de)
 			};
 		}
+	},
+	/** Restaure la période depuis localStorage (à appeler au chargement, côté client). */
+	restoreFromStorage() {
+		if (typeof window === 'undefined') return;
+		try {
+			const raw = localStorage.getItem(STORAGE_KEY);
+			if (!raw) return;
+			const data = JSON.parse(raw) as {
+				dateRange?: { start: string | null; end: string | null };
+				timePreset?: TimePreset;
+				useManualTime?: boolean;
+				timeRange?: { start: string; end: string } | null;
+				dateFilter?: DateFilterType;
+			};
+			const start = parseCalendarDate(data.dateRange?.start ?? null);
+			const end = parseCalendarDate(data.dateRange?.end ?? null);
+			if (start && end) {
+				dateRangeState.dateRange = { start, end };
+			} else if (data.dateRange && data.dateRange.start === null && data.dateRange.end === null) {
+				dateRangeState.dateRange = { start: undefined, end: undefined } as DateRange;
+			}
+			if (data.timePreset) dateRangeState.timePreset = data.timePreset;
+			if (typeof data.useManualTime === 'boolean') dateRangeState.useManualTime = data.useManualTime;
+			if (data.timeRange) dateRangeState.timeRange = data.timeRange;
+			else if (data.timeRange === null) dateRangeState.timeRange = null;
+			if (data.dateFilter) dateRangeState.dateFilter = data.dateFilter;
+		} catch {
+			// ignore invalid stored data
+		}
+		dateRangeUI.ready = true;
+	},
+	/** Enregistre la période courante dans localStorage (appelé par le layout). */
+	persistToStorage() {
+		if (typeof window === 'undefined') return;
+		try {
+			const { dateRange, timePreset, useManualTime, timeRange, dateFilter } = dateRangeState;
+			const start = dateRange.start?.toString() ?? null;
+			const end = dateRange.end?.toString() ?? null;
+			localStorage.setItem(
+				STORAGE_KEY,
+				JSON.stringify({
+					dateRange: { start, end },
+					timePreset,
+					useManualTime,
+					timeRange,
+					dateFilter
+				})
+			);
+		} catch {
+			// ignore quota / private mode
+		}
 	}
 };
 
@@ -110,7 +196,28 @@ export function isSingleDay(): boolean {
 	return start.year === end.year && start.month === end.month && start.day === end.day;
 }
 
-/** Payload pour les requêtes GET list (orders/deliveries). dateFrom/dateTo en ISO date ou datetime si plage horaire. Nuit = fin à 6h le lendemain du dernier jour. */
+/** Nombre de jours (inclus) dans la plage sélectionnée. 0 si plage invalide. */
+export function getDateRangeDayCount(): number {
+	const { start, end } = dateRangeState.dateRange;
+	if (!start || !end) return 0;
+	const startMs = new Date(start.year, start.month - 1, start.day).getTime();
+	const endMs = new Date(end.year, end.month - 1, end.day).getTime();
+	return Math.max(0, Math.floor((endMs - startMs) / 86400000) + 1);
+}
+
+/** Début du jour (00:00:00) en heure locale, puis ISO pour l'API. */
+function toStartOfDayISO(d: CalendarDate): string {
+	const dt = new Date(d.year, d.month - 1, d.day, 0, 0, 0, 0);
+	return dt.toISOString();
+}
+
+/** Fin du jour (23:59:59.999) en heure locale, puis ISO pour l'API. Inclut tout le dernier jour. */
+function toEndOfDayISO(d: CalendarDate): string {
+	const dt = new Date(d.year, d.month - 1, d.day, 23, 59, 59, 999);
+	return dt.toISOString();
+}
+
+/** Payload pour les requêtes GET list (orders/deliveries). dateFrom/dateTo en ISO datetime : dateFrom = début du premier jour, dateTo = fin du dernier jour (23h59) pour inclure toute la période. Nuit = fin à 6h le lendemain du dernier jour. */
 export function getListFilters(): {
 	dateFrom?: string;
 	dateTo?: string;
@@ -122,8 +229,8 @@ export function getListFilters(): {
 	if (!start || !end) return { dateFilter };
 	if (!timeRange) {
 		return {
-			...(start && { dateFrom: start.toString() }),
-			...(end && { dateTo: end.toString() }),
+			...(start && { dateFrom: toStartOfDayISO(start) }),
+			...(end && { dateTo: toEndOfDayISO(end) }),
 			dateFilter
 		};
 	}

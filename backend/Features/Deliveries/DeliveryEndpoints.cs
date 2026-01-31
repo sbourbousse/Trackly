@@ -16,6 +16,7 @@ public static class DeliveryEndpoints
         group.MapGet("/{id:guid}", GetDelivery);
         group.MapPost("/", CreateDelivery);
         group.MapPost("/batch", CreateDeliveriesBatch);
+        group.MapPatch("/{id:guid}/start", StartDelivery);
         group.MapPatch("/{id:guid}/complete", CompleteDelivery);
         group.MapDelete("/{id:guid}", DeleteDelivery);
         group.MapPost("/batch/delete", DeleteDeliveriesBatch);
@@ -283,6 +284,38 @@ public static class DeliveryEndpoints
             Created = createdDeliveries.Count,
             Deliveries = createdDeliveries
         });
+    }
+
+    /// <summary>
+    /// Passe une livraison en "en cours" (InProgress). Appelé par l'app chauffeur au clic sur "Démarrer suivi".
+    /// </summary>
+    private static async Task<IResult> StartDelivery(
+        Guid id,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var delivery = await dbContext.Deliveries
+            .FirstOrDefaultAsync(d => d.Id == id && d.TenantId == tenantContext.TenantId && d.DeletedAt == null, cancellationToken);
+
+        if (delivery == null)
+        {
+            return Results.NotFound("Livraison introuvable.");
+        }
+
+        if (delivery.Status == DeliveryStatus.Pending)
+        {
+            delivery.Status = DeliveryStatus.InProgress;
+            await dbContext.SaveChangesAsync(cancellationToken);
+            await OrderStatusService.UpdateOrderStatusAsync(delivery.OrderId, dbContext, cancellationToken);
+        }
+
+        return Results.Ok(ToResponse(delivery));
     }
 
     private static async Task<IResult> CompleteDelivery(

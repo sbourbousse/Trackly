@@ -13,6 +13,7 @@ export type OrdersListFilters = {
 	dateFrom?: string;
 	dateTo?: string;
 	dateFilter?: 'CreatedAt' | 'OrderDate';
+	search?: string;
 };
 
 export type ImportOrderRequest = {

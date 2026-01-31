@@ -1,17 +1,21 @@
 <script lang="ts">
+	import { DropdownMenu } from 'bits-ui';
+	import MoreVerticalIcon from '@lucide/svelte/icons/more-vertical';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import XIcon from '@lucide/svelte/icons/x';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import { dateRangeActions, dateRangeState } from '$lib/stores/dateRange.svelte';
+	import { dateRangeState, getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { deleteDeliveriesBatch } from '$lib/api/deliveries';
+	import { getOrdersStats, type OrderStatsResponse } from '$lib/api/orders';
+	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
+	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 
-	async function onDateFilterChange(e: Event) {
-		const target = e.target as HTMLSelectElement;
-		const value = target.value as 'CreatedAt' | 'OrderDate';
-		dateRangeActions.setDateFilter(value);
+	async function onDateFilterChange() {
 		await deliveriesActions.loadDeliveries();
 	}
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
-	import { Badge } from '$lib/components/ui/badge';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -26,17 +30,75 @@
 	} from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
 
-	const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-		Prevue: 'secondary',
-		'En cours': 'secondary',
-		Livree: 'default',
-		Retard: 'destructive'
-	};
-
 	let didInit = $state(false);
 	let selectedIds = $state<Set<string>>(new Set());
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
+	let orderStats = $state<OrderStatsResponse | null>(null);
+	let orderStatsLoading = $state(false);
+
+	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
+	const chartData = $derived.by(() => {
+		if (!orderStats) return { labels: [] as string[], values: [] as number[], byHour: false, byMonth: false };
+		if (orderStats.byHour.length > 0) {
+			return {
+				labels: orderStats.byHour.map((x) => x.hour),
+				values: orderStats.byHour.map((x) => x.count),
+				byHour: true,
+				byMonth: false
+			};
+		}
+		const dayCount = getDateRangeDayCount();
+		if (dayCount > 30 && orderStats.byDay.length > 0) {
+			const byMonthMap = new Map<string, number>();
+			for (const { date, count } of orderStats.byDay) {
+				const [y, m] = date.split('-');
+				const key = `${y}-${m}`;
+				byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + count);
+			}
+			const sorted = [...byMonthMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+			return {
+				labels: sorted.map(([key]) => {
+					const [, m] = key.split('-');
+					return `${MONTH_LABELS[Number(m) - 1]} ${key.slice(0, 4)}`;
+				}),
+				values: sorted.map(([, count]) => count),
+				byHour: false,
+				byMonth: true
+			};
+		}
+		return {
+			labels: orderStats.byDay.map((x) => x.date),
+			values: orderStats.byDay.map((x) => x.count),
+			byHour: false,
+			byMonth: false
+		};
+	});
+
+	async function loadOrderStats() {
+		const filters = getListFilters();
+		if (!filters.dateFrom || !filters.dateTo) {
+			orderStats = null;
+			return;
+		}
+		orderStatsLoading = true;
+		try {
+			orderStats = await getOrdersStats(filters);
+		} catch {
+			orderStats = null;
+		} finally {
+			orderStatsLoading = false;
+		}
+	}
+
+	$effect(() => {
+		const _ = dateRangeState.dateRange;
+		const __ = dateRangeState.dateFilter;
+		const ___ = dateRangeState.timeRange;
+		deliveriesActions.loadDeliveries();
+		loadOrderStats();
+	});
 
 	$effect(() => {
 		if (didInit) return;
@@ -84,30 +146,33 @@
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
 	<PageHeader title="Tournées" subtitle="Suivi des tournées et du temps réel chauffeur." />
 
-		<Card>
-			<CardHeader class="space-y-1">
-				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-					<div>
-						<CardTitle>Tournées du jour</CardTitle>
-						<p class="text-sm text-muted-foreground">
-							{deliveriesState.routes.length} tournée{deliveriesState.routes.length > 1 ? 's' : ''}
-							{deliveriesState.lastUpdateAt ? ` · Dernière MAJ: ${deliveriesState.lastUpdateAt}` : ''}
-						</p>
-					</div>
-					<div class="flex flex-wrap items-center gap-2">
-						<label class="flex items-center gap-1.5 text-sm text-muted-foreground">
-							<span>Filtrer par :</span>
-							<select
-								class="border-input bg-background ring-offset-background focus-visible:ring-ring h-9 rounded-md border px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-								value={dateRangeState.dateFilter}
-								onchange={onDateFilterChange}
-								aria-label="Type de filtre date"
-							>
-								<option value="CreatedAt">Date de création</option>
-								<option value="OrderDate">Date commande</option>
-							</select>
-						</label>
-						<Input type="search" placeholder="Filtrer par chauffeur" class="h-9 w-48 rounded-full" />
+	<DateFilterCard
+		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
+		chartDefaultOpen={false}
+		onDateFilterChange={onDateFilterChange}
+	>
+		{#snippet chart()}
+			<OrdersChartContent
+				loading={orderStatsLoading}
+				labels={chartData.labels}
+				values={chartData.values}
+				emptyMessage="Sélectionnez une plage pour afficher le graphique."
+			/>
+		{/snippet}
+	</DateFilterCard>
+
+	<Card>
+		<CardHeader class="space-y-1">
+			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+				<div>
+					<CardTitle>Tournées du jour</CardTitle>
+					<p class="text-sm text-muted-foreground">
+						{deliveriesState.routes.length} tournée{deliveriesState.routes.length > 1 ? 's' : ''}
+						{deliveriesState.lastUpdateAt ? ` · Dernière MAJ: ${deliveriesState.lastUpdateAt}` : ''}
+					</p>
+				</div>
+				<div class="flex flex-wrap items-center gap-2">
+					<Input type="search" placeholder="Filtrer par chauffeur" class="h-9 w-48 rounded-full" />
 						<Button variant="outline" size="sm">Voir la carte</Button>
 						<Button
 							variant="outline"
@@ -136,31 +201,42 @@
 				{/if}
 
 				{#if selectedIds.size > 0}
-					<div
-						class="flex flex-wrap items-center justify-between gap-4 rounded-md border bg-primary px-4 py-3 text-primary-foreground"
-					>
-						<span class="font-medium">
+					<div class="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/50 px-3 py-2">
+						<span class="text-sm text-muted-foreground">
 							{selectedIds.size} tournée{selectedIds.size > 1 ? 's' : ''} sélectionnée{selectedIds.size > 1 ? 's' : ''}
 						</span>
-						<div class="flex gap-2">
-							<Button
-								variant="secondary"
-								size="sm"
-								onclick={clearSelection}
-								disabled={deleting}
-								class="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger
+								class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+								aria-label="Actions sur la sélection"
 							>
-								Annuler
-							</Button>
-							<Button
-								variant="destructive"
-								size="sm"
-								onclick={handleDeleteSelected}
-								disabled={deleting}
-							>
-								{deleting ? 'Suppression...' : `Supprimer ${selectedIds.size}`}
-							</Button>
-						</div>
+								<MoreVerticalIcon class="size-4" />
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Portal>
+								<DropdownMenu.Content
+									class="z-50 min-w-[10rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+									sideOffset={4}
+									align="end"
+								>
+									<DropdownMenu.Item
+										class="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+										onSelect={clearSelection}
+										disabled={deleting}
+									>
+										<XIcon class="size-4" />
+										Désélectionner
+									</DropdownMenu.Item>
+									<DropdownMenu.Item
+										class="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+										onSelect={handleDeleteSelected}
+										disabled={deleting}
+									>
+										<Trash2Icon class="size-4" />
+										{deleting ? 'Suppression...' : `Supprimer (${selectedIds.size})`}
+									</DropdownMenu.Item>
+								</DropdownMenu.Content>
+							</DropdownMenu.Portal>
+						</DropdownMenu.Root>
 					</div>
 				{/if}
 
@@ -178,11 +254,11 @@
 										aria-label="Tout sélectionner"
 									/>
 								</TableHead>
+								<TableHead>Statut</TableHead>
+								<TableHead class="tabular-nums">ETA</TableHead>
 								<TableHead>Tournée</TableHead>
 								<TableHead>Chauffeur</TableHead>
 								<TableHead>Arrêts</TableHead>
-								<TableHead>Statut</TableHead>
-								<TableHead class="tabular-nums">ETA</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -200,6 +276,10 @@
 											onCheckedChange={() => toggleSelection(delivery.id)}
 										/>
 									</TableCell>
+									<TableCell>
+										<StatusBadge type="delivery" status={delivery.status} />
+									</TableCell>
+									<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 									<TableCell onclick={(e) => e.stopPropagation()}>
 										<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
 											{delivery.route}
@@ -207,10 +287,6 @@
 									</TableCell>
 									<TableCell>{delivery.driver}</TableCell>
 									<TableCell class="tabular-nums">{delivery.stops}</TableCell>
-									<TableCell>
-										<Badge variant={statusVariant[delivery.status] ?? 'outline'}>{delivery.status}</Badge>
-									</TableCell>
-									<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 								</TableRow>
 							{/each}
 						</TableBody>

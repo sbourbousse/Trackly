@@ -1,9 +1,17 @@
 <script lang="ts">
+	import { DropdownMenu } from 'bits-ui';
+	import MoreVerticalIcon from '@lucide/svelte/icons/more-vertical';
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import XIcon from '@lucide/svelte/icons/x';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
-	import { deleteOrdersBatch } from '$lib/api/orders';
+	import { dateRangeState } from '$lib/stores/dateRange.svelte';
+	import { getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
+	import { deleteOrdersBatch, getOrdersStats, type OrderStatsResponse } from '$lib/api/orders';
+	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
+	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
-	import { Badge } from '$lib/components/ui/badge';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -19,12 +27,6 @@
 	} from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
 
-	const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-		'En attente': 'destructive',
-		'En cours': 'secondary',
-		Livree: 'default'
-	};
-
 	let didInit = $state(false);
 	let searchQuery = $state('');
 	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
@@ -33,6 +35,71 @@
 	let deleteError = $state<string | null>(null);
 	let showCascadeWarning = $state(false);
 	let forceDeleteDeliveries = $state(false);
+	let orderStats = $state<OrderStatsResponse | null>(null);
+	let orderStatsLoading = $state(false);
+
+	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
+	const chartData = $derived.by(() => {
+		if (!orderStats) return { labels: [] as string[], values: [] as number[], byHour: false, byMonth: false };
+		if (orderStats.byHour.length > 0) {
+			return {
+				labels: orderStats.byHour.map((x) => x.hour),
+				values: orderStats.byHour.map((x) => x.count),
+				byHour: true,
+				byMonth: false
+			};
+		}
+		const dayCount = getDateRangeDayCount();
+		if (dayCount > 30 && orderStats.byDay.length > 0) {
+			const byMonthMap = new Map<string, number>();
+			for (const { date, count } of orderStats.byDay) {
+				const [y, m] = date.split('-');
+				const key = `${y}-${m}`;
+				byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + count);
+			}
+			const sorted = [...byMonthMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+			return {
+				labels: sorted.map(([key]) => {
+					const [, m] = key.split('-');
+					return `${MONTH_LABELS[Number(m) - 1]} ${key.slice(0, 4)}`;
+				}),
+				values: sorted.map(([, count]) => count),
+				byHour: false,
+				byMonth: true
+			};
+		}
+		return {
+			labels: orderStats.byDay.map((x) => x.date),
+			values: orderStats.byDay.map((x) => x.count),
+			byHour: false,
+			byMonth: false
+		};
+	});
+
+	async function loadOrderStats() {
+		const filters = getListFilters();
+		if (!filters.dateFrom || !filters.dateTo) {
+			orderStats = null;
+			return;
+		}
+		orderStatsLoading = true;
+		try {
+			orderStats = await getOrdersStats(filters);
+		} catch {
+			orderStats = null;
+		} finally {
+			orderStatsLoading = false;
+		}
+	}
+
+	$effect(() => {
+		const _ = dateRangeState.dateRange;
+		const __ = dateRangeState.dateFilter;
+		const ___ = dateRangeState.timeRange;
+		ordersActions.loadOrders();
+		loadOrderStats();
+	});
 
 	function applySearch() {
 		ordersActions.loadOrders({ search: searchQuery.trim() || undefined });
@@ -100,7 +167,22 @@
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
 	<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." />
 
-		<Card>
+	<DateFilterCard
+		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
+		chartDefaultOpen={false}
+		onDateFilterChange={async () => { await ordersActions.loadOrders(); }}
+	>
+		{#snippet chart()}
+			<OrdersChartContent
+				loading={orderStatsLoading}
+				labels={chartData.labels}
+				values={chartData.values}
+				emptyMessage="Sélectionnez une plage pour afficher le graphique."
+			/>
+		{/snippet}
+	</DateFilterCard>
+
+	<Card>
 			<CardHeader class="space-y-1">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<div>
@@ -151,26 +233,42 @@
 				{/if}
 
 				{#if selectedIds.size > 0}
-					<div
-						class="flex flex-wrap items-center justify-between gap-4 rounded-md border bg-primary px-4 py-3 text-primary-foreground"
-					>
-						<span class="font-medium">
+					<div class="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/50 px-3 py-2">
+						<span class="text-sm text-muted-foreground">
 							{selectedIds.size} commande{selectedIds.size > 1 ? 's' : ''} sélectionnée{selectedIds.size > 1 ? 's' : ''}
 						</span>
-						<div class="flex gap-2">
-							<Button
-								variant="secondary"
-								size="sm"
-								onclick={clearSelection}
-								disabled={deleting}
-								class="border-primary-foreground/20 bg-primary-foreground/10 text-primary-foreground hover:bg-primary-foreground/20"
+						<DropdownMenu.Root>
+							<DropdownMenu.Trigger
+								class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+								aria-label="Actions sur la sélection"
 							>
-								Annuler
-							</Button>
-							<Button variant="destructive" size="sm" onclick={handleDeleteSelected} disabled={deleting}>
-								{deleting ? 'Suppression...' : `Supprimer ${selectedIds.size}`}
-							</Button>
-						</div>
+								<MoreVerticalIcon class="size-4" />
+							</DropdownMenu.Trigger>
+							<DropdownMenu.Portal>
+								<DropdownMenu.Content
+									class="z-50 min-w-[10rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+									sideOffset={4}
+									align="end"
+								>
+									<DropdownMenu.Item
+										class="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+										onSelect={clearSelection}
+										disabled={deleting}
+									>
+										<XIcon class="size-4" />
+										Désélectionner
+									</DropdownMenu.Item>
+									<DropdownMenu.Item
+										class="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm text-destructive outline-none hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive data-[disabled]:pointer-events-none data-[disabled]:opacity-50"
+										onSelect={handleDeleteSelected}
+										disabled={deleting}
+									>
+										<Trash2Icon class="size-4" />
+										{deleting ? 'Suppression...' : `Supprimer (${selectedIds.size})`}
+									</DropdownMenu.Item>
+								</DropdownMenu.Content>
+							</DropdownMenu.Portal>
+						</DropdownMenu.Root>
 					</div>
 				{/if}
 
@@ -188,12 +286,12 @@
 										aria-label="Tout sélectionner"
 									/>
 								</TableHead>
-								<TableHead>Ref</TableHead>
+								<TableHead>Statut</TableHead>
 								<TableHead>Date</TableHead>
+								<TableHead>Ref</TableHead>
 								<TableHead>Client</TableHead>
 								<TableHead>Tél.</TableHead>
 								<TableHead>Adresse</TableHead>
-								<TableHead>Statut</TableHead>
 								<TableHead class="tabular-nums">Livraisons</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -212,10 +310,8 @@
 											onCheckedChange={() => toggleSelection(order.id)}
 										/>
 									</TableCell>
-									<TableCell class="tabular-nums font-medium" onclick={(e) => e.stopPropagation()}>
-										<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
-											{order.ref}
-										</Button>
+									<TableCell>
+										<StatusBadge type="order" status={order.status} />
 									</TableCell>
 									<TableCell class="tabular-nums text-muted-foreground whitespace-nowrap">
 										{order.orderDate
@@ -228,12 +324,14 @@
 												})
 											: '—'}
 									</TableCell>
+									<TableCell class="tabular-nums font-medium" onclick={(e) => e.stopPropagation()}>
+										<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
+											{order.ref}
+										</Button>
+									</TableCell>
 									<TableCell>{order.client}</TableCell>
 									<TableCell class="text-muted-foreground whitespace-nowrap">{order.phoneNumber ?? '—'}</TableCell>
 									<TableCell>{order.address}</TableCell>
-									<TableCell>
-										<Badge variant={statusVariant[order.status] ?? 'outline'}>{order.status}</Badge>
-									</TableCell>
 									<TableCell class="tabular-nums">{order.deliveries}</TableCell>
 								</TableRow>
 							{/each}

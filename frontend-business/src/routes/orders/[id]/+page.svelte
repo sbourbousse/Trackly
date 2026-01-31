@@ -5,6 +5,7 @@
 	import { getOrder } from '$lib/api/orders';
 	import type { ApiOrderDetail } from '$lib/api/orders';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -20,54 +21,6 @@
 	let order = $state<ApiOrderDetail | null>(null);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
-
-	const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-		Pending: 'secondary',
-		Planned: 'outline',
-		InTransit: 'secondary',
-		Delivered: 'default',
-		Cancelled: 'destructive',
-		'0': 'secondary',
-		'1': 'outline',
-		'2': 'secondary',
-		'3': 'default',
-		'4': 'destructive'
-	};
-
-	const deliveryStatusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-		Pending: 'secondary',
-		InProgress: 'secondary',
-		Completed: 'default',
-		Failed: 'destructive',
-		'0': 'secondary',
-		'1': 'secondary',
-		'2': 'default',
-		'3': 'destructive'
-	};
-
-	const statusLabel: Record<string, string> = {
-		Pending: 'En attente',
-		Planned: 'Planifiée',
-		InTransit: 'En transit',
-		Delivered: 'Livrée',
-		Cancelled: 'Annulée',
-		'0': 'En attente',
-		'1': 'Planifiée',
-		'2': 'En transit',
-		'3': 'Livrée',
-		'4': 'Annulée'
-	};
-
-	const deliveryStatusLabel: Record<string, string> = {
-		Pending: 'Prévue',
-		InProgress: 'En cours',
-		Completed: 'Livrée',
-		Failed: 'Échouée',
-		'0': 'Prévue',
-		'1': 'En cours',
-		'2': 'Livrée',
-		'3': 'Échouée'
-	};
 
 	$effect(() => {
 		const orderId = page.params.id;
@@ -153,9 +106,7 @@
 						{/if}
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Statut</p>
-							<Badge variant={statusVariant[order.status] ?? 'outline'}>
-								{statusLabel[order.status] ?? order.status}
-							</Badge>
+							<StatusBadge type="order" status={order.status} />
 						</div>
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Date et heure de la commande</p>
@@ -196,32 +147,30 @@
 							<Table>
 								<TableHeader>
 									<TableRow>
-										<TableHead>Référence</TableHead>
-										<TableHead>Livreur</TableHead>
 										<TableHead>Statut</TableHead>
 										<TableHead class="tabular-nums">Créée le</TableHead>
 										<TableHead class="tabular-nums">Livrée le</TableHead>
+										<TableHead>Référence</TableHead>
+										<TableHead>Livreur</TableHead>
 										<TableHead>Actions</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
 									{#each order.deliveries as delivery}
 										<TableRow>
+											<TableCell>
+												<StatusBadge type="delivery" status={delivery.status} />
+											</TableCell>
+											<TableCell class="tabular-nums">{formatDate(delivery.createdAt)}</TableCell>
+											<TableCell class="tabular-nums">
+												{delivery.completedAt ? formatDate(delivery.completedAt) : '–'}
+											</TableCell>
 											<TableCell class="font-mono font-medium">
 												<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
 													{delivery.id.slice(0, 8).toUpperCase()}
 												</Button>
 											</TableCell>
 											<TableCell>{delivery.driverName ?? 'Non assigné'}</TableCell>
-											<TableCell>
-												<Badge variant={deliveryStatusVariant[delivery.status] ?? 'outline'}>
-													{deliveryStatusLabel[delivery.status] ?? delivery.status}
-												</Badge>
-											</TableCell>
-											<TableCell class="tabular-nums">{formatDate(delivery.createdAt)}</TableCell>
-											<TableCell class="tabular-nums">
-												{delivery.completedAt ? formatDate(delivery.completedAt) : '–'}
-											</TableCell>
 											<TableCell>
 												<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0">Voir détails</Button>
 											</TableCell>

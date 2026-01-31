@@ -7,7 +7,7 @@ const baseUrl = env.PUBLIC_API_BASE_URL || 'http://localhost:5257';
 let cachedTenantId: string | null = null;
 let cachedAuthToken: string | null = null;
 
-const getTenantId = async (): Promise<string | null> => {
+export const getTenantId = async (): Promise<string | null> => {
 	if (!browser) return null;
 	
 	// Utilise le cache si disponible

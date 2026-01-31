@@ -12,6 +12,12 @@
 				destructive:
 					"bg-destructive [a&]:hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/70 border-transparent text-white",
 				outline: "text-foreground [a&]:hover:bg-accent [a&]:hover:text-accent-foreground",
+				success:
+					"border-emerald-500/30 bg-emerald-500/15 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400 [a&]:hover:bg-emerald-500/25",
+				warning:
+					"border-amber-500/30 bg-amber-500/15 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400 [a&]:hover:bg-amber-500/25",
+				info:
+					"border-sky-500/30 bg-sky-500/15 text-sky-700 dark:bg-sky-500/20 dark:text-sky-400 [a&]:hover:bg-sky-500/25",
 			},
 		},
 		defaultVariants: {

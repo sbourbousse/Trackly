@@ -1,7 +1,8 @@
 import { env } from '$env/dynamic/public';
 import { HubConnectionBuilder, LogLevel } from '@microsoft/signalr';
+import { getTenantId } from '$lib/api/client';
 
-type TrackingPoint = {
+export type TrackingPoint = {
 	lat: number;
 	lng: number;
 	updatedAt: string;
@@ -11,14 +12,17 @@ export let trackingState = $state({
 	isConnected: false,
 	isConnecting: false,
 	lastError: null as string | null,
-	point: null as TrackingPoint | null
+	point: null as TrackingPoint | null,
+	/** Positions par livraison (pour carte multi-livreurs). */
+	pointsByDeliveryId: {} as Record<string, TrackingPoint>
 });
 
 let connection: ReturnType<typeof HubConnectionBuilder.prototype.build> | null = null;
 
-const getHubUrl = () => {
-	return env.PUBLIC_SIGNALR_URL || 'http://localhost:5257/hubs/tracking';
-};
+/** URL du hub SignalR (dérivée de l'API si PUBLIC_SIGNALR_URL non défini). */
+function getHubBaseUrl(): string {
+	return env.PUBLIC_SIGNALR_URL || `${env.PUBLIC_API_BASE_URL || 'http://localhost:5257'}/hubs/tracking`;
+}
 
 export const trackingActions = {
 	async connect() {
@@ -37,20 +41,28 @@ export const trackingActions = {
 				return;
 			}
 
+			const baseUrl = getHubBaseUrl();
+			const tenantId = await getTenantId();
+			const hubUrl = tenantId ? `${baseUrl}?tenantId=${encodeURIComponent(tenantId)}` : baseUrl;
+
 			// Créer une nouvelle connexion si nécessaire
 			if (!connection) {
 				connection = new HubConnectionBuilder()
-					.withUrl(getHubUrl())
+					.withUrl(hubUrl)
 					.withAutomaticReconnect()
 					.configureLogging(LogLevel.Warning)
 					.build();
 
 				connection.on('LocationUpdated', (deliveryId: string, lat: number, lng: number, timestamp: string) => {
-					trackingState.point = {
+					const pt: TrackingPoint = {
 						lat,
 						lng,
 						updatedAt: timestamp || new Date().toISOString()
 					};
+					trackingState.point = pt;
+					if (deliveryId) {
+						trackingState.pointsByDeliveryId = { ...trackingState.pointsByDeliveryId, [deliveryId]: pt };
+					}
 				});
 
 				connection.onclose(() => {
@@ -83,6 +95,7 @@ export const trackingActions = {
 		} finally {
 			connection = null;
 			trackingState.isConnected = false;
+			trackingState.pointsByDeliveryId = {};
 		}
 	},
 	async joinDeliveryGroup(deliveryId: string) {
@@ -105,6 +118,17 @@ export const trackingActions = {
 			await connection.invoke('LeaveDeliveryGroup', deliveryId);
 		} catch (error) {
 			console.error('[Tracking] Erreur lors de la sortie du groupe:', error);
+		}
+	},
+	/** Rejoindre plusieurs groupes de livraison (pour carte livreurs). */
+	async joinDeliveryGroups(deliveryIds: string[]) {
+		if (!connection || connection.state !== 'Connected') return;
+		for (const id of deliveryIds) {
+			try {
+				await connection.invoke('JoinDeliveryGroup', id);
+			} catch (e) {
+				console.warn('[Tracking] JoinDeliveryGroup', id, e);
+			}
 		}
 	}
 };

@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -12,107 +13,18 @@
 		TableHeader,
 		TableRow
 	} from '$lib/components/ui/table';
-	import { Root as PopoverRoot, Content as PopoverContent, Trigger as PopoverTrigger } from '$lib/components/ui/popover';
-	import { RangeCalendar } from '$lib/components/ui/range-calendar';
-	import {
-		dateRangeActions,
-		dateRangeState,
-		isSingleDay,
-		type DateFilterType,
-		type TimePreset,
-		TIME_PRESET_RANGES
-	} from '$lib/stores/dateRange.svelte';
-	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { dateRangeState } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
 	import { getOrdersStats, type OrderStatsResponse } from '$lib/api/orders';
-	import { getListFilters } from '$lib/stores/dateRange.svelte';
+	import { getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
+	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
+	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 	import PlusIcon from '@lucide/svelte/icons/plus';
-	import CalendarIcon from '@lucide/svelte/icons/calendar';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
-	import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date';
-	import type { DateRange } from 'bits-ui';
 
-	const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => ({
-		value: `${String(i).padStart(2, '0')}:00`,
-		label: `${String(i).padStart(2, '0')}h`
-	}));
-
-	const TIME_PRESET_OPTIONS: { value: TimePreset; label: string }[] = [
-		{ value: 'matin', label: 'Matin (6h – 14h)' },
-		{ value: 'aprem', label: 'Après-midi (14h – 22h)' },
-		{ value: 'nuit', label: 'Nuit (22h – 6h lendemain)' },
-		{ value: 'journee', label: 'Journée entière' }
-	];
-
-	const PRESETS: { label: string; getRange: () => DateRange }[] = [
-		{
-			label: "Aujourd'hui",
-			getRange: () => {
-				const t = today(getLocalTimeZone());
-				return { start: t, end: t };
-			}
-		},
-		{
-			label: 'Demain',
-			getRange: () => {
-				const t = today(getLocalTimeZone()).add({ days: 1 });
-				return { start: t, end: t };
-			}
-		},
-		{
-			label: '7 derniers jours',
-			getRange: () => {
-				const end = today(getLocalTimeZone());
-				const start = end.subtract({ days: 6 });
-				return { start, end };
-			}
-		},
-		{
-			label: 'Ce mois',
-			getRange: () => {
-				const t = today(getLocalTimeZone());
-				const start = new CalendarDate(t.year, t.month, 1);
-				const end = t;
-				return { start, end };
-			}
-		}
-	];
-
-	let calendarOpen = $state(false);
 	let orderStats = $state<OrderStatsResponse | null>(null);
 	let orderStatsLoading = $state(false);
 	let activeTab = $state('commandes-attente');
-
-	async function onDateFilterChange(e: Event) {
-		const target = e.target as HTMLSelectElement;
-		const value = target.value as DateFilterType;
-		dateRangeActions.setDateFilter(value);
-		await Promise.all([deliveriesActions.loadDeliveries(), ordersActions.loadOrders(), loadOrderStats()]);
-	}
-
-	function formatRangeLabel(): string {
-		const { start, end } = dateRangeState.dateRange;
-		if (!start || !end) return 'Plage';
-		const same =
-			start.year === end.year && start.month === end.month && start.day === end.day;
-		const fmt = (d: DateValue) =>
-			d.toDate(getLocalTimeZone()).toLocaleDateString('fr-FR', {
-				day: 'numeric',
-				month: 'short',
-				year: 'numeric'
-			});
-		const t = dateRangeState.timeRange;
-		const timeLabel = t
-			? dateRangeState.timePreset === 'nuit'
-				? `${t.start} – ${t.end} (lendemain)`
-				: `${t.start} – ${t.end}`
-			: null;
-		if (same && timeLabel) return `${fmt(start)} · ${timeLabel}`;
-		if (same) return fmt(start);
-		if (timeLabel) return `${fmt(start)} – ${fmt(end)} · ${timeLabel}`;
-		return `${fmt(start)} – ${fmt(end)}`;
-	}
 
 	async function loadOrderStats() {
 		const filters = getListFilters();
@@ -130,16 +42,7 @@
 		}
 	}
 
-	function applyPreset(preset: (typeof PRESETS)[0]) {
-		dateRangeActions.setDateRange(preset.getRange());
-		calendarOpen = false;
-	}
-
-	async function onDateRangeChange(value: DateRange | undefined) {
-		if (value) dateRangeActions.setDateRange(value);
-	}
-
-	async function onTimeChange() {
+	async function onDateFilterChange() {
 		await Promise.all([deliveriesActions.loadDeliveries(), ordersActions.loadOrders(), loadOrderStats()]);
 	}
 
@@ -152,40 +55,44 @@
 		loadOrderStats();
 	});
 
+	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
 	const chartData = $derived.by(() => {
-		if (!orderStats) return { labels: [] as string[], values: [] as number[], byHour: false };
+		if (!orderStats) return { labels: [] as string[], values: [] as number[], byHour: false, byMonth: false };
 		if (orderStats.byHour.length > 0) {
 			return {
 				labels: orderStats.byHour.map((x) => x.hour),
 				values: orderStats.byHour.map((x) => x.count),
-				byHour: true
+				byHour: true,
+				byMonth: false
+			};
+		}
+		const dayCount = getDateRangeDayCount();
+		if (dayCount > 30 && orderStats.byDay.length > 0) {
+			const byMonthMap = new Map<string, number>();
+			for (const { date, count } of orderStats.byDay) {
+				const [y, m] = date.split('-');
+				const key = `${y}-${m}`;
+				byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + count);
+			}
+			const sorted = [...byMonthMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+			return {
+				labels: sorted.map(([key]) => {
+					const [, m] = key.split('-');
+					return `${MONTH_LABELS[Number(m) - 1]} ${key.slice(0, 4)}`;
+				}),
+				values: sorted.map(([, count]) => count),
+				byHour: false,
+				byMonth: true
 			};
 		}
 		return {
 			labels: orderStats.byDay.map((x) => x.date),
 			values: orderStats.byDay.map((x) => x.count),
-			byHour: false
+			byHour: false,
+			byMonth: false
 		};
 	});
-
-	const maxCount = $derived(
-		chartData.values.length ? Math.max(...chartData.values, 1) : 1
-	);
-
-	function statusVariant(status: string) {
-		if (status === 'Livree' || status === 'Completed') return 'default';
-		if (status === 'En cours' || status === 'InProgress' || status === 'Prevue' || status === 'Pending') return 'secondary';
-		return 'outline';
-	}
-
-	function displayDeliveryStatus(status: string) {
-		if (status === 'Pending') return 'Prévue';
-		if (status === 'Prevue') return 'Prévue';
-		if (status === 'InProgress') return 'En cours';
-		if (status === 'Completed') return 'Livrée';
-		if (status === 'Failed') return 'Échec';
-		return status;
-	}
 
 	const isPrevue = (s: string) => s === 'Pending' || s === 'Prevue';
 	const isEnCours = (s: string) => s === 'InProgress' || s === 'En cours';
@@ -207,158 +114,21 @@
 	<PageHeader title="Trackly Business" subtitle="Vue rapide des tournées et livraisons." />
 	<Badge variant="secondary" class="w-fit">Plan Starter · 7 livraisons restantes</Badge>
 
-	<!-- Plage de travail : calendrier + filtre + graphique -->
-	<Card>
-		<CardHeader class="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
-			<div class="flex flex-wrap items-center gap-2">
-				<PopoverRoot bind:open={calendarOpen}>
-					<PopoverTrigger>
-						{#snippet child({ props }: { props: Record<string, unknown> })}
-							<Button variant="outline" class="gap-2 font-normal" {...props}>
-								<CalendarIcon class="size-4" />
-								{formatRangeLabel()}
-								<ChevronDownIcon class="size-4 opacity-50" />
-							</Button>
-						{/snippet}
-					</PopoverTrigger>
-					<PopoverContent class="w-auto overflow-hidden p-0" align="start">
-						<div class="flex">
-							<div class="flex flex-col border-r p-2">
-								<p class="text-muted-foreground mb-2 px-2 text-xs font-medium">Raccourcis</p>
-								{#each PRESETS as preset}
-									<Button
-										variant="ghost"
-										size="sm"
-										class="justify-start font-normal"
-										onclick={() => applyPreset(preset)}
-									>
-										{preset.label}
-									</Button>
-								{/each}
-							</div>
-							<div class="p-2">
-								<RangeCalendar
-									value={dateRangeState.dateRange}
-									onValueChange={onDateRangeChange}
-								/>
-							</div>
-							{#if isSingleDay()}
-								<div class="border-input flex min-w-[200px] flex-col gap-3 border-l p-3">
-									<p class="text-muted-foreground text-xs font-medium">Plage horaire</p>
-									<label class="flex items-center gap-2 text-sm">
-										<Checkbox
-											checked={dateRangeState.useManualTime}
-											onCheckedChange={(v) => {
-												dateRangeActions.setUseManualTime(v === true);
-												onTimeChange();
-											}}
-										/>
-										Heures personnalisées
-									</label>
-									{#if dateRangeState.useManualTime}
-										<div class="flex items-center gap-1">
-											<select
-												class="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm"
-												value={dateRangeState.timeRange?.start ?? '08:00'}
-												onchange={(e) => {
-													const v = (e.target as HTMLSelectElement).value;
-													dateRangeActions.setTimeRange({
-														...dateRangeState.timeRange!,
-														start: v
-													});
-													onTimeChange();
-												}}
-											>
-												{#each HOUR_OPTIONS as opt}
-													<option value={opt.value}>{opt.label}</option>
-												{/each}
-											</select>
-											<span class="text-muted-foreground text-sm">–</span>
-											<select
-												class="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm"
-												value={dateRangeState.timeRange?.end ?? '20:00'}
-												onchange={(e) => {
-													const v = (e.target as HTMLSelectElement).value;
-													dateRangeActions.setTimeRange({
-														...dateRangeState.timeRange!,
-														end: v
-													});
-													onTimeChange();
-												}}
-											>
-												{#each HOUR_OPTIONS as opt}
-													<option value={opt.value}>{opt.label}</option>
-												{/each}
-											</select>
-										</div>
-									{:else}
-										<select
-											class="border-input bg-background h-8 w-full rounded-md border px-2 text-sm"
-											value={dateRangeState.timePreset}
-											onchange={(e) => {
-												const v = (e.target as HTMLSelectElement).value as TimePreset;
-												dateRangeActions.setTimePreset(v);
-												onTimeChange();
-											}}
-											aria-label="Créneau horaire"
-										>
-											{#each TIME_PRESET_OPTIONS as opt}
-												<option value={opt.value}>{opt.label}</option>
-											{/each}
-										</select>
-									{/if}
-								</div>
-							{/if}
-						</div>
-					</PopoverContent>
-				</PopoverRoot>
-				<label class="text-muted-foreground flex items-center gap-1.5 text-sm">
-					<span>Filtrer par :</span>
-					<select
-						class="border-input bg-background ring-offset-background focus-visible:ring-ring h-8 rounded-md border px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
-						value={dateRangeState.dateFilter}
-						onchange={onDateFilterChange}
-						aria-label="Type de filtre date"
-					>
-						<option value="CreatedAt">Date de création</option>
-						<option value="OrderDate">Date commande</option>
-					</select>
-				</label>
-			</div>
-		</CardHeader>
-		<CardContent class="min-w-0">
-			<div class="rounded-md border bg-muted/30 p-4">
-				<p class="text-muted-foreground mb-3 text-sm font-medium">
-					{chartData.byHour ? 'Commandes par heure' : 'Commandes par jour'}
-				</p>
-				{#if orderStatsLoading}
-					<div class="text-muted-foreground py-8 text-center text-sm">Chargement…</div>
-				{:else if chartData.labels.length === 0}
-					<div class="text-muted-foreground py-8 text-center text-sm">
-						Sélectionnez une plage pour afficher le graphique.
-					</div>
-				{:else}
-					<div
-						class="flex items-end gap-0.5"
-						role="img"
-						aria-label="Graphique commandes"
-					>
-						{#each chartData.labels as label, i}
-							<div
-								class="bg-primary hover:bg-primary/90 min-w-[8px] flex-1 rounded-t transition-colors"
-								style="height: {Math.max(4, (chartData.values[i] / maxCount) * 120)}px"
-								title="{label}: {chartData.values[i]}"
-							></div>
-						{/each}
-					</div>
-					<div class="text-muted-foreground mt-2 flex justify-between text-xs">
-						<span>{chartData.labels[0] ?? ''}</span>
-						<span>{chartData.labels[chartData.labels.length - 1] ?? ''}</span>
-					</div>
-				{/if}
-			</div>
-		</CardContent>
-	</Card>
+	<!-- Plage de travail + graphique Commandes par jour/heure dans le même card -->
+	<DateFilterCard
+		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
+		chartDefaultOpen={false}
+		onDateFilterChange={onDateFilterChange}
+	>
+		{#snippet chart()}
+			<OrdersChartContent
+				loading={orderStatsLoading}
+				labels={chartData.labels}
+				values={chartData.values}
+				emptyMessage="Sélectionnez une plage pour afficher le graphique."
+			/>
+		{/snippet}
+	</DateFilterCard>
 
 	<!-- Zone à onglets -->
 	<section class="flex min-w-0 flex-col gap-4">
@@ -399,23 +169,19 @@
 								<Table>
 									<TableHeader>
 										<TableRow>
+											<TableHead>Statut</TableHead>
+											<TableHead>Date commande</TableHead>
 											<TableHead>Réf.</TableHead>
 											<TableHead>Client</TableHead>
 											<TableHead>Adresse</TableHead>
-											<TableHead>Date commande</TableHead>
-											<TableHead>Statut</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
 										{#each commandesEnAttente.slice(0, 10) as order}
 											<TableRow>
 												<TableCell>
-													<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
-														{order.ref}
-													</Button>
+													<StatusBadge type="order" status={order.status} />
 												</TableCell>
-												<TableCell>{order.client}</TableCell>
-												<TableCell class="max-w-[200px] truncate">{order.address}</TableCell>
 												<TableCell class="tabular-nums text-muted-foreground">
 													{order.orderDate
 														? new Date(order.orderDate).toLocaleDateString('fr-FR', {
@@ -426,8 +192,12 @@
 														: '–'}
 												</TableCell>
 												<TableCell>
-													<Badge variant="secondary">{order.status}</Badge>
+													<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
+														{order.ref}
+													</Button>
 												</TableCell>
+												<TableCell>{order.client}</TableCell>
+												<TableCell class="max-w-[200px] truncate">{order.address}</TableCell>
 											</TableRow>
 										{/each}
 									</TableBody>
@@ -477,16 +247,20 @@
 										<Table>
 											<TableHeader>
 												<TableRow>
+													<TableHead>Statut</TableHead>
+													<TableHead class="tabular-nums">ETA</TableHead>
 													<TableHead>Tournée</TableHead>
 													<TableHead>Chauffeur</TableHead>
 													<TableHead>Arrêts</TableHead>
-													<TableHead>Statut</TableHead>
-													<TableHead class="tabular-nums">ETA</TableHead>
 												</TableRow>
 											</TableHeader>
 											<TableBody>
 												{#each routesPrevues.slice(0, 5) as delivery}
 													<TableRow>
+														<TableCell>
+															<StatusBadge type="delivery" status={delivery.status} />
+														</TableCell>
+														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 														<TableCell>
 															<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
 																{delivery.route}
@@ -494,10 +268,6 @@
 														</TableCell>
 														<TableCell>{delivery.driver}</TableCell>
 														<TableCell class="tabular-nums">{delivery.stops}</TableCell>
-														<TableCell>
-															<Badge variant={statusVariant(delivery.status)}>{displayDeliveryStatus(delivery.status)}</Badge>
-														</TableCell>
-														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 													</TableRow>
 												{/each}
 											</TableBody>
@@ -530,16 +300,20 @@
 										<Table>
 											<TableHeader>
 												<TableRow>
+													<TableHead>Statut</TableHead>
+													<TableHead class="tabular-nums">ETA</TableHead>
 													<TableHead>Tournée</TableHead>
 													<TableHead>Chauffeur</TableHead>
 													<TableHead>Arrêts</TableHead>
-													<TableHead>Statut</TableHead>
-													<TableHead class="tabular-nums">ETA</TableHead>
 												</TableRow>
 											</TableHeader>
 											<TableBody>
 												{#each routesEnCours.slice(0, 5) as delivery}
 													<TableRow>
+														<TableCell>
+															<StatusBadge type="delivery" status={delivery.status} />
+														</TableCell>
+														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 														<TableCell>
 															<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
 																{delivery.route}
@@ -547,10 +321,6 @@
 														</TableCell>
 														<TableCell>{delivery.driver}</TableCell>
 														<TableCell class="tabular-nums">{delivery.stops}</TableCell>
-														<TableCell>
-															<Badge variant={statusVariant(delivery.status)}>{displayDeliveryStatus(delivery.status)}</Badge>
-														</TableCell>
-														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 													</TableRow>
 												{/each}
 											</TableBody>

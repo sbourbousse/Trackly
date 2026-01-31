@@ -8,6 +8,7 @@
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
 	import type { ApiDeliveryDetail } from '$lib/api/deliveries';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -21,28 +22,6 @@
 	let geocodingLoading = $state(false);
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
-
-	const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-		Pending: 'secondary',
-		InProgress: 'secondary',
-		Completed: 'default',
-		Failed: 'destructive',
-		'0': 'secondary',
-		'1': 'secondary',
-		'2': 'default',
-		'3': 'destructive'
-	};
-
-	const statusLabel: Record<string, string> = {
-		Pending: 'Prévue',
-		InProgress: 'En cours',
-		Completed: 'Livrée',
-		Failed: 'Échouée',
-		'0': 'Prévue',
-		'1': 'En cours',
-		'2': 'Livrée',
-		'3': 'Échouée'
-	};
 
 	$effect(() => {
 		if (!delivery || didInit) return;
@@ -174,9 +153,7 @@
 						</div>
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Statut</p>
-							<Badge variant={statusVariant[delivery.status] ?? 'outline'}>
-								{statusLabel[delivery.status] ?? delivery.status}
-							</Badge>
+							<StatusBadge type="delivery" status={delivery.status} />
 						</div>
 					</div>
 

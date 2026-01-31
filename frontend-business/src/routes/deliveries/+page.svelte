@@ -15,7 +15,7 @@
 		await deliveriesActions.loadDeliveries();
 	}
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
-	import { Badge } from '$lib/components/ui/badge';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -29,13 +29,6 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
-
-	const statusVariant: Record<string, 'default' | 'secondary' | 'destructive' | 'outline'> = {
-		Prevue: 'secondary',
-		'En cours': 'secondary',
-		Livree: 'default',
-		Retard: 'destructive'
-	};
 
 	let didInit = $state(false);
 	let selectedIds = $state<Set<string>>(new Set());
@@ -291,7 +284,7 @@
 									<TableCell>{delivery.driver}</TableCell>
 									<TableCell class="tabular-nums">{delivery.stops}</TableCell>
 									<TableCell>
-										<Badge variant={statusVariant[delivery.status] ?? 'outline'}>{delivery.status}</Badge>
+										<StatusBadge type="delivery" status={delivery.status} />
 									</TableCell>
 									<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 								</TableRow>

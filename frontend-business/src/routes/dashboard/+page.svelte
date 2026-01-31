@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -92,21 +93,6 @@
 			byMonth: false
 		};
 	});
-
-	function statusVariant(status: string) {
-		if (status === 'Livree' || status === 'Completed') return 'default';
-		if (status === 'En cours' || status === 'InProgress' || status === 'Prevue' || status === 'Pending') return 'secondary';
-		return 'outline';
-	}
-
-	function displayDeliveryStatus(status: string) {
-		if (status === 'Pending') return 'Prévue';
-		if (status === 'Prevue') return 'Prévue';
-		if (status === 'InProgress') return 'En cours';
-		if (status === 'Completed') return 'Livrée';
-		if (status === 'Failed') return 'Échec';
-		return status;
-	}
 
 	const isPrevue = (s: string) => s === 'Pending' || s === 'Prevue';
 	const isEnCours = (s: string) => s === 'InProgress' || s === 'En cours';
@@ -210,7 +196,7 @@
 														: '–'}
 												</TableCell>
 												<TableCell>
-													<Badge variant="secondary">{order.status}</Badge>
+													<StatusBadge type="order" status={order.status} />
 												</TableCell>
 											</TableRow>
 										{/each}
@@ -279,7 +265,7 @@
 														<TableCell>{delivery.driver}</TableCell>
 														<TableCell class="tabular-nums">{delivery.stops}</TableCell>
 														<TableCell>
-															<Badge variant={statusVariant(delivery.status)}>{displayDeliveryStatus(delivery.status)}</Badge>
+															<StatusBadge type="delivery" status={delivery.status} />
 														</TableCell>
 														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 													</TableRow>
@@ -332,7 +318,7 @@
 														<TableCell>{delivery.driver}</TableCell>
 														<TableCell class="tabular-nums">{delivery.stops}</TableCell>
 														<TableCell>
-															<Badge variant={statusVariant(delivery.status)}>{displayDeliveryStatus(delivery.status)}</Badge>
+															<StatusBadge type="delivery" status={delivery.status} />
 														</TableCell>
 														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 													</TableRow>

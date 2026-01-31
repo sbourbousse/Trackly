@@ -205,7 +205,19 @@ export function getDateRangeDayCount(): number {
 	return Math.max(0, Math.floor((endMs - startMs) / 86400000) + 1);
 }
 
-/** Payload pour les requêtes GET list (orders/deliveries). dateFrom/dateTo en ISO date ou datetime si plage horaire. Nuit = fin à 6h le lendemain du dernier jour. */
+/** Début du jour (00:00:00) en heure locale, puis ISO pour l'API. */
+function toStartOfDayISO(d: CalendarDate): string {
+	const dt = new Date(d.year, d.month - 1, d.day, 0, 0, 0, 0);
+	return dt.toISOString();
+}
+
+/** Fin du jour (23:59:59.999) en heure locale, puis ISO pour l'API. Inclut tout le dernier jour. */
+function toEndOfDayISO(d: CalendarDate): string {
+	const dt = new Date(d.year, d.month - 1, d.day, 23, 59, 59, 999);
+	return dt.toISOString();
+}
+
+/** Payload pour les requêtes GET list (orders/deliveries). dateFrom/dateTo en ISO datetime : dateFrom = début du premier jour, dateTo = fin du dernier jour (23h59) pour inclure toute la période. Nuit = fin à 6h le lendemain du dernier jour. */
 export function getListFilters(): {
 	dateFrom?: string;
 	dateTo?: string;
@@ -217,8 +229,8 @@ export function getListFilters(): {
 	if (!start || !end) return { dateFilter };
 	if (!timeRange) {
 		return {
-			...(start && { dateFrom: start.toString() }),
-			...(end && { dateTo: end.toString() }),
+			...(start && { dateFrom: toStartOfDayISO(start) }),
+			...(end && { dateTo: toEndOfDayISO(end) }),
 			dateFilter
 		};
 	}

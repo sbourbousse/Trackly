@@ -20,16 +20,21 @@ WORKDIR /app
 RUN addgroup -g 1001 -S nodejs && \
     adduser -S nodejs -u 1001
 
-# Copier les fichiers buildés (adapter-node génère un serveur standalone)
-COPY --from=build --chown=nodejs:nodejs /app/build ./build
+# Le serveur SvelteKit (build/server/index.js) importe des packages comme 'clsx' au runtime :
+# ils doivent être présents dans node_modules.
+COPY --from=build /app/package.json /app/package-lock.json* ./
+RUN npm ci --omit=dev && npm cache clean --force
 
-# Passer à l'utilisateur non-root
+# Copier le build (serveur + client statique)
+COPY --from=build /app/build ./build
+
+RUN chown -R nodejs:nodejs /app
 USER nodejs
 
-# Exposer le port (Railway utilisera la variable PORT)
+# Exposer le port (Railway injecte PORT)
 EXPOSE 8080
 ENV PORT=8080
+ENV HOST=0.0.0.0
 ENV NODE_ENV=production
 
-# Commande de démarrage
 CMD ["node", "build/index.js"]

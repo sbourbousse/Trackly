@@ -204,9 +204,14 @@
 	});
 </script>
 
-<div bind:this={mapContainer} style="width: 100%; height: {height}; border-radius: 8px; overflow: hidden;"></div>
+<div bind:this={mapContainer} class="map-root" style="width: 100%; height: {height}; border-radius: 8px; overflow: hidden;"></div>
 
 <style>
+	.map-root,
+	:global(.leaflet-container) {
+		position: relative;
+		z-index: 0;
+	}
 	:global(.tracking-marker) {
 		background: transparent !important;
 		border: none !important;

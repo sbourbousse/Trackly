@@ -60,11 +60,10 @@
 			}
 		},
 		{
-			label: 'Ce mois',
+			label: '7 prochains jours',
 			getRange: () => {
-				const t = today(getLocalTimeZone());
-				const start = new CalendarDate(t.year, t.month, 1);
-				const end = t;
+				const start = today(getLocalTimeZone());
+				const end = start.add({ days: 6 });
 				return { start, end };
 			}
 		}

@@ -1,6 +1,6 @@
 import { apiFetch } from './client';
 import { browser } from '$app/environment';
-import { isOfflineMode, offlineConfig } from '../offline/config';
+import { isOfflineMode } from '../offline/config';
 
 export type ApiDriver = {
 	id: string;

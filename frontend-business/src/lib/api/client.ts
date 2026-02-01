@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/public';
 import { browser, dev } from '$app/environment';
-import { isOfflineMode, offlineConfig } from '../offline/config';
+import { isOfflineMode } from '../offline/config';
 import { mockTenantApi } from '../offline/mockApi';
 
 const baseUrl = env.PUBLIC_API_BASE_URL || 'http://localhost:5257';

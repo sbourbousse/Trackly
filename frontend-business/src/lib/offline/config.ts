@@ -11,6 +11,19 @@ export interface OfflineConfig {
   mockDelay: number; // Délai en ms pour simuler la latence réseau
 }
 
+// Track if we've already logged the offline mode status
+let hasLoggedOfflineStatus = false;
+
+/**
+ * Log offline mode status (only once)
+ */
+function logOfflineStatus(): void {
+  if (!hasLoggedOfflineStatus) {
+    console.log('[Offline] 🔌 Mode offline ACTIVÉ - Utilisation des données de démonstration');
+    hasLoggedOfflineStatus = true;
+  }
+}
+
 /**
  * Vérifie si le mode offline est activé
  * Cette fonction doit être appelée à chaque fois pour éviter les problèmes SSR
@@ -24,11 +37,7 @@ export function isOfflineMode(): boolean {
   // Vérifier d'abord la variable d'environnement
   const envValue = import.meta.env.PUBLIC_OFFLINE_MODE;
   if (envValue === 'true' || envValue === '1') {
-    // Log uniquement la première fois
-    if (!window.__offlineModeLogged) {
-      console.log('[Offline] 🔌 Mode offline ACTIVÉ - Utilisation des données de démonstration');
-      (window as any).__offlineModeLogged = true;
-    }
+    logOfflineStatus();
     return true;
   }
   
@@ -36,10 +45,7 @@ export function isOfflineMode(): boolean {
   if (window.localStorage) {
     const stored = localStorage.getItem('trackly_offline_mode');
     if (stored === 'true') {
-      if (!window.__offlineModeLogged) {
-        console.log('[Offline] 🔌 Mode offline ACTIVÉ - Utilisation des données de démonstration');
-        (window as any).__offlineModeLogged = true;
-      }
+      logOfflineStatus();
       return true;
     }
   }

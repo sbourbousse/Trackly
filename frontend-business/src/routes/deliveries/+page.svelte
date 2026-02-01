@@ -20,7 +20,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Input } from '$lib/components/ui/input';
 	import {
 		Table,
 		TableBody,
@@ -182,19 +181,17 @@
 					</p>
 				</div>
 				<div class="flex flex-wrap items-center gap-2">
-					<Input type="search" placeholder="Filtrer par chauffeur" class="h-9 w-48 rounded-full" />
-						<Button variant="outline" size="sm">Voir la carte</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							onclick={() => deliveriesActions.loadDeliveries()}
-							disabled={deliveriesState.loading}
-						>
-							{deliveriesState.loading ? 'Chargement...' : 'Actualiser'}
-						</Button>
-						<Button size="sm" href="/deliveries/new">Nouvelle tournée</Button>
-					</div>
+					<Button variant="outline" size="sm">Voir la carte</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={() => deliveriesActions.loadDeliveries()}
+						disabled={deliveriesState.loading}
+					>
+						{deliveriesState.loading ? 'Chargement...' : 'Actualiser'}
+					</Button>
 				</div>
+			</div>
 			</CardHeader>
 			<CardContent class="space-y-4">
 				{#if deliveriesState.error}

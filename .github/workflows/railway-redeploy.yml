@@ -18,6 +18,7 @@ jobs:
       (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request') ||
       github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    environment: energetic-integrity / production
     steps:
       - name: Redeploy backend
         env:

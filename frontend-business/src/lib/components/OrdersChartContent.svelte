@@ -22,6 +22,8 @@
 		byHour?: boolean;
 		byMonth?: boolean;
 		emptyMessage?: string;
+		selectedStatus?: string | null;
+		onStatusClick?: (statusKey: string | null) => void;
 	}
 	let {
 		loading = false,
@@ -31,7 +33,9 @@
 		periodKeys,
 		byHour = false,
 		byMonth = false,
-		emptyMessage = 'Sélectionnez une plage pour afficher le graphique.'
+		emptyMessage = 'Sélectionnez une plage pour afficher le graphique.',
+		selectedStatus = null,
+		onStatusClick
 	}: Props = $props();
 
 	/** Couleurs alignées sur les badges (success=emerald, warning=amber, info=sky, destructive). */
@@ -127,6 +131,16 @@
 		if (indices[indices.length - 1] !== n - 1) indices.push(n - 1);
 		return indices;
 	});
+
+	function handleSegmentClick(statusKey: string) {
+		if (!onStatusClick) return;
+		// Toggle: if same status is clicked again, clear the filter
+		if (selectedStatus === statusKey) {
+			onStatusClick(null);
+		} else {
+			onStatusClick(statusKey);
+		}
+	}
 </script>
 
 <TooltipProvider delayDuration={200}>
@@ -159,10 +173,18 @@
 										{#if h > 0}
 											{@const isBottom = segIdx === 0}
 											{@const isTop = segIdx === row.segments.length - 1}
-											<div
-												class="w-full min-w-[8px] shrink-0 transition-opacity hover:opacity-90 {seg.colorClass}"
-												style="height: {Math.max(2, h)}px; border-radius: {isBottom ? '0 0 4px 4px' : isTop ? '4px 4px 0 0' : '0'}"
-											></div>
+											{@const isSelected = selectedStatus === seg.key}
+											{@const isOtherSelected = selectedStatus && selectedStatus !== seg.key}
+											<button
+												type="button"
+												class="w-full min-w-[8px] shrink-0 transition-opacity hover:opacity-90 {seg.colorClass} cursor-pointer border-0 p-0"
+												style="height: {Math.max(2, h)}px; border-radius: {isBottom ? '0 0 4px 4px' : isTop ? '4px 4px 0 0' : '0'}; opacity: {isOtherSelected ? '0.3' : '1'}"
+												onclick={(e) => {
+													e.stopPropagation();
+													handleSegmentClick(seg.key);
+												}}
+												aria-label="Filtrer par {seg.label}"
+											></button>
 										{/if}
 									{/each}
 								</div>
@@ -208,11 +230,19 @@
 				<div class="text-muted-foreground mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs">
 					{#each legendItems as item}
 						{@const LegendIcon = item.icon}
-						<span class="flex items-center gap-1.5">
+						{@const isSelected = selectedStatus === item.key}
+						{@const isOtherSelected = selectedStatus && selectedStatus !== item.key}
+						<button
+							type="button"
+							class="flex items-center gap-1.5 transition-opacity hover:opacity-80 cursor-pointer border-0 bg-transparent p-0"
+							style="opacity: {isOtherSelected ? '0.4' : '1'}"
+							onclick={() => handleSegmentClick(item.key)}
+							aria-label="Filtrer par {item.label}"
+						>
 							<span class="inline-flex size-3 shrink-0 rounded-sm {item.colorClass}" aria-hidden="true"></span>
 							<LegendIcon class="size-3.5 shrink-0" />
-							{item.label}
-						</span>
+							<span class={isSelected ? 'font-semibold' : ''}>{item.label}</span>
+						</button>
 					{/each}
 				</div>
 			{/if}

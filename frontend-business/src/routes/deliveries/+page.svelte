@@ -6,8 +6,8 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { dateRangeState, getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
+	import { deleteDeliveriesBatch, getDeliveriesStats, type DeliveryStatsResponse } from '$lib/api/deliveries';
 	import { ordersState, ordersActions } from '$lib/stores/orders.svelte';
-	import { deleteDeliveriesBatch } from '$lib/api/deliveries';
 	import { getOrdersStats, type OrderStatsResponse } from '$lib/api/orders';
 	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
@@ -34,8 +34,8 @@
 	let selectedIds = $state<Set<string>>(new Set());
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
-	let orderStats = $state<OrderStatsResponse | null>(null);
-	let orderStatsLoading = $state(false);
+	let deliveryStats = $state<DeliveryStatsResponse | null>(null);
+	let deliveryStatsLoading = $state(false);
 
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
@@ -51,9 +51,9 @@
 			};
 		}
 		const dayCount = getDateRangeDayCount();
-		if (dayCount > 30 && orderStats.byDay.length > 0) {
+		if (dayCount > 30 && deliveryStats.byDay.length > 0) {
 			const byMonthMap = new Map<string, number>();
-			for (const { date, count } of orderStats.byDay) {
+			for (const { date, count } of deliveryStats.byDay) {
 				const [y, m] = date.split('-');
 				const key = `${y}-${m}`;
 				byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + count);
@@ -79,19 +79,19 @@
 		};
 	});
 
-	async function loadOrderStats() {
+	async function loadDeliveryStats() {
 		const filters = getListFilters();
 		if (!filters.dateFrom || !filters.dateTo) {
-			orderStats = null;
+			deliveryStats = null;
 			return;
 		}
-		orderStatsLoading = true;
+		deliveryStatsLoading = true;
 		try {
-			orderStats = await getOrdersStats(filters);
+			deliveryStats = await getDeliveriesStats(filters);
 		} catch {
-			orderStats = null;
+			deliveryStats = null;
 		} finally {
-			orderStatsLoading = false;
+			deliveryStatsLoading = false;
 		}
 	}
 
@@ -158,7 +158,7 @@
 	>
 		{#snippet chart()}
 			<OrdersChartContent
-				loading={orderStatsLoading}
+				loading={deliveryStatsLoading}
 				labels={chartData.labels}
 				values={chartData.values}
 				orders={ordersState.items}

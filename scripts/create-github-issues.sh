@@ -111,11 +111,8 @@ for i in $(seq 0 $((TASK_COUNT - 1))); do
     line_number=$(jq -r ".[$i].line_number" "$TASKS_FILE")
     labels=$(jq -r ".[$i].labels | join(\",\")" "$TASKS_FILE")
     
-    # Generate title (truncate if needed)
+    # Use task text as title (Python parser already handles truncation)
     title="$task_text"
-    if [ ${#title} -gt 80 ]; then
-        title="${title:0:77}..."
-    fi
     
     # Generate body
     body="**Task from todo.md (line $line_number)**

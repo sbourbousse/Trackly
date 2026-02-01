@@ -111,6 +111,11 @@ class TodoParser:
     
     def generate_issue_title(self, task: Dict) -> str:
         """Generate a concise issue title from task text"""
+        # GitHub issue title max length is ~256, but we keep it shorter for readability
+        MAX_TITLE_LENGTH = 80
+        ELLIPSIS = '...'
+        TRUNCATE_AT = MAX_TITLE_LENGTH - len(ELLIPSIS)  # 77 chars + 3 for '...'
+        
         title = task['text']
         
         # Remove markdown formatting
@@ -118,8 +123,8 @@ class TodoParser:
         title = re.sub(r'`([^`]+)`', r'\1', title)  # Remove code markers
         
         # Truncate if too long
-        if len(title) > 80:
-            title = title[:77] + '...'
+        if len(title) > MAX_TITLE_LENGTH:
+            title = title[:TRUNCATE_AT] + ELLIPSIS
         
         return title
     

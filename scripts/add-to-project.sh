@@ -64,11 +64,16 @@ while IFS= read -r issue; do
     
     # Add to project using gh CLI
     # Note: The project add command requires the project to be set up with proper permissions
-    if gh project item-add "$PROJECT_NUMBER" --owner "$OWNER" --url "https://github.com/$REPO/issues/$issue_number" 2>/dev/null; then
+    error_output=$(gh project item-add "$PROJECT_NUMBER" --owner "$OWNER" --url "https://github.com/$REPO/issues/$issue_number" 2>&1)
+    if [ $? -eq 0 ]; then
         echo "  ✓ Added to project"
         ((added++))
     else
         echo "  ⚠️  Could not add (may already be in project or permission issue)"
+        # Show error details if verbose mode or debugging needed
+        if [[ "$error_output" != *"already exists"* ]]; then
+            echo "     Error: $error_output" | head -1
+        fi
         ((skipped++))
     fi
     

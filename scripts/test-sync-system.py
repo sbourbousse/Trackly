@@ -107,8 +107,9 @@ def test_issue_generation():
         print("❌ Empty body generated")
         return False
     
-    if len(title) > 100:
-        print("⚠️  Title might be too long (GitHub limit is ~256 chars)")
+    # Title should be truncated to 80 chars by generate_issue_title
+    if len(title) > 80:
+        print(f"⚠️  Title exceeds expected length: {len(title)} chars (expected ≤80)")
     
     print(f"✓ Generated title: {title[:60]}...")
     print(f"✓ Generated body ({len(body)} chars)")

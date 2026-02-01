@@ -36,6 +36,8 @@
 	let deleteError = $state<string | null>(null);
 	let deliveryStats = $state<DeliveryStatsResponse | null>(null);
 	let deliveryStatsLoading = $state(false);
+	let orderStats = $state<OrderStatsResponse | null>(null);
+	let orderStatsLoading = $state(false);
 
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
@@ -51,9 +53,9 @@
 			};
 		}
 		const dayCount = getDateRangeDayCount();
-		if (dayCount > 30 && deliveryStats.byDay.length > 0) {
+		if (dayCount > 30 && orderStats.byDay.length > 0) {
 			const byMonthMap = new Map<string, number>();
-			for (const { date, count } of deliveryStats.byDay) {
+			for (const { date, count } of orderStats.byDay) {
 				const [y, m] = date.split('-');
 				const key = `${y}-${m}`;
 				byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + count);
@@ -92,6 +94,22 @@
 			deliveryStats = null;
 		} finally {
 			deliveryStatsLoading = false;
+		}
+	}
+
+	async function loadOrderStats() {
+		const filters = getListFilters();
+		if (!filters.dateFrom || !filters.dateTo) {
+			orderStats = null;
+			return;
+		}
+		orderStatsLoading = true;
+		try {
+			orderStats = await getOrdersStats(filters);
+		} catch {
+			orderStats = null;
+		} finally {
+			orderStatsLoading = false;
 		}
 	}
 
@@ -158,7 +176,7 @@
 	>
 		{#snippet chart()}
 			<OrdersChartContent
-				loading={deliveryStatsLoading}
+				loading={orderStatsLoading}
 				labels={chartData.labels}
 				values={chartData.values}
 				orders={ordersState.items}

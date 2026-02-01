@@ -54,16 +54,6 @@ jobs:
           registry: ${{ env.REGISTRY }}
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Generate image tags
-        id: meta
-        run: |
-          if [[ "${{ github.event_name }}" == "pull_request" ]]; then
-            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}:pr-${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
-            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}:pr-${{ github.event.pull_request.number }}-${{ github.sha }}" >> $GITHUB_OUTPUT
-          else
-            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}:latest" >> $GITHUB_OUTPUT
-            echo "tags=${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/${{ matrix.image }}:${{ github.sha }}" >> $GITHUB_OUTPUT
-          fi
       - name: Build and push
         uses: docker/build-push-action@v6
         with:

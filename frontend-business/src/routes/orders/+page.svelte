@@ -34,8 +34,40 @@
 	let forceDeleteDeliveries = $state(false);
 	let orderStats = $state<OrderStatsResponse | null>(null);
 	let orderStatsLoading = $state(false);
+	let statusFilter = $state<string | null>(null);
 
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
+
+	function statusToKey(s: string): string {
+		const lower = (s ?? '').toLowerCase();
+		if (lower === 'pending' || lower === 'en attente' || lower === '0') return 'pending';
+		if (lower === 'planned' || lower === 'planifiée' || lower === '1') return 'planned';
+		if (lower === 'intransit' || lower === 'en transit' || lower === 'en cours' || lower === '2') return 'intransit';
+		if (lower === 'delivered' || lower === 'livrée' || lower === 'livree' || lower === '3') return 'delivered';
+		if (lower === 'cancelled' || lower === 'annulée' || lower === '4') return 'cancelled';
+		return 'pending';
+	}
+
+	const filteredOrders = $derived.by(() => {
+		if (!statusFilter) return ordersState.items;
+		return ordersState.items.filter((order) => statusToKey(order.status) === statusFilter);
+	});
+
+	const STATUS_LABELS: Record<string, string> = {
+		pending: 'En attente',
+		planned: 'Planifiée',
+		intransit: 'En transit',
+		delivered: 'Livrée',
+		cancelled: 'Annulée'
+	};
+
+	function handleStatusClick(statusKey: string | null) {
+		statusFilter = statusKey;
+	}
+
+	function clearStatusFilter() {
+		statusFilter = null;
+	}
 
 	const chartData = $derived.by(() => {
 		if (!orderStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
@@ -115,10 +147,10 @@
 	}
 
 	function toggleSelectAll() {
-		if (selectedIds.size === ordersState.items.length) {
+		if (selectedIds.size === filteredOrders.length) {
 			selectedIds = new Set();
 		} else {
-			selectedIds = new Set(ordersState.items.map((o) => o.id));
+			selectedIds = new Set(filteredOrders.map((o) => o.id));
 		}
 	}
 
@@ -174,6 +206,8 @@
 				byHour={chartData.byHour}
 				byMonth={chartData.byMonth}
 				emptyMessage="Sélectionnez une plage pour afficher le graphique."
+				selectedStatus={statusFilter}
+				onStatusClick={handleStatusClick}
 			/>
 		{/snippet}
 	</DateFilterCard>
@@ -197,6 +231,21 @@
 						<Button size="sm" href="/orders/new">Nouvelle commande</Button>
 					</div>
 				</div>
+				{#if statusFilter}
+					<div class="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+						<span class="text-muted-foreground">Filtre actif:</span>
+						<span class="font-medium">{STATUS_LABELS[statusFilter]}</span>
+						<Button
+							variant="ghost"
+							size="sm"
+							class="ml-auto h-6 px-2"
+							onclick={clearStatusFilter}
+						>
+							<XIcon class="size-3.5" />
+							Effacer
+						</Button>
+					</div>
+				{/if}
 			</CardHeader>
 			<CardContent class="space-y-4">
 				{#if ordersState.error}
@@ -260,7 +309,7 @@
 					</div>
 				{/if}
 
-				{#if ordersState.loading && !ordersState.items.length}
+				{#if ordersState.loading && !filteredOrders.length}
 					<div class="py-8 text-center text-muted-foreground">Chargement des commandes...</div>
 				{:else}
 					<div class="min-w-0 overflow-x-auto">
@@ -269,7 +318,7 @@
 							<TableRow>
 								<TableHead class="w-10">
 									<Checkbox
-										checked={selectedIds.size === ordersState.items.length && ordersState.items.length > 0}
+										checked={selectedIds.size === filteredOrders.length && filteredOrders.length > 0}
 										onCheckedChange={toggleSelectAll}
 										aria-label="Tout sélectionner"
 									/>
@@ -284,7 +333,7 @@
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{#each ordersState.items as order}
+							{#each filteredOrders as order}
 								<TableRow
 									class={cn(
 										'cursor-pointer transition-colors hover:bg-muted/50',

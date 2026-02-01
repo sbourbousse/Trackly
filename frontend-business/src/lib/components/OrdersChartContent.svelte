@@ -178,7 +178,7 @@
 											<button
 												type="button"
 												class="w-full min-w-[8px] shrink-0 transition-opacity hover:opacity-90 {seg.colorClass} cursor-pointer border-0 p-0"
-												style="height: {Math.max(2, h)}px; border-radius: {isBottom ? '0 0 4px 4px' : isTop ? '4px 4px 0 0' : '0'}; opacity: {isOtherSelected ? '0.3' : isSelected ? '1' : '1'}"
+												style="height: {Math.max(2, h)}px; border-radius: {isBottom ? '0 0 4px 4px' : isTop ? '4px 4px 0 0' : '0'}; opacity: {isOtherSelected ? '0.3' : '1'}"
 												onclick={(e) => {
 													e.stopPropagation();
 													handleSegmentClick(seg.key);

@@ -15,7 +15,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import {
 		Table,
@@ -28,8 +27,6 @@
 	import { cn } from '$lib/utils';
 
 	let didInit = $state(false);
-	let searchQuery = $state('');
-	let searchDebounceTimer: ReturnType<typeof setTimeout> | null = null;
 	let selectedIds = $state<Set<string>>(new Set());
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
@@ -41,11 +38,12 @@
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 	const chartData = $derived.by(() => {
-		if (!orderStats) return { labels: [] as string[], values: [] as number[], byHour: false, byMonth: false };
+		if (!orderStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
 		if (orderStats.byHour.length > 0) {
 			return {
 				labels: orderStats.byHour.map((x) => x.hour),
 				values: orderStats.byHour.map((x) => x.count),
+				periodKeys: [] as string[],
 				byHour: true,
 				byMonth: false
 			};
@@ -65,6 +63,7 @@
 					return `${MONTH_LABELS[Number(m) - 1]} ${key.slice(0, 4)}`;
 				}),
 				values: sorted.map(([, count]) => count),
+				periodKeys: sorted.map(([key]) => key),
 				byHour: false,
 				byMonth: true
 			};
@@ -72,6 +71,7 @@
 		return {
 			labels: orderStats.byDay.map((x) => x.date),
 			values: orderStats.byDay.map((x) => x.count),
+			periodKeys: orderStats.byDay.map((x) => x.date),
 			byHour: false,
 			byMonth: false
 		};
@@ -100,15 +100,6 @@
 		ordersActions.loadOrders();
 		loadOrderStats();
 	});
-
-	function applySearch() {
-		ordersActions.loadOrders({ search: searchQuery.trim() || undefined });
-	}
-
-	function onSearchInput() {
-		if (searchDebounceTimer) clearTimeout(searchDebounceTimer);
-		searchDebounceTimer = setTimeout(applySearch, 300);
-	}
 
 	$effect(() => {
 		if (didInit) return;
@@ -169,6 +160,7 @@
 
 	<DateFilterCard
 		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
+		chartDescription="Répartition par statut pour la planification des tournées."
 		chartDefaultOpen={false}
 		onDateFilterChange={async () => { await ordersActions.loadOrders(); }}
 	>
@@ -177,6 +169,10 @@
 				loading={orderStatsLoading}
 				labels={chartData.labels}
 				values={chartData.values}
+				orders={ordersState.items}
+				periodKeys={chartData.periodKeys}
+				byHour={chartData.byHour}
+				byMonth={chartData.byMonth}
 				emptyMessage="Sélectionnez une plage pour afficher le graphique."
 			/>
 		{/snippet}
@@ -190,14 +186,6 @@
 						<p class="text-sm text-muted-foreground">Dernière synchro: {ordersState.lastSyncAt}</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
-						<Input
-							type="search"
-							placeholder="Rechercher (client, adresse, tél., commentaire…)"
-							class="h-9 w-64 min-w-0 sm:w-72"
-							bind:value={searchQuery}
-							oninput={onSearchInput}
-						/>
-						<Button variant="outline" size="sm" href="/orders/import">Importer CSV</Button>
 						<Button
 							variant="outline"
 							size="sm"

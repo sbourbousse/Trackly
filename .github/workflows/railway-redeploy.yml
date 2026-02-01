@@ -1,3 +1,5 @@
+# Redéploie les 3 services Railway après build GHCR ou manuellement.
+# Secret requis : RAILWAY_API_TOKEN = token personnel/équipe (Account > Tokens), pas le token du projet.
 name: Redeploy Railway services
 
 on:
@@ -7,10 +9,15 @@ on:
     types:
       - completed
 
+permissions:
+  contents: read
+
 jobs:
   redeploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Manuel : toujours exécuter. Après workflow_run : seulement si le build a réussi.
+    if: ${{ github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    environment: energetic-integrity / production
     steps:
       - name: Redeploy backend
         env:
@@ -18,27 +25,39 @@ jobs:
           RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID_BACKEND }}
         run: |
-          curl -sS -X POST "https://backboard.railway.com/graphql/v2" \
+          resp=$(curl -sS -w '\n%{http_code}' -X POST "https://backboard.railway.com/graphql/v2" \
             -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
             -H "Content-Type: application/json" \
-            --data "{\"query\":\"mutation serviceInstanceRedeploy(\$environmentId: String!, \$serviceId: String!) { serviceInstanceRedeploy(environmentId: \$environmentId, serviceId: \$serviceId) }\",\"variables\":{\"environmentId\":\"${RAILWAY_ENVIRONMENT_ID}\",\"serviceId\":\"${RAILWAY_SERVICE_ID}\"}}"
+            --data "{\"query\":\"mutation serviceInstanceRedeploy(\$environmentId: String!, \$serviceId: String!) { serviceInstanceRedeploy(environmentId: \$environmentId, serviceId: \$serviceId) }\",\"variables\":{\"environmentId\":\"${RAILWAY_ENVIRONMENT_ID}\",\"serviceId\":\"${RAILWAY_SERVICE_ID}\"}}")
+          code=$(echo "$resp" | tail -n1)
+          body=$(echo "$resp" | sed '$d')
+          echo "$body" | jq . 2>/dev/null || echo "$body"
+          if [ "$code" != "200" ] || echo "$body" | grep -qE '"errors"[[:space:]]*:[[:space:]]*\[[^]]'; then echo "Redeploy backend failed (HTTP $code)" && exit 1; fi
       - name: Redeploy frontend-business
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID_FRONTEND_BUSINESS }}
         run: |
-          curl -sS -X POST "https://backboard.railway.com/graphql/v2" \
+          resp=$(curl -sS -w '\n%{http_code}' -X POST "https://backboard.railway.com/graphql/v2" \
             -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
             -H "Content-Type: application/json" \
-            --data "{\"query\":\"mutation serviceInstanceRedeploy(\$environmentId: String!, \$serviceId: String!) { serviceInstanceRedeploy(environmentId: \$environmentId, serviceId: \$serviceId) }\",\"variables\":{\"environmentId\":\"${RAILWAY_ENVIRONMENT_ID}\",\"serviceId\":\"${RAILWAY_SERVICE_ID}\"}}"
+            --data "{\"query\":\"mutation serviceInstanceRedeploy(\$environmentId: String!, \$serviceId: String!) { serviceInstanceRedeploy(environmentId: \$environmentId, serviceId: \$serviceId) }\",\"variables\":{\"environmentId\":\"${RAILWAY_ENVIRONMENT_ID}\",\"serviceId\":\"${RAILWAY_SERVICE_ID}\"}}")
+          code=$(echo "$resp" | tail -n1)
+          body=$(echo "$resp" | sed '$d')
+          echo "$body" | jq . 2>/dev/null || echo "$body"
+          if [ "$code" != "200" ] || echo "$body" | grep -qE '"errors"[[:space:]]*:[[:space:]]*\[[^]]'; then echo "Redeploy frontend-business failed (HTTP $code)" && exit 1; fi
       - name: Redeploy frontend-driver
         env:
           RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
           RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
           RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID_FRONTEND_DRIVER }}
         run: |
-          curl -sS -X POST "https://backboard.railway.com/graphql/v2" \
+          resp=$(curl -sS -w '\n%{http_code}' -X POST "https://backboard.railway.com/graphql/v2" \
             -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
             -H "Content-Type: application/json" \
-            --data "{\"query\":\"mutation serviceInstanceRedeploy(\$environmentId: String!, \$serviceId: String!) { serviceInstanceRedeploy(environmentId: \$environmentId, serviceId: \$serviceId) }\",\"variables\":{\"environmentId\":\"${RAILWAY_ENVIRONMENT_ID}\",\"serviceId\":\"${RAILWAY_SERVICE_ID}\"}}"
+            --data "{\"query\":\"mutation serviceInstanceRedeploy(\$environmentId: String!, \$serviceId: String!) { serviceInstanceRedeploy(environmentId: \$environmentId, serviceId: \$serviceId) }\",\"variables\":{\"environmentId\":\"${RAILWAY_ENVIRONMENT_ID}\",\"serviceId\":\"${RAILWAY_SERVICE_ID}\"}}")
+          code=$(echo "$resp" | tail -n1)
+          body=$(echo "$resp" | sed '$d')
+          echo "$body" | jq . 2>/dev/null || echo "$body"
+          if [ "$code" != "200" ] || echo "$body" | grep -qE '"errors"[[:space:]]*:[[:space:]]*\[[^]]'; then echo "Redeploy frontend-driver failed (HTTP $code)" && exit 1; fi

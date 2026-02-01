@@ -7,6 +7,8 @@
 	import { dateRangeState, getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { deleteDeliveriesBatch, getDeliveriesStats, type DeliveryStatsResponse } from '$lib/api/deliveries';
+	import { ordersState, ordersActions } from '$lib/stores/orders.svelte';
+	import { getOrdersStats, type OrderStatsResponse } from '$lib/api/orders';
 	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 
@@ -18,7 +20,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Input } from '$lib/components/ui/input';
 	import {
 		Table,
 		TableBody,
@@ -39,11 +40,12 @@
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 	const chartData = $derived.by(() => {
-		if (!deliveryStats) return { labels: [] as string[], values: [] as number[], byHour: false, byMonth: false };
-		if (deliveryStats.byHour.length > 0) {
+		if (!orderStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
+		if (orderStats.byHour.length > 0) {
 			return {
-				labels: deliveryStats.byHour.map((x) => x.hour),
-				values: deliveryStats.byHour.map((x) => x.count),
+				labels: orderStats.byHour.map((x) => x.hour),
+				values: orderStats.byHour.map((x) => x.count),
+				periodKeys: [] as string[],
 				byHour: true,
 				byMonth: false
 			};
@@ -63,13 +65,15 @@
 					return `${MONTH_LABELS[Number(m) - 1]} ${key.slice(0, 4)}`;
 				}),
 				values: sorted.map(([, count]) => count),
+				periodKeys: sorted.map(([key]) => key),
 				byHour: false,
 				byMonth: true
 			};
 		}
 		return {
-			labels: deliveryStats.byDay.map((x) => x.date),
-			values: deliveryStats.byDay.map((x) => x.count),
+			labels: orderStats.byDay.map((x) => x.date),
+			values: orderStats.byDay.map((x) => x.count),
+			periodKeys: orderStats.byDay.map((x) => x.date),
 			byHour: false,
 			byMonth: false
 		};
@@ -96,7 +100,8 @@
 		const __ = dateRangeState.dateFilter;
 		const ___ = dateRangeState.timeRange;
 		deliveriesActions.loadDeliveries();
-		loadDeliveryStats();
+		ordersActions.loadOrders();
+		loadOrderStats();
 	});
 
 	$effect(() => {
@@ -146,7 +151,8 @@
 	<PageHeader title="Tournées" subtitle="Suivi des tournées et du temps réel chauffeur." />
 
 	<DateFilterCard
-		chartTitle={chartData.byHour ? 'Livraisons par heure' : chartData.byMonth ? 'Livraisons par mois' : 'Livraisons par jour'}
+		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
+		chartDescription="Répartition par statut pour la planification des tournées."
 		chartDefaultOpen={false}
 		onDateFilterChange={onDateFilterChange}
 	>
@@ -155,6 +161,10 @@
 				loading={deliveryStatsLoading}
 				labels={chartData.labels}
 				values={chartData.values}
+				orders={ordersState.items}
+				periodKeys={chartData.periodKeys}
+				byHour={chartData.byHour}
+				byMonth={chartData.byMonth}
 				emptyMessage="Sélectionnez une plage pour afficher le graphique."
 			/>
 		{/snippet}
@@ -171,19 +181,17 @@
 					</p>
 				</div>
 				<div class="flex flex-wrap items-center gap-2">
-					<Input type="search" placeholder="Filtrer par chauffeur" class="h-9 w-48 rounded-full" />
-						<Button variant="outline" size="sm">Voir la carte</Button>
-						<Button
-							variant="outline"
-							size="sm"
-							onclick={() => deliveriesActions.loadDeliveries()}
-							disabled={deliveriesState.loading}
-						>
-							{deliveriesState.loading ? 'Chargement...' : 'Actualiser'}
-						</Button>
-						<Button size="sm" href="/deliveries/new">Nouvelle tournée</Button>
-					</div>
+					<Button variant="outline" size="sm">Voir la carte</Button>
+					<Button
+						variant="outline"
+						size="sm"
+						onclick={() => deliveriesActions.loadDeliveries()}
+						disabled={deliveriesState.loading}
+					>
+						{deliveriesState.loading ? 'Chargement...' : 'Actualiser'}
+					</Button>
 				</div>
+			</div>
 			</CardHeader>
 			<CardContent class="space-y-4">
 				{#if deliveriesState.error}

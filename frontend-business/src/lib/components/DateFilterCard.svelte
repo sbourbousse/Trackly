@@ -76,11 +76,13 @@
 		chart?: Snippet;
 		/** Titre de la section graphique (ex. "Commandes par jour"). */
 		chartTitle?: string;
+		/** Description courte pour la vue planificateur (optionnel). */
+		chartDescription?: string;
 		/** Section graphique ouverte par défaut. */
 		chartDefaultOpen?: boolean;
 	}
 
-	let { onDateFilterChange, chart, chartTitle = 'Commandes par jour', chartDefaultOpen = false }: Props = $props();
+	let { onDateFilterChange, chart, chartTitle = 'Commandes par jour', chartDescription, chartDefaultOpen = false }: Props = $props();
 
 	let calendarOpen = $state(false);
 	let chartOpen = $state(false);
@@ -177,6 +179,7 @@
 						<div class="min-w-0 shrink bg-popover p-3 md:min-w-[260px]">
 							<RangeCalendar
 								numberOfMonths={1}
+								disableDaysOutsideMonth={false}
 								value={dateRangeState.dateRange}
 								placeholder={dateRangeState.dateRange.start ?? today(getLocalTimeZone())}
 								onValueChange={onDateRangeChange}
@@ -269,8 +272,9 @@
 
 	{#if chart}
 		<div class="border-t px-4 pt-2">
-			<div class="flex flex-row items-center justify-between gap-2 py-2">
-				<span class="text-muted-foreground text-sm font-medium">{chartTitle}</span>
+			<div class="flex flex-col gap-0.5 py-2">
+				<div class="flex flex-row items-center justify-between gap-2">
+					<span class="text-muted-foreground text-sm font-medium">{chartTitle}</span>
 				<Button
 					variant="ghost"
 					size="sm"
@@ -286,6 +290,10 @@
 						Développer
 					{/if}
 				</Button>
+				</div>
+				{#if chartDescription}
+					<p class="text-muted-foreground text-xs">{chartDescription}</p>
+				{/if}
 			</div>
 			{#if chartOpen}
 				<div class="min-w-0 pt-0">

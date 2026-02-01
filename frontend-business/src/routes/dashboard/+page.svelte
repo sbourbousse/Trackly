@@ -58,11 +58,12 @@
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 	const chartData = $derived.by(() => {
-		if (!orderStats) return { labels: [] as string[], values: [] as number[], byHour: false, byMonth: false };
+		if (!orderStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
 		if (orderStats.byHour.length > 0) {
 			return {
 				labels: orderStats.byHour.map((x) => x.hour),
 				values: orderStats.byHour.map((x) => x.count),
+				periodKeys: [] as string[],
 				byHour: true,
 				byMonth: false
 			};
@@ -82,6 +83,7 @@
 					return `${MONTH_LABELS[Number(m) - 1]} ${key.slice(0, 4)}`;
 				}),
 				values: sorted.map(([, count]) => count),
+				periodKeys: sorted.map(([key]) => key),
 				byHour: false,
 				byMonth: true
 			};
@@ -89,6 +91,7 @@
 		return {
 			labels: orderStats.byDay.map((x) => x.date),
 			values: orderStats.byDay.map((x) => x.count),
+			periodKeys: orderStats.byDay.map((x) => x.date),
 			byHour: false,
 			byMonth: false
 		};
@@ -98,23 +101,17 @@
 	const isEnCours = (s: string) => s === 'InProgress' || s === 'En cours';
 	const isCommandeEnAttente = (s: string) => s === 'En attente' || s === 'Pending' || s === 'Planned';
 
-	/** Tournées prévues = Pending / Prevue (en attente). */
 	const routesPrevues = $derived(deliveriesState.routes.filter((r) => isPrevue(r.status)));
-	/** Tournées en cours = InProgress / En cours. */
 	const routesEnCours = $derived(deliveriesState.routes.filter((r) => isEnCours(r.status)));
-	/** Commandes en attente = statut En attente / Pending / Planned. */
 	const commandesEnAttente = $derived(ordersState.items.filter((o) => isCommandeEnAttente(o.status)));
 
-	function handleAddSection() {
-		// Presets de sections à développer plus tard
-	}
+	function handleAddSection() {}
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
 	<PageHeader title="Trackly Business" subtitle="Vue rapide des tournées et livraisons." />
 	<Badge variant="secondary" class="w-fit">Plan Starter · 7 livraisons restantes</Badge>
 
-	<!-- Plage de travail + graphique Commandes par jour/heure dans le même card -->
 	<DateFilterCard
 		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
 		chartDefaultOpen={false}
@@ -125,12 +122,15 @@
 				loading={orderStatsLoading}
 				labels={chartData.labels}
 				values={chartData.values}
+				orders={ordersState.items}
+				periodKeys={chartData.periodKeys}
+				byHour={chartData.byHour}
+				byMonth={chartData.byMonth}
 				emptyMessage="Sélectionnez une plage pour afficher le graphique."
 			/>
 		{/snippet}
 	</DateFilterCard>
 
-	<!-- Zone à onglets -->
 	<section class="flex min-w-0 flex-col gap-4">
 		<Tabs bind:value={activeTab} class="flex flex-col gap-4">
 			<div class="flex flex-wrap items-center justify-between gap-4">
@@ -145,7 +145,6 @@
 				</Button>
 			</div>
 
-			<!-- Commandes en attente -->
 			<TabsContent value="commandes-attente" class="mt-0 min-w-0">
 				<Card class="min-w-0">
 					<CardHeader class="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
@@ -215,7 +214,6 @@
 				</Card>
 			</TabsContent>
 
-			<!-- Tournées : prévues + en cours -->
 			<TabsContent value="tournees" class="mt-0 min-w-0">
 				<div class="flex min-w-0 flex-col gap-6">
 					{#if deliveriesState.loading && !deliveriesState.routes.length}
@@ -231,7 +229,6 @@
 							</CardContent>
 						</Card>
 					{:else}
-						<!-- Tournées prévues (en attente / Pending) -->
 						<Card class="min-w-0">
 							<CardHeader class="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
 								<CardTitle>Tournées prévues</CardTitle>
@@ -239,9 +236,7 @@
 							</CardHeader>
 							<CardContent class="min-w-0">
 								{#if routesPrevues.length === 0}
-									<div class="py-6 text-center text-muted-foreground text-sm">
-										Aucune tournée prévue.
-									</div>
+									<div class="py-6 text-center text-muted-foreground text-sm">Aucune tournée prévue.</div>
 								{:else}
 									<div class="min-w-0 overflow-x-auto">
 										<Table>
@@ -275,16 +270,13 @@
 									</div>
 									{#if routesPrevues.length > 5}
 										<div class="mt-4 text-center">
-											<Button variant="link" href="/deliveries">
-												Voir toutes les prévues ({routesPrevues.length})
-											</Button>
+											<Button variant="link" href="/deliveries">Voir toutes les prévues ({routesPrevues.length})</Button>
 										</div>
 									{/if}
 								{/if}
 							</CardContent>
 						</Card>
 
-						<!-- Tournées en cours -->
 						<Card class="min-w-0">
 							<CardHeader class="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
 								<CardTitle>En cours</CardTitle>
@@ -292,9 +284,7 @@
 							</CardHeader>
 							<CardContent class="min-w-0">
 								{#if routesEnCours.length === 0}
-									<div class="py-6 text-center text-muted-foreground text-sm">
-										Aucune tournée en cours.
-									</div>
+									<div class="py-6 text-center text-muted-foreground text-sm">Aucune tournée en cours.</div>
 								{:else}
 									<div class="min-w-0 overflow-x-auto">
 										<Table>
@@ -328,9 +318,7 @@
 									</div>
 									{#if routesEnCours.length > 5}
 										<div class="mt-4 text-center">
-											<Button variant="link" href="/deliveries">
-												Voir toutes en cours ({routesEnCours.length})
-											</Button>
+											<Button variant="link" href="/deliveries">Voir toutes en cours ({routesEnCours.length})</Button>
 										</div>
 									{/if}
 								{/if}

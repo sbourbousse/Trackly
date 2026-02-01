@@ -7,6 +7,9 @@ on:
     types:
       - completed
 
+permissions:
+  contents: read
+
 jobs:
   redeploy:
     # Only redeploy production environment when triggered by workflow_run or manual dispatch

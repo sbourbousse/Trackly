@@ -4,6 +4,8 @@ export type ApiOrder = {
 	id: string;
 	customerName: string;
 	address: string;
+	phoneNumber?: string | null;
+	internalComment?: string | null;
 	orderDate: string | null;
 	status: string;
 };
@@ -84,6 +86,8 @@ export type ApiOrderDetail = {
 	id: string;
 	customerName: string;
 	address: string;
+	phoneNumber?: string | null;
+	internalComment?: string | null;
 	orderDate: string | null;
 	status: string;
 	createdAt: string;

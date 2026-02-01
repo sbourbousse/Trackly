@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/public';
 import { browser, dev } from '$app/environment';
-import { offlineConfig } from '../offline/config';
+import { isOfflineMode, offlineConfig } from '../offline/config';
 import { mockTenantApi } from '../offline/mockApi';
 
 const baseUrl = env.PUBLIC_API_BASE_URL || 'http://localhost:5257';
@@ -13,7 +13,7 @@ export const getTenantId = async (): Promise<string | null> => {
 	if (!browser) return null;
 	
 	// Mode offline: utiliser les mocks
-	if (offlineConfig.enabled) {
+	if (isOfflineMode()) {
 		if (!cachedTenantId) {
 			cachedTenantId = await mockTenantApi.getTenantId();
 			localStorage.setItem('trackly_tenant_id', cachedTenantId);
@@ -165,7 +165,7 @@ export type AuthResponse = {
 };
 
 export const registerAccount = async (payload: AuthRegisterPayload) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockAuthApi } = await import('../offline/mockApi');
 		return await mockAuthApi.register(payload);
 	}
@@ -176,7 +176,7 @@ export const registerAccount = async (payload: AuthRegisterPayload) => {
 };
 
 export const loginAccount = async (payload: AuthLoginPayload) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockAuthApi } = await import('../offline/mockApi');
 		return await mockAuthApi.login(payload);
 	}

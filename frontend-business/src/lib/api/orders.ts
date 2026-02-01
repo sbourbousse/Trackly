@@ -1,6 +1,6 @@
 import { apiFetch } from './client';
 import { browser } from '$app/environment';
-import { offlineConfig } from '../offline/config';
+import { isOfflineMode, offlineConfig } from '../offline/config';
 
 export type ApiOrder = {
 	id: string;
@@ -52,7 +52,7 @@ export type OrderStatsResponse = {
 };
 
 export const getOrders = async (filters?: OrdersListFilters) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockOrdersApi } = await import('../offline/mockApi');
 		return await mockOrdersApi.getOrders(filters);
 	}
@@ -61,7 +61,7 @@ export const getOrders = async (filters?: OrdersListFilters) => {
 };
 
 export const getOrdersStats = async (filters?: OrderStatsListFilters) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockOrdersApi } = await import('../offline/mockApi');
 		return await mockOrdersApi.getOrdersStats();
 	}
@@ -78,7 +78,7 @@ export type CreateOrderRequest = {
 };
 
 export const createOrder = async (request: CreateOrderRequest) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockOrdersApi } = await import('../offline/mockApi');
 		return await mockOrdersApi.createOrder(request);
 	}
@@ -114,7 +114,7 @@ export type ApiOrderDelivery = {
 };
 
 export const getOrder = async (id: string) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockOrdersApi } = await import('../offline/mockApi');
 		return await mockOrdersApi.getOrder(id);
 	}
@@ -122,7 +122,7 @@ export const getOrder = async (id: string) => {
 };
 
 export const importOrders = async (orders: ImportOrderRequest[]) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockOrdersApi } = await import('../offline/mockApi');
 		return await mockOrdersApi.importOrders(orders);
 	}
@@ -145,7 +145,7 @@ export type DeleteOrdersBatchResponse = {
 };
 
 export const deleteOrdersBatch = async (request: DeleteOrdersBatchRequest) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockOrdersApi } = await import('../offline/mockApi');
 		return await mockOrdersApi.deleteOrdersBatch(request);
 	}

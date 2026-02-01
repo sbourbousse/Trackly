@@ -1,6 +1,6 @@
 import { apiFetch } from './client';
 import { browser } from '$app/environment';
-import { offlineConfig } from '../offline/config';
+import { isOfflineMode, offlineConfig } from '../offline/config';
 
 export type ApiDriver = {
 	id: string;
@@ -14,7 +14,7 @@ export type CreateDriverRequest = {
 };
 
 export const getDrivers = async () => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockDriversApi } = await import('../offline/mockApi');
 		return await mockDriversApi.getDrivers();
 	}
@@ -22,7 +22,7 @@ export const getDrivers = async () => {
 };
 
 export const createDriver = async (request: CreateDriverRequest) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockDriversApi } = await import('../offline/mockApi');
 		return await mockDriversApi.createDriver(request);
 	}

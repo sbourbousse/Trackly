@@ -1,6 +1,6 @@
 import { apiFetch } from './client';
 import { browser } from '$app/environment';
-import { offlineConfig } from '../offline/config';
+import { isOfflineMode, offlineConfig } from '../offline/config';
 
 export type ApiDelivery = {
 	id: string;
@@ -19,7 +19,7 @@ export type DeliveriesListFilters = {
 };
 
 export const getDeliveries = async (filters?: DeliveriesListFilters) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockDeliveriesApi } = await import('../offline/mockApi');
 		return await mockDeliveriesApi.getDeliveries(filters);
 	}
@@ -50,7 +50,7 @@ export type ApiDeliveryDetail = {
 };
 
 export const getDelivery = async (id: string) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockDeliveriesApi } = await import('../offline/mockApi');
 		return await mockDeliveriesApi.getDelivery(id);
 	}
@@ -58,7 +58,7 @@ export const getDelivery = async (id: string) => {
 };
 
 export const deleteDelivery = async (id: string) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockDeliveriesApi } = await import('../offline/mockApi');
 		return await mockDeliveriesApi.deleteDelivery(id);
 	}
@@ -77,7 +77,7 @@ export type DeleteDeliveriesBatchResponse = {
 };
 
 export const deleteDeliveriesBatch = async (request: DeleteDeliveriesBatchRequest) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockDeliveriesApi } = await import('../offline/mockApi');
 		return await mockDeliveriesApi.deleteDeliveriesBatch(request);
 	}
@@ -98,7 +98,7 @@ export type CreateDeliveriesBatchResponse = {
 };
 
 export const createDeliveriesBatch = async (request: CreateDeliveriesBatchRequest) => {
-	if (browser && offlineConfig.enabled) {
+	if (browser && isOfflineMode()) {
 		const { mockDeliveriesApi } = await import('../offline/mockApi');
 		return await mockDeliveriesApi.createDeliveriesBatch(request);
 	}

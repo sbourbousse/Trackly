@@ -8,12 +8,12 @@
  */
 
 export interface OfflineConfig {
-  enabled: boolean;
   mockDelay: number; // Délai en ms pour simuler la latence réseau
 }
 
 /**
  * Vérifie si le mode offline est activé
+ * Cette fonction doit être appelée à chaque fois pour éviter les problèmes SSR
  */
 export function isOfflineMode(): boolean {
   // En SvelteKit, utiliser import.meta.env côté client
@@ -24,6 +24,11 @@ export function isOfflineMode(): boolean {
   // Vérifier d'abord la variable d'environnement
   const envValue = import.meta.env.PUBLIC_OFFLINE_MODE;
   if (envValue === 'true' || envValue === '1') {
+    // Log uniquement la première fois
+    if (!window.__offlineModeLogged) {
+      console.log('[Offline] 🔌 Mode offline ACTIVÉ - Utilisation des données de démonstration');
+      (window as any).__offlineModeLogged = true;
+    }
     return true;
   }
   
@@ -31,6 +36,10 @@ export function isOfflineMode(): boolean {
   if (window.localStorage) {
     const stored = localStorage.getItem('trackly_offline_mode');
     if (stored === 'true') {
+      if (!window.__offlineModeLogged) {
+        console.log('[Offline] 🔌 Mode offline ACTIVÉ - Utilisation des données de démonstration');
+        (window as any).__offlineModeLogged = true;
+      }
       return true;
     }
   }
@@ -52,11 +61,5 @@ export function setOfflineMode(enabled: boolean): void {
  * Configuration du mode offline
  */
 export const offlineConfig: OfflineConfig = {
-  enabled: isOfflineMode(),
   mockDelay: 300 // 300ms de délai pour simuler le réseau
 };
-
-// Log du statut au démarrage (uniquement côté client)
-if (typeof window !== 'undefined' && offlineConfig.enabled) {
-  console.log('[Offline] 🔌 Mode offline ACTIVÉ - Utilisation des données de démonstration');
-}

@@ -1,4 +1,6 @@
 import { apiFetch } from './client';
+import { browser } from '$app/environment';
+import { isOfflineMode } from '../offline/config';
 
 export type ApiOrder = {
 	id: string;
@@ -50,11 +52,19 @@ export type OrderStatsResponse = {
 };
 
 export const getOrders = async (filters?: OrdersListFilters) => {
+	if (browser && isOfflineMode()) {
+		const { mockOrdersApi } = await import('../offline/mockApi');
+		return await mockOrdersApi.getOrders(filters);
+	}
 	const path = `/api/orders${ordersQueryParams(filters)}`;
 	return await apiFetch<ApiOrder[]>(path);
 };
 
 export const getOrdersStats = async (filters?: OrderStatsListFilters) => {
+	if (browser && isOfflineMode()) {
+		const { mockOrdersApi } = await import('../offline/mockApi');
+		return await mockOrdersApi.getOrdersStats();
+	}
 	const path = `/api/orders/stats${ordersQueryParams(filters)}`;
 	return await apiFetch<OrderStatsResponse>(path);
 };
@@ -68,6 +78,10 @@ export type CreateOrderRequest = {
 };
 
 export const createOrder = async (request: CreateOrderRequest) => {
+	if (browser && isOfflineMode()) {
+		const { mockOrdersApi } = await import('../offline/mockApi');
+		return await mockOrdersApi.createOrder(request);
+	}
 	return await apiFetch<ApiOrder>('/api/orders', {
 		method: 'POST',
 		body: JSON.stringify({
@@ -100,10 +114,18 @@ export type ApiOrderDelivery = {
 };
 
 export const getOrder = async (id: string) => {
+	if (browser && isOfflineMode()) {
+		const { mockOrdersApi } = await import('../offline/mockApi');
+		return await mockOrdersApi.getOrder(id);
+	}
 	return await apiFetch<ApiOrderDetail>(`/api/orders/${id}`);
 };
 
 export const importOrders = async (orders: ImportOrderRequest[]) => {
+	if (browser && isOfflineMode()) {
+		const { mockOrdersApi } = await import('../offline/mockApi');
+		return await mockOrdersApi.importOrders(orders);
+	}
 	return await apiFetch<ImportOrdersResponse>('/api/orders/import', {
 		method: 'POST',
 		body: JSON.stringify({ orders })
@@ -123,6 +145,10 @@ export type DeleteOrdersBatchResponse = {
 };
 
 export const deleteOrdersBatch = async (request: DeleteOrdersBatchRequest) => {
+	if (browser && isOfflineMode()) {
+		const { mockOrdersApi } = await import('../offline/mockApi');
+		return await mockOrdersApi.deleteOrdersBatch(request);
+	}
 	return await apiFetch<DeleteOrdersBatchResponse>('/api/orders/batch/delete', {
 		method: 'POST',
 		body: JSON.stringify({

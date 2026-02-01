@@ -1,4 +1,6 @@
 import { getRuntimeConfig } from '../config';
+import { offlineConfig } from '../offline/config';
+import { mockTenantApi } from '../offline/mockApi';
 
 const config = getRuntimeConfig();
 const baseUrl = config.API_BASE_URL || 'http://localhost:5257';
@@ -6,6 +8,7 @@ const baseUrl = config.API_BASE_URL || 'http://localhost:5257';
 console.info('[Driver] Configuration:');
 console.info('[Driver] - API_BASE_URL:', config.API_BASE_URL || '(fallback to localhost)');
 console.info('[Driver] - baseUrl used:', baseUrl);
+console.info('[Driver] - Mode offline:', offlineConfig.enabled ? 'ACTIVÉ' : 'désactivé');
 
 // Récupère ou récupère le TenantId depuis le backend
 let cachedTenantId: string | null = null;
@@ -23,6 +26,13 @@ export const setTenantId = (tenantId: string): void => {
  * Récupère le tenant ID d'un driver depuis l'API
  */
 export const getDriverTenantId = async (driverId: string): Promise<string | null> => {
+	// Mode offline: utiliser les mocks
+	if (offlineConfig.enabled) {
+		const data = await mockTenantApi.getDriverTenantId(driverId);
+		setTenantId(data.tenantId);
+		return data.tenantId;
+	}
+
 	try {
 		const response = await fetch(`${baseUrl}/api/drivers/${driverId}/tenant`);
 		if (response.ok) {
@@ -37,6 +47,15 @@ export const getDriverTenantId = async (driverId: string): Promise<string | null
 };
 
 export const getTenantId = async (): Promise<string | null> => {
+	// Mode offline: utiliser les mocks
+	if (offlineConfig.enabled) {
+		if (!cachedTenantId) {
+			cachedTenantId = await mockTenantApi.getTenantId();
+			localStorage.setItem('trackly_tenant_id', cachedTenantId);
+		}
+		return cachedTenantId;
+	}
+
 	// Utilise le cache si disponible
 	if (cachedTenantId) return cachedTenantId;
 	

@@ -1,4 +1,6 @@
 import { apiFetch } from './client';
+import { browser } from '$app/environment';
+import { isOfflineMode } from '../offline/config';
 
 export type ApiDelivery = {
 	id: string;
@@ -17,6 +19,10 @@ export type DeliveriesListFilters = {
 };
 
 export const getDeliveries = async (filters?: DeliveriesListFilters) => {
+	if (browser && isOfflineMode()) {
+		const { mockDeliveriesApi } = await import('../offline/mockApi');
+		return await mockDeliveriesApi.getDeliveries(filters);
+	}
 	const path = filters && (filters.dateFrom ?? filters.dateTo ?? filters.dateFilter)
 		? `/api/deliveries?${new URLSearchParams(
 				Object.fromEntries(
@@ -44,10 +50,18 @@ export type ApiDeliveryDetail = {
 };
 
 export const getDelivery = async (id: string) => {
+	if (browser && isOfflineMode()) {
+		const { mockDeliveriesApi } = await import('../offline/mockApi');
+		return await mockDeliveriesApi.getDelivery(id);
+	}
 	return await apiFetch<ApiDeliveryDetail>(`/api/deliveries/${id}`);
 };
 
 export const deleteDelivery = async (id: string) => {
+	if (browser && isOfflineMode()) {
+		const { mockDeliveriesApi } = await import('../offline/mockApi');
+		return await mockDeliveriesApi.deleteDelivery(id);
+	}
 	return await apiFetch<{ message: string }>(`/api/deliveries/${id}`, {
 		method: 'DELETE'
 	});
@@ -63,6 +77,10 @@ export type DeleteDeliveriesBatchResponse = {
 };
 
 export const deleteDeliveriesBatch = async (request: DeleteDeliveriesBatchRequest) => {
+	if (browser && isOfflineMode()) {
+		const { mockDeliveriesApi } = await import('../offline/mockApi');
+		return await mockDeliveriesApi.deleteDeliveriesBatch(request);
+	}
 	return await apiFetch<DeleteDeliveriesBatchResponse>('/api/deliveries/batch/delete', {
 		method: 'POST',
 		body: JSON.stringify({ ids: request.ids })
@@ -80,6 +98,10 @@ export type CreateDeliveriesBatchResponse = {
 };
 
 export const createDeliveriesBatch = async (request: CreateDeliveriesBatchRequest) => {
+	if (browser && isOfflineMode()) {
+		const { mockDeliveriesApi } = await import('../offline/mockApi');
+		return await mockDeliveriesApi.createDeliveriesBatch(request);
+	}
 	return await apiFetch<CreateDeliveriesBatchResponse>('/api/deliveries/batch', {
 		method: 'POST',
 		body: JSON.stringify({

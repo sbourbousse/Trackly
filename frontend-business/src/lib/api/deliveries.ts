@@ -88,3 +88,23 @@ export const createDeliveriesBatch = async (request: CreateDeliveriesBatchReques
 		})
 	});
 };
+
+export type DeliveryStatsResponse = {
+	byDay: Array<{ date: string; count: number }>;
+	byHour: Array<{ hour: string; count: number }>;
+};
+
+export const getDeliveriesStats = async (filters?: DeliveriesListFilters) => {
+	const path = filters && (filters.dateFrom ?? filters.dateTo ?? filters.dateFilter)
+		? `/api/deliveries/stats?${new URLSearchParams(
+				Object.fromEntries(
+					[
+						filters.dateFrom && ['dateFrom', filters.dateFrom],
+						filters.dateTo && ['dateTo', filters.dateTo],
+						filters.dateFilter && ['dateFilter', filters.dateFilter]
+					].filter((x): x is [string, string] => Boolean(x))
+				)
+			)}`
+		: '/api/deliveries/stats';
+	return await apiFetch<DeliveryStatsResponse>(path);
+};

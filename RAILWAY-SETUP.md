@@ -2,6 +2,8 @@
 
 Ce guide explique comment configurer Railway pour déployer les 3 services de Trackly.
 
+> **📖 Nouveau :** Pour utiliser les environnements PR automatiques de Railway, consultez [RAILWAY-PR-ENVIRONMENTS.md](RAILWAY-PR-ENVIRONMENTS.md)
+
 ## Structure des Services
 
 Railway déploiera 3 services depuis ce repository :

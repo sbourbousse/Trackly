@@ -1,0 +1,318 @@
+[
+  {
+    "text": "Configurer Stripe Billing (clés API, webhooks)",
+    "category": "Backend .NET 9",
+    "subcategory": "Intégrations",
+    "labels": [
+      "backend",
+      "integrations"
+    ],
+    "line_number": 44
+  },
+  {
+    "text": "Configurer Twilio/Vonage pour SMS",
+    "category": "Backend .NET 9",
+    "subcategory": "Intégrations",
+    "labels": [
+      "backend",
+      "integrations"
+    ],
+    "line_number": 47
+  },
+  {
+    "text": "Créer service `SmsService` pour envoi notifications",
+    "category": "Backend .NET 9",
+    "subcategory": "Intégrations",
+    "labels": [
+      "backend",
+      "integrations"
+    ],
+    "line_number": 48
+  },
+  {
+    "text": "Configurer Google Maps API pour géocodage",
+    "category": "Backend .NET 9",
+    "subcategory": "Intégrations",
+    "labels": [
+      "backend",
+      "integrations"
+    ],
+    "line_number": 49
+  },
+  {
+    "text": "Demander permission géolocalisation native",
+    "category": "Frontend Driver (PWA)",
+    "subcategory": "Setup",
+    "labels": [
+      "frontend",
+      "driver"
+    ],
+    "line_number": 79
+  },
+  {
+    "text": "Composant bouton validation (grand, contrasté)",
+    "category": "Frontend Driver (PWA)",
+    "subcategory": "Pages",
+    "labels": [
+      "frontend",
+      "driver"
+    ],
+    "line_number": 86
+  },
+  {
+    "text": "Envoyer position GPS au Hub SignalR toutes les 5 secondes",
+    "category": "Frontend Driver (PWA)",
+    "subcategory": "Géolocalisation",
+    "labels": [
+      "frontend",
+      "driver",
+      "geolocation"
+    ],
+    "line_number": 90
+  },
+  {
+    "text": "Afficher position actuelle sur carte",
+    "category": "Frontend Driver (PWA)",
+    "subcategory": "Géolocalisation",
+    "labels": [
+      "frontend",
+      "driver",
+      "geolocation"
+    ],
+    "line_number": 91
+  },
+  {
+    "text": "Initialiser projet Svelte minimal",
+    "category": "Frontend Tracking",
+    "subcategory": "Setup",
+    "labels": [
+      "frontend",
+      "tracking"
+    ],
+    "line_number": 96
+  },
+  {
+    "text": "Optimiser bundle (< 50kb compressé)",
+    "category": "Frontend Tracking",
+    "subcategory": "Setup",
+    "labels": [
+      "frontend",
+      "tracking"
+    ],
+    "line_number": 97
+  },
+  {
+    "text": "Configurer client SignalR léger",
+    "category": "Frontend Tracking",
+    "subcategory": "Setup",
+    "labels": [
+      "frontend",
+      "tracking"
+    ],
+    "line_number": 98
+  },
+  {
+    "text": "Page unique `/tracking/[deliveryId]`",
+    "category": "Frontend Tracking",
+    "subcategory": "Setup",
+    "labels": [
+      "frontend",
+      "tracking"
+    ],
+    "line_number": 99
+  },
+  {
+    "text": "Afficher carte avec position livreur",
+    "category": "Frontend Tracking",
+    "subcategory": "Fonctionnalités",
+    "labels": [
+      "frontend",
+      "tracking"
+    ],
+    "line_number": 102
+  },
+  {
+    "text": "Recevoir mises à jour position via SignalR",
+    "category": "Frontend Tracking",
+    "subcategory": "Fonctionnalités",
+    "labels": [
+      "frontend",
+      "tracking"
+    ],
+    "line_number": 103
+  },
+  {
+    "text": "Animer mouvement livreur sur carte",
+    "category": "Frontend Tracking",
+    "subcategory": "Fonctionnalités",
+    "labels": [
+      "frontend",
+      "tracking"
+    ],
+    "line_number": 104
+  },
+  {
+    "text": "Afficher statut livraison (en cours, livré, etc.)",
+    "category": "Frontend Tracking",
+    "subcategory": "Fonctionnalités",
+    "labels": [
+      "frontend",
+      "tracking"
+    ],
+    "line_number": 105
+  },
+  {
+    "text": "Configurer NSwag ou TypeGen",
+    "category": "Shared Types",
+    "subcategory": null,
+    "labels": [
+      "shared",
+      "types"
+    ],
+    "line_number": 109
+  },
+  {
+    "text": "Générer types TypeScript depuis DTOs C#",
+    "category": "Shared Types",
+    "subcategory": null,
+    "labels": [
+      "shared",
+      "types"
+    ],
+    "line_number": 110
+  },
+  {
+    "text": "Exporter types dans `shared/`",
+    "category": "Shared Types",
+    "subcategory": null,
+    "labels": [
+      "shared",
+      "types"
+    ],
+    "line_number": 111
+  },
+  {
+    "text": "Importer types dans tous les frontends",
+    "category": "Shared Types",
+    "subcategory": null,
+    "labels": [
+      "shared",
+      "types"
+    ],
+    "line_number": 112
+  },
+  {
+    "text": "**Liste des commandes** : Retirer l’action « Importer CSV » et le champ de recherche de l’en-tête du tableau. Ces actions ne seront accessibles que via la barre de navigation (sidebar).",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "UI – Alléger les en-têtes de tableaux",
+    "labels": [
+      "manual",
+      "priority",
+      "ui"
+    ],
+    "line_number": 121
+  },
+  {
+    "text": "**Liste des tournées** : Retirer l’action « Nouvelle tournée » et le champ « Filtrer par chauffeur » de l’en-tête du tableau. Accessibles uniquement via la barre de nav.",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "UI – Alléger les en-têtes de tableaux",
+    "labels": [
+      "manual",
+      "priority",
+      "ui"
+    ],
+    "line_number": 122
+  },
+  {
+    "text": "Corriger l’inversion des libellés relatifs dans les tooltips (ex. « Demain » affiché pour la journée d’hier). Vérifier `getRelativeDateLabel` / `daysDiff` dans `frontend-business/src/lib/utils/relativeDate.ts` (signe ou ordre des arguments).",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "Bug – Temps relatifs dans les tooltips du graphique",
+    "labels": [
+      "manual",
+      "priority",
+      "bug"
+    ],
+    "line_number": 125
+  },
+  {
+    "text": "Quand on sélectionne la date du jour, deux jours s’affichent (veille incluse). Cause probable : `orders?dateFrom=...&dateTo=...` avec conversion UTC (ex. `2026-02-01T23:00:00.000Z` / `2026-02-02T22:59:59.999Z`). À corriger côté serveur (interprétation des dates en timezone tenant ou envoi de dates en local/date-only) pour que « aujourd’hui » = un seul jour.",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "Bug – Plage « Aujourd’hui » affiche 2 jours",
+    "labels": [
+      "manual",
+      "priority",
+      "ui"
+    ],
+    "line_number": 128
+  },
+  {
+    "text": "Faire en sorte que le module de date concerne les **tournées** (et non plus seulement les commandes). Remplacer « Commandes par jour » par « Tournées par jour » dans le libellé.",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "Module date pour les tournées",
+    "labels": [
+      "manual",
+      "priority"
+    ],
+    "line_number": 131
+  },
+  {
+    "text": "Conserver les deux options de filtre : **Date création** (date de création de la delivery) et **Date commande** (date de la commande). Adapter la query côté serveur pour la liste/statistiques des tournées (filtrer sur `Delivery.CreatedAt` ou `Order.OrderDate` selon le filtre).",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "Module date pour les tournées",
+    "labels": [
+      "manual",
+      "priority"
+    ],
+    "line_number": 132
+  },
+  {
+    "text": "Rendre le graphique interactif : au clic sur un segment (statut de commande), filtrer l’affichage du tableau en dessous sur ce type/statut de commande.",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "Graphique interactif (planificateur)",
+    "labels": [
+      "manual",
+      "priority"
+    ],
+    "line_number": 135
+  },
+  {
+    "text": "Afficher un indicateur discret indiquant que le tableau est filtré par un statut.",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "Graphique interactif (planificateur)",
+    "labels": [
+      "manual",
+      "priority"
+    ],
+    "line_number": 136
+  },
+  {
+    "text": "Dans le graphique, indiquer visuellement par un jeu d’opacité la partie (segment) correspondant au statut filtré.",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "Graphique interactif (planificateur)",
+    "labels": [
+      "manual",
+      "priority"
+    ],
+    "line_number": 137
+  },
+  {
+    "text": "Mettre à jour l’import de commandes (CSV + mapping vers l’API) pour inclure les **nouveaux champs** : téléphone (`phoneNumber`) et commentaire interne (`internalComment`). Adapter le parser CSV et le mapping dans `orders/import` pour envoyer ces champs.",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "Import CSV",
+    "labels": [
+      "manual",
+      "priority"
+    ],
+    "line_number": 140
+  },
+  {
+    "text": "Créer un **dataset cohérent de commandes** sur la ville de **Montpellier** (adresses réalistes, répartition géographique et temporelle cohérente pour tests et démos).",
+    "category": "Instructions manuelles importantes (à développer prochainement)",
+    "subcategory": "Données de démo",
+    "labels": [
+      "manual",
+      "priority"
+    ],
+    "line_number": 143
+  }
+]

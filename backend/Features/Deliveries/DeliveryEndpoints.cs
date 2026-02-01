@@ -13,6 +13,7 @@ public static class DeliveryEndpoints
         var group = app.MapGroup("/api/deliveries");
 
         group.MapGet("/", GetDeliveries);
+        group.MapGet("/stats", GetDeliveriesStats);
         group.MapGet("/{id:guid}", GetDelivery);
         group.MapPost("/", CreateDelivery);
         group.MapPost("/batch", CreateDeliveriesBatch);
@@ -75,6 +76,115 @@ public static class DeliveryEndpoints
             .ToListAsync(cancellationToken);
 
         return Results.Ok(deliveries);
+    }
+
+    /// <summary>
+    /// Stats pour le graphique : ByDay si plage multi-jours, ByHour si un seul jour.
+    /// Filtres : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate".
+    /// OrderDate filtre sur la date de la commande associée.
+    /// </summary>
+    private static async Task<IResult> GetDeliveriesStats(
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        DateTimeOffset? dateFrom,
+        DateTimeOffset? dateTo,
+        string? dateFilter,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var useOrderDate = string.Equals(dateFilter, "OrderDate", StringComparison.OrdinalIgnoreCase);
+
+        if (!dateFrom.HasValue || !dateTo.HasValue)
+        {
+            return Results.Ok(new DeliveryStatsResponse());
+        }
+
+        var singleDay = dateFrom.Value.UtcDateTime.Date == dateTo.Value.UtcDateTime.Date;
+
+        if (useOrderDate)
+        {
+            // Filtrer sur Order.OrderDate : join avec Orders
+            var query = dbContext.Deliveries
+                .AsNoTracking()
+                .Where(d => d.TenantId == tenantContext.TenantId && d.DeletedAt == null)
+                .Join(
+                    dbContext.Orders,
+                    d => d.OrderId,
+                    o => o.Id,
+                    (d, o) => new { Delivery = d, Order = o })
+                .Where(x => x.Order.DeletedAt == null)
+                .Where(x => x.Order.OrderDate != null
+                    && x.Order.OrderDate.Value >= dateFrom.Value
+                    && x.Order.OrderDate.Value <= dateTo.Value);
+
+            if (singleDay)
+            {
+                var byHour = await query
+                    .Select(x => x.Order.OrderDate!.Value.Hour)
+                    .ToListAsync(cancellationToken);
+                var hourCounts = Enumerable.Range(0, 24)
+                    .Select(h => new DeliveryCountByHour($"{h:D2}:00", byHour.Count(x => x == h)))
+                    .ToList();
+                return Results.Ok(new DeliveryStatsResponse { ByHour = hourCounts });
+            }
+
+            var deliveriesForDay = await query
+                .Select(x => x.Order.OrderDate!.Value.Date)
+                .ToListAsync(cancellationToken);
+            var countByDate = deliveriesForDay
+                .GroupBy(d => d)
+                .ToDictionary(g => g.Key, g => g.Count());
+            var start = dateFrom.Value.UtcDateTime.Date;
+            var end = dateTo.Value.UtcDateTime.Date;
+            var byDay = new List<DeliveryCountByDay>();
+            for (var d = start; d <= end; d = d.AddDays(1))
+            {
+                var key = d.ToString("yyyy-MM-dd");
+                var count = countByDate.TryGetValue(d, out var c) ? c : 0;
+                byDay.Add(new DeliveryCountByDay(key, count));
+            }
+            return Results.Ok(new DeliveryStatsResponse { ByDay = byDay });
+        }
+        else
+        {
+            // Filtrer sur Delivery.CreatedAt
+            var query = dbContext.Deliveries
+                .AsNoTracking()
+                .Where(d => d.TenantId == tenantContext.TenantId && d.DeletedAt == null)
+                .Where(d => d.CreatedAt >= dateFrom.Value && d.CreatedAt <= dateTo.Value);
+
+            if (singleDay)
+            {
+                var byHour = await query
+                    .Select(d => d.CreatedAt.Hour)
+                    .ToListAsync(cancellationToken);
+                var hourCounts = Enumerable.Range(0, 24)
+                    .Select(h => new DeliveryCountByHour($"{h:D2}:00", byHour.Count(x => x == h)))
+                    .ToList();
+                return Results.Ok(new DeliveryStatsResponse { ByHour = hourCounts });
+            }
+
+            var deliveriesForDay = await query
+                .Select(d => d.CreatedAt.Date)
+                .ToListAsync(cancellationToken);
+            var countByDate = deliveriesForDay
+                .GroupBy(d => d)
+                .ToDictionary(g => g.Key, g => g.Count());
+            var start = dateFrom.Value.UtcDateTime.Date;
+            var end = dateTo.Value.UtcDateTime.Date;
+            var byDay = new List<DeliveryCountByDay>();
+            for (var d = start; d <= end; d = d.AddDays(1))
+            {
+                var key = d.ToString("yyyy-MM-dd");
+                var count = countByDate.TryGetValue(d, out var c) ? c : 0;
+                byDay.Add(new DeliveryCountByDay(key, count));
+            }
+            return Results.Ok(new DeliveryStatsResponse { ByDay = byDay });
+        }
     }
 
     private static async Task<IResult> GetDelivery(

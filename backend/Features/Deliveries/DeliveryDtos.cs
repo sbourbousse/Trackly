@@ -41,3 +41,16 @@ public sealed record DeliveryDetailResponse(
     string CustomerName,
     string Address,
     string DriverName);
+
+/// <summary>
+/// Agrégation livraisons pour le graphique : par jour ou par heure selon la plage.
+/// </summary>
+public sealed record DeliveryStatsResponse
+{
+    public List<DeliveryCountByDay> ByDay { get; init; } = new();
+    public List<DeliveryCountByHour> ByHour { get; init; } = new();
+}
+
+public sealed record DeliveryCountByDay(string Date, int Count);
+
+public sealed record DeliveryCountByHour(string Hour, int Count);

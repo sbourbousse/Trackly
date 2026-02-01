@@ -34,11 +34,11 @@
 - [x] Endpoint GET `/api/deliveries/{id}/tracking` (suivi livraison)
 
 ### SignalR
-- [ ] Créer interface `ITrackingClient` (méthodes typées)
-- [ ] Créer Hub `TrackingHub : Hub<ITrackingClient>`
-- [ ] Implémenter méthode `UpdateLocation(latitude, longitude)` dans Hub
-- [ ] Configurer CORS pour SignalR
-- [ ] Broadcast position GPS à tous les clients connectés
+- [x] Créer interface `ITrackingClient` (méthodes typées)
+- [x] Créer Hub `TrackingHub : Hub<ITrackingClient>`
+- [x] Implémenter méthode `UpdateLocation(latitude, longitude)` dans Hub
+- [x] Configurer CORS pour SignalR
+- [x] Broadcast position GPS à tous les clients connectés (groupe livraison)
 
 ### Intégrations
 - [ ] Configurer Stripe Billing (clés API, webhooks)
@@ -73,20 +73,20 @@
 ## Frontend Driver (PWA)
 
 ### Setup
-- [ ] Initialiser projet Svelte 5 PWA
-- [ ] Configurer manifest.json pour PWA
-- [ ] Configurer service worker pour mode offline basique
+- [x] Initialiser projet Svelte 5 PWA
+- [x] Configurer manifest.json pour PWA
+- [x] Configurer service worker pour mode offline basique
 - [ ] Demander permission géolocalisation native
-- [ ] Configurer client SignalR
+- [x] Configurer client SignalR
 
 ### Pages
-- [ ] Page `/login` (connexion livreur)
-- [ ] Page `/deliveries` (liste livraisons du jour)
-- [ ] Page `/deliveries/[id]` (détail livraison avec validation)
+- [x] Page `/login` (connexion livreur)
+- [x] Page `/deliveries` (liste livraisons du jour)
+- [x] Page `/deliveries/[id]` (détail livraison avec validation)
 - [ ] Composant bouton validation (grand, contrasté)
 
 ### Géolocalisation
-- [ ] Créer service `gps.svelte.ts` avec `$state` pour position
+- [x] Créer service `gps.svelte.ts` avec `$state` pour position
 - [ ] Envoyer position GPS au Hub SignalR toutes les 5 secondes
 - [ ] Afficher position actuelle sur carte
 
@@ -113,6 +113,40 @@
 
 ---
 
+## Instructions manuelles importantes (à développer prochainement)
+
+Tâches prioritaires définies par le product owner. À traiter dans l’ordre ou selon la priorité du sprint.
+
+### UI – Alléger les en-têtes de tableaux
+- [ ] **Liste des commandes** : Retirer l’action « Importer CSV » et le champ de recherche de l’en-tête du tableau. Ces actions ne seront accessibles que via la barre de navigation (sidebar).
+- [ ] **Liste des tournées** : Retirer l’action « Nouvelle tournée » et le champ « Filtrer par chauffeur » de l’en-tête du tableau. Accessibles uniquement via la barre de nav.
+
+### Bug – Temps relatifs dans les tooltips du graphique
+- [ ] Corriger l’inversion des libellés relatifs dans les tooltips (ex. « Demain » affiché pour la journée d’hier). Vérifier `getRelativeDateLabel` / `daysDiff` dans `frontend-business/src/lib/utils/relativeDate.ts` (signe ou ordre des arguments).
+
+### Bug – Plage « Aujourd’hui » affiche 2 jours
+- [ ] Quand on sélectionne la date du jour, deux jours s’affichent (veille incluse). Cause probable : `orders?dateFrom=...&dateTo=...` avec conversion UTC (ex. `2026-02-01T23:00:00.000Z` / `2026-02-02T22:59:59.999Z`). À corriger côté serveur (interprétation des dates en timezone tenant ou envoi de dates en local/date-only) pour que « aujourd’hui » = un seul jour.
+
+### Module date pour les tournées
+- [ ] Faire en sorte que le module de date concerne les **tournées** (et non plus seulement les commandes). Remplacer « Commandes par jour » par « Tournées par jour » dans le libellé.
+- [ ] Conserver les deux options de filtre : **Date création** (date de création de la delivery) et **Date commande** (date de la commande). Adapter la query côté serveur pour la liste/statistiques des tournées (filtrer sur `Delivery.CreatedAt` ou `Order.OrderDate` selon le filtre).
+
+### Graphique interactif (planificateur)
+- [ ] Rendre le graphique interactif : au clic sur un segment (statut de commande), filtrer l’affichage du tableau en dessous sur ce type/statut de commande.
+- [ ] Afficher un indicateur discret indiquant que le tableau est filtré par un statut.
+- [ ] Dans le graphique, indiquer visuellement par un jeu d’opacité la partie (segment) correspondant au statut filtré.
+
+### Import CSV
+- [ ] Mettre à jour l’import de commandes (CSV + mapping vers l’API) pour inclure les **nouveaux champs** : téléphone (`phoneNumber`) et commentaire interne (`internalComment`). Adapter le parser CSV et le mapping dans `orders/import` pour envoyer ces champs.
+
+### Données de démo
+- [ ] Créer un **dataset cohérent de commandes** sur la ville de **Montpellier** (adresses réalistes, répartition géographique et temporelle cohérente pour tests et démos).
+
+---
+
 ## Tâches Complétées
 
 - 2026-01-26 | Frontend Business | Projet SvelteKit minimal + layout base.
+- SignalR backend (TrackingHub, ITrackingClient, UpdateLocation, CORS, MapHub).
+- Frontend Driver : projet PWA, pages Login/Deliveries/Detail, client SignalR, service GPS.
+- Frontend Business : filtre par date (DateFilterCard), graphique commandes par jour/heure/mois (OrdersChartContent), tooltips relatifs (relativeDate.ts), champs Order OrderDate, PhoneNumber, InternalComment (backend + frontend formulaire détail/nouvelle commande).

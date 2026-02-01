@@ -41,11 +41,12 @@
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 	const chartData = $derived.by(() => {
-		if (!orderStats) return { labels: [] as string[], values: [] as number[], byHour: false, byMonth: false };
+		if (!orderStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
 		if (orderStats.byHour.length > 0) {
 			return {
 				labels: orderStats.byHour.map((x) => x.hour),
 				values: orderStats.byHour.map((x) => x.count),
+				periodKeys: [] as string[],
 				byHour: true,
 				byMonth: false
 			};
@@ -65,6 +66,7 @@
 					return `${MONTH_LABELS[Number(m) - 1]} ${key.slice(0, 4)}`;
 				}),
 				values: sorted.map(([, count]) => count),
+				periodKeys: sorted.map(([key]) => key),
 				byHour: false,
 				byMonth: true
 			};
@@ -72,6 +74,7 @@
 		return {
 			labels: orderStats.byDay.map((x) => x.date),
 			values: orderStats.byDay.map((x) => x.count),
+			periodKeys: orderStats.byDay.map((x) => x.date),
 			byHour: false,
 			byMonth: false
 		};
@@ -169,6 +172,7 @@
 
 	<DateFilterCard
 		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
+		chartDescription="Répartition par statut pour la planification des tournées."
 		chartDefaultOpen={false}
 		onDateFilterChange={async () => { await ordersActions.loadOrders(); }}
 	>
@@ -177,6 +181,10 @@
 				loading={orderStatsLoading}
 				labels={chartData.labels}
 				values={chartData.values}
+				orders={ordersState.items}
+				periodKeys={chartData.periodKeys}
+				byHour={chartData.byHour}
+				byMonth={chartData.byMonth}
 				emptyMessage="Sélectionnez une plage pour afficher le graphique."
 			/>
 		{/snippet}

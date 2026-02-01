@@ -257,4 +257,17 @@
 
 ---
 
+## 2026-02-01 | Mise à jour todo et instructions manuelles
+
+**Tâche** : Alignement du todo sur l’état réel du projet et ajout des instructions manuelles prioritaires.
+
+**Fichiers modifiés** :
+- `todo.md`
+
+**Notes** :
+- SignalR backend et frontend driver marqués comme réalisés (TrackingHub, ITrackingClient, PWA, pages, GPS, client SignalR).
+- Nouvelle section « Instructions manuelles importantes » avec tâches à développer : allègement en-têtes (commandes/tournées), bug tooltips relatifs, bug plage « aujourd’hui », module date tournées, graphique interactif par statut, import CSV nouveaux champs, dataset Montpellier.
+
+---
+
 _Continuer à documenter les modifications importantes au fur et à mesure..._

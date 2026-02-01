@@ -75,7 +75,8 @@
 													'hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none',
 													selected && 'bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground',
 													'data-[data-selection-start]:rounded-r-none data-[data-selection-end]:rounded-l-none data-[data-range-middle]:rounded-none data-[data-range-middle]:bg-primary/20',
-													disabled && 'text-muted-foreground opacity-50',
+													'data-[data-disabled]:text-muted-foreground data-[data-disabled]:opacity-50',
+													'data-[data-outside-month]:opacity-80 data-[data-outside-month]:text-muted-foreground',
 													unavailable && 'text-muted-foreground line-through'
 												)}
 											/>

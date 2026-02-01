@@ -1,5 +1,7 @@
 import { env } from '$env/dynamic/public';
 import { browser, dev } from '$app/environment';
+import { offlineConfig } from '../offline/config';
+import { mockTenantApi } from '../offline/mockApi';
 
 const baseUrl = env.PUBLIC_API_BASE_URL || 'http://localhost:5257';
 
@@ -9,6 +11,15 @@ let cachedAuthToken: string | null = null;
 
 export const getTenantId = async (): Promise<string | null> => {
 	if (!browser) return null;
+	
+	// Mode offline: utiliser les mocks
+	if (offlineConfig.enabled) {
+		if (!cachedTenantId) {
+			cachedTenantId = await mockTenantApi.getTenantId();
+			localStorage.setItem('trackly_tenant_id', cachedTenantId);
+		}
+		return cachedTenantId;
+	}
 	
 	// Utilise le cache si disponible
 	if (cachedTenantId) return cachedTenantId;
@@ -153,14 +164,24 @@ export type AuthResponse = {
 	email: string;
 };
 
-export const registerAccount = async (payload: AuthRegisterPayload) =>
-	apiFetch<AuthResponse>('/api/auth/register', {
+export const registerAccount = async (payload: AuthRegisterPayload) => {
+	if (browser && offlineConfig.enabled) {
+		const { mockAuthApi } = await import('../offline/mockApi');
+		return await mockAuthApi.register(payload);
+	}
+	return apiFetch<AuthResponse>('/api/auth/register', {
 		method: 'POST',
 		body: JSON.stringify(payload)
 	});
+};
 
-export const loginAccount = async (payload: AuthLoginPayload) =>
-	apiFetch<AuthResponse>('/api/auth/login', {
+export const loginAccount = async (payload: AuthLoginPayload) => {
+	if (browser && offlineConfig.enabled) {
+		const { mockAuthApi } = await import('../offline/mockApi');
+		return await mockAuthApi.login(payload);
+	}
+	return apiFetch<AuthResponse>('/api/auth/login', {
 		method: 'POST',
 		body: JSON.stringify(payload)
 	});
+};

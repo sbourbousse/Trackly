@@ -7,10 +7,18 @@ on:
     types:
       - completed
 
+permissions:
+  contents: read
+
 jobs:
   redeploy:
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    # Only redeploy production environment when triggered by workflow_run or manual dispatch
+    # Railway handles PR environments automatically
+    if: |
+      (github.event.workflow_run.conclusion == 'success' && github.event.workflow_run.event != 'pull_request') ||
+      github.event_name == 'workflow_dispatch'
     runs-on: ubuntu-latest
+    environment: energetic-integrity / production
     steps:
       - name: Redeploy backend
         env:

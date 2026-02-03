@@ -140,4 +140,14 @@
   *::-webkit-scrollbar-corner {
     background: transparent;
   }
+
+  /* Select options : fond et texte cohérents avec le thème (évite blanc sur blanc en dark) */
+  select option {
+    background: var(--popover);
+    color: var(--popover-foreground);
+  }
+  .dark select option {
+    background: var(--card);
+    color: var(--card-foreground);
+  }
 }

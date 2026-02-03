@@ -13,6 +13,7 @@
 
 	let pathname = $derived(page.url.pathname);
 	let withSidebar = $derived(pathname !== '/login');
+	let isMapPage = $derived(pathname === '/map');
 
 	let dateRangeRestored = $state(false);
 
@@ -51,11 +52,11 @@
 	<SidebarProvider>
 		<AppSidebar />
 		<SidebarInset>
-			<header class="flex h-12 shrink-0 items-center gap-2 border-b px-4">
+			<header class="relative z-50 flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4">
 				<SidebarTrigger class="-ms-2" />
 				<Separator orientation="vertical" class="h-5" />
 			</header>
-			<div class="min-w-0 flex-1 p-6">
+			<div class="min-w-0 flex-1 min-h-0 {isMapPage ? 'p-0' : 'p-6'}">
 				{@render children()}
 			</div>
 		</SidebarInset>

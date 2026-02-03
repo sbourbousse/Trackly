@@ -1,6 +1,13 @@
 <script lang="ts">
 	import { onMount, onDestroy } from 'svelte';
 	import { browser } from '$app/environment';
+	import {
+		getOrderStatusColorHex,
+		getDeliveryStatusColorHex,
+		getDriverColorHex,
+		getMarkerIconHtml,
+		type MarkerType
+	} from '$lib/utils/mapMarkers';
 
 	let mapContainer: HTMLDivElement;
 	let map = $state<any>(null);
@@ -9,11 +16,32 @@
 	let trackingCircle: any = null;
 	let L: any = null;
 
+	/** Marqueur typé (commande / tournée / livreur) avec couleur de statut et icône. */
+	export type TypedMapMarker = {
+		lat: number;
+		lng: number;
+		label?: string;
+		type: MarkerType;
+		status?: string;
+		id?: string;
+	};
+
+	/** Ancien format : marqueurs plats (rétrocompatibilité). */
+	export type LegacyMapMarker = {
+		lat: number;
+		lng: number;
+		label?: string;
+		color?: string;
+	};
+
 	interface Props {
 		center?: [number, number];
 		zoom?: number;
 		height?: string;
-		deliveryMarkers?: Array<{ lat: number; lng: number; label?: string; color?: string }>;
+		/** Marqueurs typés (ordre / livraison / livreur) avec couleurs de statut. Prioritaire si fourni et non vide. */
+		markers?: TypedMapMarker[];
+		/** Marqueurs au format legacy (pin ou cercle rouge). Utilisé si markers absent ou vide. */
+		deliveryMarkers?: LegacyMapMarker[];
 		trackPosition?: { lat: number; lng: number; accuracy?: number } | null;
 		followTracking?: boolean;
 	}
@@ -22,6 +50,7 @@
 		center = [48.8566, 2.3522],
 		zoom = 13,
 		height = '400px',
+		markers: typedMarkers = [],
 		deliveryMarkers = [],
 		trackPosition = null,
 		followTracking = true
@@ -30,23 +59,24 @@
 	let DefaultIcon: any = null;
 	let createTrackingIcon: ((color?: string) => any) | null = null;
 
+	/** Marqueurs effectifs : typés si fournis, sinon legacy. */
+	const effectiveMarkers = $derived(
+		typedMarkers.length > 0
+			? typedMarkers.map((m) => ({ ...m, _typed: true as const }))
+			: deliveryMarkers.map((m) => ({ ...m, _typed: false as const }))
+	);
+
 	onMount(async () => {
-		// Charger Leaflet uniquement côté client
 		if (!browser) return;
 
-		// Import dynamique de Leaflet
 		const leaflet = await import('leaflet');
 		L = leaflet.default;
-		
-		// Import du CSS
 		await import('leaflet/dist/leaflet.css');
 
-		// Fix pour les icônes Leaflet avec Vite
 		const icon = await import('leaflet/dist/images/marker-icon.png');
 		const iconShadow = await import('leaflet/dist/images/marker-shadow.png');
 		const iconRetina = await import('leaflet/dist/images/marker-icon-2x.png');
 
-		// Configuration des icônes par défaut
 		DefaultIcon = L.icon({
 			iconUrl: icon.default,
 			iconRetinaUrl: iconRetina.default,
@@ -59,7 +89,6 @@
 		});
 		L.Marker.prototype.options.icon = DefaultIcon;
 
-		// Icône rouge pour le tracking
 		createTrackingIcon = (color: string = 'red') => {
 			return L.divIcon({
 				className: 'tracking-marker',
@@ -76,14 +105,11 @@
 			});
 		};
 
-		// Initialiser la carte
 		map = L.map(mapContainer, {
 			zoomControl: true,
 			attributionControl: true
 		}).setView(center, zoom);
 
-		// Tuiles OpenStreetMap (usage policy: https://operations.osmfoundation.org/policies/tiles/)
-		// keepBuffer: 2 = moins de tuiles en mémoire hors vue, réduit la bande passante au pan
 		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
 			maxZoom: 19,
@@ -91,46 +117,55 @@
 			keepBuffer: 2
 		}).addTo(map);
 
-		// Ajouter les markers de livraison
-		updateDeliveryMarkers();
-
-		// Ajouter le marker de suivi si disponible
+		updateMarkers();
 		updateTrackingMarker();
 	});
 
-	// Recentrer la carte quand center ou zoom changent (ex. après géocodage)
 	$effect(() => {
 		if (map && center && zoom != null) {
 			map.setView(center, zoom);
 		}
 	});
 
-	// Mettre à jour les markers de livraison
-	function updateDeliveryMarkers() {
-		if (!L || !map || !DefaultIcon || !createTrackingIcon) return;
-		const icon = DefaultIcon;
-		const trackingIcon = createTrackingIcon;
+	function getColorHexForTypedMarker(m: TypedMapMarker): string {
+		if (m.type === 'order') return getOrderStatusColorHex(m.status ?? '');
+		if (m.type === 'delivery') return getDeliveryStatusColorHex(m.status ?? '');
+		return getDriverColorHex();
+	}
 
-		// Supprimer les anciens markers
-		markers.forEach(marker => marker.remove());
+	function updateMarkers() {
+		if (!L || !map || !DefaultIcon || !createTrackingIcon) return;
+		const trackingIconFn = createTrackingIcon;
+
+		markers.forEach((marker) => marker.remove());
 		markers = [];
 
-		// Ajouter les nouveaux markers
-		deliveryMarkers.forEach((markerData) => {
-			const marker = L.marker([markerData.lat, markerData.lng], {
-				icon: markerData.color === 'red' 
-					? trackingIcon('red')
-					: icon
-			}).addTo(map);
+		effectiveMarkers.forEach((markerData) => {
+			let icon: any;
+			if (markerData._typed) {
+				const m = markerData as TypedMapMarker & { _typed: true };
+				const colorHex = getColorHexForTypedMarker(m);
+				icon = L.divIcon({
+					className: 'map-typed-marker-wrap',
+					html: getMarkerIconHtml(m.type, colorHex),
+					iconSize: [28, 28],
+					iconAnchor: [14, 14]
+				});
+			} else {
+				const leg = markerData as LegacyMapMarker & { _typed: false };
+				icon =
+					leg.color === 'red'
+						? trackingIconFn('red')
+						: DefaultIcon;
+			}
 
+			const marker = L.marker([markerData.lat, markerData.lng], { icon }).addTo(map);
 			if (markerData.label) {
 				marker.bindPopup(markerData.label);
 			}
-
 			markers.push(marker);
 		});
 
-		// Recentrer la vue : un seul marqueur → setView ; plusieurs → fitBounds
 		if (markers.length > 0 && map && L) {
 			if (markers.length === 1) {
 				const pos = markers[0].getLatLng();
@@ -142,11 +177,9 @@
 		}
 	}
 
-	// Mettre à jour le marker de suivi
 	function updateTrackingMarker() {
 		if (!L || !map || !createTrackingIcon) return;
 
-		// Supprimer l'ancien marker de suivi
 		if (trackingMarker) {
 			trackingMarker.remove();
 			trackingMarker = null;
@@ -157,13 +190,11 @@
 		}
 
 		if (trackPosition) {
-			// Créer le marker de suivi (point rouge animé)
 			trackingMarker = L.marker([trackPosition.lat, trackPosition.lng], {
 				icon: createTrackingIcon('#dc2626'),
 				zIndexOffset: 1000
 			}).addTo(map);
 
-			// Ajouter un cercle de précision si disponible
 			if (trackPosition.accuracy && L) {
 				trackingCircle = L.circle([trackPosition.lat, trackPosition.lng], {
 					radius: trackPosition.accuracy,
@@ -174,21 +205,18 @@
 				}).addTo(map);
 			}
 
-			// Centrer la carte sur la position de suivi
 			if (followTracking) {
 				map.setView([trackPosition.lat, trackPosition.lng], map.getZoom());
 			}
 		}
 	}
 
-	// Réagir aux changements de markers
 	$effect(() => {
 		if (map && L && DefaultIcon && createTrackingIcon) {
-			updateDeliveryMarkers();
+			updateMarkers();
 		}
 	});
 
-	// Réagir aux changements de position de suivi
 	$effect(() => {
 		if (map && L && createTrackingIcon && trackPosition) {
 			updateTrackingMarker();
@@ -214,7 +242,8 @@
 		position: relative;
 		z-index: 0;
 	}
-	:global(.tracking-marker) {
+	:global(.tracking-marker),
+	:global(.map-typed-marker-wrap) {
 		background: transparent !important;
 		border: none !important;
 	}

@@ -122,7 +122,7 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-2xl min-w-0 flex-col gap-6">
+<div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
 	<PageHeader title="Nouvelle commande" subtitle="Créer une nouvelle commande à livrer." />
 
 		<Card>

@@ -132,6 +132,11 @@
 		return indices;
 	});
 
+	const legendItems = $derived.by(() => {
+		const keys = [...new Set(stackedData.flatMap((r) => r.segments.map((s) => s.key)))];
+		return STATUS_CONFIG.filter((s) => keys.includes(s.key));
+	});
+
 	function handleSegmentClick(statusKey: string) {
 		if (!onStatusClick) return;
 		// Toggle: if same status is clicked again, clear the filter
@@ -143,6 +148,16 @@
 	}
 </script>
 
+<style>
+	/* Force chaque colonne de barre à prendre toute la largeur de sa graduation */
+	.chart-bar-column-inner :global([data-slot='tooltip-trigger']) {
+		display: block;
+		width: 100%;
+		min-width: 0;
+		flex: 1 1 0;
+	}
+</style>
+
 <TooltipProvider delayDuration={200}>
 	<div class="min-w-0 rounded-md border bg-muted/30 p-4">
 		{#if loading}
@@ -151,34 +166,38 @@
 			<div class="text-muted-foreground py-8 text-center text-sm">{emptyMessage}</div>
 		{:else}
 			<div class="min-w-0 overflow-x-auto" role="img" aria-label="Répartition des commandes par période et par statut (planification)">
+				<div class="min-w-0" style="width: 100%; min-width: max(100%, {chartMinWidthPx}px)">
 				<div
 					class="flex items-end gap-2"
-					style="width: 100%; min-width: max(100%, {chartMinWidthPx}px)"
+					style="width: 100%"
 				>
 					{#each stackedData as row}
-						<div class="flex flex-1 min-w-0 shrink-0" style="min-width: {BAR_MIN_PX}px">
-							<TooltipRoot class="h-full w-full">
-								<TooltipTrigger
+						<div class="chart-bar-column flex flex-1 shrink-0 flex-col" style="min-width: {BAR_MIN_PX}px; width: 0">
+							<div class="chart-bar-column-inner flex min-h-0 w-full flex-1 flex-col">
+							<TooltipRoot>
+								<TooltipTrigger>
+								<div
 									class="flex h-full w-full flex-col items-stretch cursor-default rounded-none border-0 bg-transparent p-0"
 									style="height: {BAR_HEIGHT}px"
 								>
-								<div class="flex w-full flex-1 min-h-0 flex-col-reverse items-stretch gap-0">
-									<!-- Base arrondie en bas : visualise le « jour » même vide -->
-									<div
-										class="w-full min-h-0 flex-1 rounded-b border border-border/50 bg-muted/30"
-										aria-hidden="true"
-									></div>
-									{#each row.segments as seg, segIdx}
+								<!-- Barres du bas vers le haut : colonne à hauteur fixe, spacer en haut puis segments en bas -->
+								<div
+									class="flex w-full flex-col items-stretch gap-0"
+									style="height: {BAR_HEIGHT}px; min-height: {BAR_HEIGHT}px"
+								>
+									<!-- Spacer = espace au-dessus des segments (remplit tout l'espace par graduation) -->
+									<div class="w-full flex-1 min-h-0" aria-hidden="true"></div>
+									{#each [...row.segments].reverse() as seg, segIdx}
 										{@const h = maxTotal > 0 ? (seg.count / maxTotal) * BAR_HEIGHT : 0}
 										{#if h > 0}
-											{@const isBottom = segIdx === 0}
-											{@const isTop = segIdx === row.segments.length - 1}
+											{@const isBottom = segIdx === row.segments.length - 1}
+											{@const isTop = segIdx === 0}
 											{@const isSelected = selectedStatus === seg.key}
 											{@const isOtherSelected = selectedStatus && selectedStatus !== seg.key}
 											<button
 												type="button"
 												class="w-full min-w-[8px] shrink-0 transition-opacity hover:opacity-90 {seg.colorClass} cursor-pointer border-0 p-0"
-												style="height: {Math.max(2, h)}px; border-radius: {isBottom ? '0 0 4px 4px' : isTop ? '4px 4px 0 0' : '0'}; opacity: {isOtherSelected ? '0.3' : '1'}"
+												style="height: {Math.max(2, h)}px; border-radius: {isTop ? '4px 4px 0 0' : isBottom ? '0 0 4px 4px' : '0'}; opacity: {isOtherSelected ? '0.3' : '1'}"
 												onclick={(e) => {
 													e.stopPropagation();
 													handleSegmentClick(seg.key);
@@ -187,6 +206,7 @@
 											></button>
 										{/if}
 									{/each}
+								</div>
 								</div>
 							</TooltipTrigger>
 							{@const tt = tooltipTitle(row)}
@@ -208,13 +228,13 @@
 								</div>
 							</TooltipContent>
 							</TooltipRoot>
+							</div>
 						</div>
 					{/each}
 				</div>
-			</div>
 			<div
 				class="text-muted-foreground mt-2 flex min-w-0 gap-2 text-xs"
-				style="width: 100%; min-width: max(100%, {chartMinWidthPx}px)"
+				style="width: 100%"
 			>
 				{#each stackedData as row, i}
 					<div class="flex flex-1 min-w-[{BAR_MIN_PX}px] shrink-0 justify-center truncate" style="min-width: {BAR_MIN_PX}px">
@@ -224,17 +244,18 @@
 					</div>
 				{/each}
 			</div>
-			{@const legendKeys = [...new Set(stackedData.flatMap((r) => r.segments.map((s) => s.key)))]}
-			{@const legendItems = STATUS_CONFIG.filter((s) => legendKeys.includes(s.key))}
 			{#if legendItems.length > 0}
-				<div class="text-muted-foreground mt-4 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs">
+				<div
+					class="text-muted-foreground mt-4 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs"
+					style="width: 100%"
+				>
 					{#each legendItems as item}
 						{@const LegendIcon = item.icon}
 						{@const isSelected = selectedStatus === item.key}
 						{@const isOtherSelected = selectedStatus && selectedStatus !== item.key}
 						<button
 							type="button"
-							class="flex items-center gap-1.5 transition-opacity hover:opacity-80 cursor-pointer border-0 bg-transparent p-0"
+							class="flex shrink-0 items-center gap-1.5 transition-opacity hover:opacity-80 cursor-pointer border-0 bg-transparent p-0"
 							style="opacity: {isOtherSelected ? '0.4' : '1'}"
 							onclick={() => handleSegmentClick(item.key)}
 							aria-label="Filtrer par {item.label}"
@@ -246,6 +267,8 @@
 					{/each}
 				</div>
 			{/if}
+				</div>
+			</div>
 		{/if}
 	</div>
 </TooltipProvider>

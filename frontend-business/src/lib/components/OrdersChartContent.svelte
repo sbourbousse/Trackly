@@ -14,10 +14,13 @@
 	type IconComponent = typeof ClockIcon;
 
 	interface Props {
+		/** 'order' = commandes (statuts order), 'delivery' = tournées (statuts delivery). */
+		variant?: 'order' | 'delivery';
 		loading?: boolean;
 		labels?: string[];
 		values?: number[];
 		orders?: { status: string; orderDate?: string | null }[];
+		deliveries?: { status: string; createdAt?: string | null }[];
 		periodKeys?: string[];
 		byHour?: boolean;
 		byMonth?: boolean;
@@ -26,10 +29,12 @@
 		onStatusClick?: (statusKey: string | null) => void;
 	}
 	let {
+		variant = 'order',
 		loading = false,
 		labels = [],
 		values = [],
 		orders = [],
+		deliveries = [],
 		periodKeys,
 		byHour = false,
 		byMonth = false,
@@ -38,8 +43,8 @@
 		onStatusClick
 	}: Props = $props();
 
-	/** Couleurs alignées sur les badges (success=emerald, warning=amber, info=sky, destructive). */
-	const STATUS_CONFIG: {
+	/** Couleurs alignées sur les badges commandes (success=emerald, warning=amber, info=sky, destructive). */
+	const ORDER_STATUS_CONFIG: {
 		key: string;
 		label: string;
 		colorClass: string;
@@ -52,6 +57,21 @@
 		{ key: 'cancelled', label: 'Annulée', colorClass: 'bg-destructive', icon: XCircleIcon }
 	];
 
+	/** Couleurs alignées sur les badges tournées (StatusBadge type="delivery"). */
+	const DELIVERY_STATUS_CONFIG: {
+		key: string;
+		label: string;
+		colorClass: string;
+		icon: IconComponent;
+	}[] = [
+		{ key: 'pending', label: 'Prévue', colorClass: 'bg-sky-500', icon: ClockIcon },
+		{ key: 'inprogress', label: 'En cours', colorClass: 'bg-amber-500', icon: TruckIcon },
+		{ key: 'completed', label: 'Livrée', colorClass: 'bg-emerald-500', icon: CheckCircle2Icon },
+		{ key: 'failed', label: 'Échouée', colorClass: 'bg-destructive', icon: XCircleIcon }
+	];
+
+	const STATUS_CONFIG = $derived(variant === 'delivery' ? DELIVERY_STATUS_CONFIG : ORDER_STATUS_CONFIG);
+
 	function statusToKey(s: string): string {
 		const lower = (s ?? '').toLowerCase();
 		if (lower === 'pending' || lower === 'en attente' || lower === '0') return 'pending';
@@ -62,6 +82,15 @@
 		return 'pending';
 	}
 
+	function deliveryStatusToKey(s: string): string {
+		const lower = (s ?? '').toLowerCase();
+		if (lower === 'pending' || lower === 'prevue' || lower === 'prévue' || lower === '0') return 'pending';
+		if (lower === 'inprogress' || lower === 'en cours' || lower === '1') return 'inprogress';
+		if (lower === 'completed' || lower === 'livrée' || lower === 'livree' || lower === '2') return 'completed';
+		if (lower === 'failed' || lower === 'échouée' || lower === 'echouee' || lower === '3') return 'failed';
+		return 'pending';
+	}
+
 	type StackedRow = {
 		period: string;
 		periodKey: string;
@@ -69,16 +98,46 @@
 		segments: { key: string; label: string; colorClass: string; icon: IconComponent; count: number }[];
 	};
 
+	/** Pour livraisons : extrait la clé période (yyyy-MM-dd ou yyyy-MM) depuis createdAt ISO. */
+	function deliveryPeriodKey(createdAt: string | null | undefined, forMonth: boolean): string {
+		if (!createdAt) return '';
+		const d = createdAt.slice(0, 10);
+		return forMonth ? d.slice(0, 7) : d;
+	}
+
 	const stackedData = $derived.by((): StackedRow[] => {
 		if (!labels.length) return [];
 		const keys = periodKeys ?? labels;
+		const totalLabel = variant === 'delivery' ? 'Tournées' : 'Commandes';
 		if (byHour) {
 			return labels.map((period, i) => ({
 				period,
 				periodKey: period,
 				total: values[i] ?? 0,
-				segments: [{ key: 'total', label: 'Commandes', colorClass: 'bg-primary', icon: PackageIcon, count: values[i] ?? 0 }]
+				segments: [{ key: 'total', label: totalLabel, colorClass: 'bg-primary', icon: PackageIcon, count: values[i] ?? 0 }]
 			}));
+		}
+		if (variant === 'delivery') {
+			return labels.map((period, i) => {
+				const key = keys[i];
+				if (!key) return { period, periodKey: period, total: 0, segments: [] };
+				const deliveriesInPeriod = deliveries.filter((d) => {
+					const k = deliveryPeriodKey(d.createdAt, byMonth);
+					if (key.length === 7) return k.startsWith(key);
+					return k === key || k.startsWith(key);
+				});
+				const byStatus = new Map<string, number>();
+				for (const d of deliveriesInPeriod) {
+					const k = deliveryStatusToKey(d.status);
+					byStatus.set(k, (byStatus.get(k) ?? 0) + 1);
+				}
+				const segments = STATUS_CONFIG.filter((s) => (byStatus.get(s.key) ?? 0) > 0).map((s) => ({
+					...s,
+					count: byStatus.get(s.key) ?? 0
+				}));
+				const total = segments.reduce((a, seg) => a + seg.count, 0);
+				return { period, periodKey: key, total, segments };
+			});
 		}
 		return labels.map((period, i) => {
 			const key = keys[i];
@@ -165,7 +224,7 @@
 		{:else if stackedData.length === 0}
 			<div class="text-muted-foreground py-8 text-center text-sm">{emptyMessage}</div>
 		{:else}
-			<div class="min-w-0 overflow-x-auto" role="img" aria-label="Répartition des commandes par période et par statut (planification)">
+			<div class="min-w-0 overflow-x-auto" role="img" aria-label={variant === 'delivery' ? 'Répartition des tournées par période et par statut' : 'Répartition des commandes par période et par statut (planification)'}>
 				<div class="min-w-0" style="width: 100%; min-width: max(100%, {chartMinWidthPx}px)">
 				<div
 					class="flex items-end gap-2"

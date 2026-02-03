@@ -8,6 +8,8 @@ export type DeliveryRoute = {
 	stops: number;
 	status: DeliveryStatus;
 	eta: string;
+	/** ISO date string pour le graphique par période (ex. 2025-02-04T10:00:00Z). */
+	createdAt?: string | null;
 };
 
 export type DeliveryStop = {
@@ -56,7 +58,8 @@ export const deliveriesActions = {
 				driver: delivery.driverId || 'Non assigne',
 				stops: 1,
 				status: delivery.status as DeliveryStatus,
-				eta: '11:40'
+				eta: '11:40',
+				createdAt: delivery.createdAt ?? null
 			}));
 			deliveriesState.lastUpdateAt = new Date().toLocaleTimeString('fr-FR', {
 				hour: '2-digit',

@@ -7,8 +7,7 @@
 	import { dateRangeState, getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { deleteDeliveriesBatch, getDeliveriesStats, type DeliveryStatsResponse } from '$lib/api/deliveries';
-	import { ordersState, ordersActions } from '$lib/stores/orders.svelte';
-	import { getOrdersStats, type OrderStatsResponse } from '$lib/api/orders';
+	import { ordersActions } from '$lib/stores/orders.svelte';
 	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 
@@ -36,26 +35,54 @@
 	let deleteError = $state<string | null>(null);
 	let deliveryStats = $state<DeliveryStatsResponse | null>(null);
 	let deliveryStatsLoading = $state(false);
-	let orderStats = $state<OrderStatsResponse | null>(null);
-	let orderStatsLoading = $state(false);
+	let statusFilter = $state<string | null>(null);
+
+	function deliveryStatusToKey(s: string): string {
+		const lower = (s ?? '').toLowerCase();
+		if (lower === 'pending' || lower === 'prevue' || lower === 'prévue' || lower === '0') return 'pending';
+		if (lower === 'inprogress' || lower === 'en cours' || lower === '1') return 'inprogress';
+		if (lower === 'completed' || lower === 'livrée' || lower === 'livree' || lower === '2') return 'completed';
+		if (lower === 'failed' || lower === 'échouée' || lower === 'echouee' || lower === '3') return 'failed';
+		return 'pending';
+	}
+
+	const filteredDeliveries = $derived.by(() => {
+		if (!statusFilter) return deliveriesState.routes;
+		return deliveriesState.routes.filter((d) => deliveryStatusToKey(d.status) === statusFilter);
+	});
+
+	const DELIVERY_STATUS_LABELS: Record<string, string> = {
+		pending: 'Prévue',
+		inprogress: 'En cours',
+		completed: 'Livrée',
+		failed: 'Échouée'
+	};
+
+	function handleStatusClick(statusKey: string | null) {
+		statusFilter = statusKey;
+	}
+
+	function clearStatusFilter() {
+		statusFilter = null;
+	}
 
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 	const chartData = $derived.by(() => {
-		if (!orderStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
-		if (orderStats.byHour.length > 0) {
+		if (!deliveryStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
+		if (deliveryStats.byHour.length > 0) {
 			return {
-				labels: orderStats.byHour.map((x) => x.hour),
-				values: orderStats.byHour.map((x) => x.count),
+				labels: deliveryStats.byHour.map((x) => x.hour),
+				values: deliveryStats.byHour.map((x) => x.count),
 				periodKeys: [] as string[],
 				byHour: true,
 				byMonth: false
 			};
 		}
 		const dayCount = getDateRangeDayCount();
-		if (dayCount > 30 && orderStats.byDay.length > 0) {
+		if (dayCount > 30 && deliveryStats.byDay.length > 0) {
 			const byMonthMap = new Map<string, number>();
-			for (const { date, count } of orderStats.byDay) {
+			for (const { date, count } of deliveryStats.byDay) {
 				const [y, m] = date.split('-');
 				const key = `${y}-${m}`;
 				byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + count);
@@ -73,9 +100,9 @@
 			};
 		}
 		return {
-			labels: orderStats.byDay.map((x) => x.date),
-			values: orderStats.byDay.map((x) => x.count),
-			periodKeys: orderStats.byDay.map((x) => x.date),
+			labels: deliveryStats.byDay.map((x) => x.date),
+			values: deliveryStats.byDay.map((x) => x.count),
+			periodKeys: deliveryStats.byDay.map((x) => x.date),
 			byHour: false,
 			byMonth: false
 		};
@@ -97,29 +124,13 @@
 		}
 	}
 
-	async function loadOrderStats() {
-		const filters = getListFilters();
-		if (!filters.dateFrom || !filters.dateTo) {
-			orderStats = null;
-			return;
-		}
-		orderStatsLoading = true;
-		try {
-			orderStats = await getOrdersStats(filters);
-		} catch {
-			orderStats = null;
-		} finally {
-			orderStatsLoading = false;
-		}
-	}
-
 	$effect(() => {
 		const _ = dateRangeState.dateRange;
 		const __ = dateRangeState.dateFilter;
 		const ___ = dateRangeState.timeRange;
 		deliveriesActions.loadDeliveries();
 		ordersActions.loadOrders();
-		loadOrderStats();
+		loadDeliveryStats();
 	});
 
 	$effect(() => {
@@ -136,10 +147,10 @@
 	}
 
 	function toggleSelectAll() {
-		if (selectedIds.size === deliveriesState.routes.length) {
+		if (selectedIds.size === filteredDeliveries.length) {
 			selectedIds = new Set();
 		} else {
-			selectedIds = new Set(deliveriesState.routes.map((d) => d.id));
+			selectedIds = new Set(filteredDeliveries.map((d) => d.id));
 		}
 	}
 
@@ -169,21 +180,24 @@
 	<PageHeader title="Tournées" subtitle="Suivi des tournées et du temps réel chauffeur." />
 
 	<DateFilterCard
-		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
-		chartDescription="Répartition par statut pour la planification des tournées."
+		chartTitle={chartData.byHour ? 'Tournées par heure' : chartData.byMonth ? 'Tournées par mois' : 'Tournées par jour'}
+		chartDescription="Répartition par statut des tournées."
 		chartDefaultOpen={false}
 		onDateFilterChange={onDateFilterChange}
 	>
 		{#snippet chart()}
 			<OrdersChartContent
-				loading={orderStatsLoading}
+				variant="delivery"
+				loading={deliveryStatsLoading}
 				labels={chartData.labels}
 				values={chartData.values}
-				orders={ordersState.items}
+				deliveries={deliveriesState.routes}
 				periodKeys={chartData.periodKeys}
 				byHour={chartData.byHour}
 				byMonth={chartData.byMonth}
 				emptyMessage="Sélectionnez une plage pour afficher le graphique."
+				selectedStatus={statusFilter}
+				onStatusClick={handleStatusClick}
 			/>
 		{/snippet}
 	</DateFilterCard>
@@ -194,7 +208,9 @@
 				<div>
 					<CardTitle>Tournées du jour</CardTitle>
 					<p class="text-sm text-muted-foreground">
-						{deliveriesState.routes.length} tournée{deliveriesState.routes.length > 1 ? 's' : ''}
+						{statusFilter
+							? `${filteredDeliveries.length} sur ${deliveriesState.routes.length} tournée${deliveriesState.routes.length > 1 ? 's' : ''}`
+							: `${deliveriesState.routes.length} tournée${deliveriesState.routes.length > 1 ? 's' : ''}`}
 						{deliveriesState.lastUpdateAt ? ` · Dernière MAJ: ${deliveriesState.lastUpdateAt}` : ''}
 					</p>
 				</div>
@@ -210,6 +226,16 @@
 					</Button>
 				</div>
 			</div>
+			{#if statusFilter}
+				<div class="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+					<span class="text-muted-foreground">Filtre actif:</span>
+					<span class="font-medium">{DELIVERY_STATUS_LABELS[statusFilter]}</span>
+					<Button variant="ghost" size="sm" class="ml-auto h-6 px-2" onclick={clearStatusFilter}>
+						<XIcon class="size-3.5" />
+						Effacer
+					</Button>
+				</div>
+			{/if}
 			</CardHeader>
 			<CardContent class="space-y-4">
 				{#if deliveriesState.error}
@@ -229,6 +255,7 @@
 					<div class="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/50 px-3 py-2">
 						<span class="text-sm text-muted-foreground">
 							{selectedIds.size} tournée{selectedIds.size > 1 ? 's' : ''} sélectionnée{selectedIds.size > 1 ? 's' : ''}
+							{statusFilter ? ` (${DELIVERY_STATUS_LABELS[statusFilter]})` : ''}
 						</span>
 						<DropdownMenu.Root>
 							<DropdownMenu.Trigger
@@ -267,6 +294,17 @@
 
 				{#if deliveriesState.loading && !deliveriesState.routes.length}
 					<div class="py-8 text-center text-muted-foreground">Chargement des tournées...</div>
+				{:else if filteredDeliveries.length === 0}
+					<div class="py-8 text-center text-muted-foreground text-sm">
+						{statusFilter
+							? `Aucune tournée avec le statut « ${DELIVERY_STATUS_LABELS[statusFilter]} ».`
+							: 'Aucune tournée.'}
+						{#if statusFilter}
+							<Button variant="link" class="ml-1 h-auto p-0" onclick={clearStatusFilter}>
+								Effacer le filtre
+							</Button>
+						{/if}
+					</div>
 				{:else}
 					<div class="min-w-0 overflow-x-auto">
 					<Table>
@@ -274,7 +312,7 @@
 							<TableRow>
 								<TableHead class="w-10">
 									<Checkbox
-										checked={selectedIds.size === deliveriesState.routes.length && deliveriesState.routes.length > 0}
+										checked={selectedIds.size === filteredDeliveries.length && filteredDeliveries.length > 0}
 										onCheckedChange={toggleSelectAll}
 										aria-label="Tout sélectionner"
 									/>
@@ -287,7 +325,7 @@
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{#each deliveriesState.routes as delivery}
+							{#each filteredDeliveries as delivery}
 								<TableRow
 									class={cn(
 										'cursor-pointer transition-colors hover:bg-muted/50',

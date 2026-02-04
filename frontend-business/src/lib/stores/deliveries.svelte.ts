@@ -69,7 +69,7 @@ export const deliveriesActions = {
 			console.error('[Deliveries] Erreur lors du chargement:', error);
 			deliveriesState.error = error instanceof Error 
 				? error.message 
-				: 'Erreur lors du chargement des tournees';
+				: 'Erreur lors du chargement des livraisons';
 			// Garde les données existantes en cas d'erreur
 		} finally {
 			deliveriesState.loading = false;

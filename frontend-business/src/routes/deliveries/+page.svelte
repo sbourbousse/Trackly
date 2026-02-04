@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { DropdownMenu } from 'bits-ui';
 	import MoreVerticalIcon from '@lucide/svelte/icons/more-vertical';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
@@ -46,9 +47,20 @@
 		return 'pending';
 	}
 
+	const urlDriverId = $derived(page.url.searchParams.get('driverId'));
+	const urlDate = $derived(page.url.searchParams.get('date'));
+
 	const filteredDeliveries = $derived.by(() => {
-		if (!statusFilter) return deliveriesState.routes;
-		return deliveriesState.routes.filter((d) => deliveryStatusToKey(d.status) === statusFilter);
+		let list = deliveriesState.routes;
+		if (urlDriverId || urlDate) {
+			list = list.filter((d) => {
+				if (urlDriverId && d.driver !== urlDriverId) return false;
+				if (urlDate && (d.createdAt?.slice(0, 10) ?? '') !== urlDate) return false;
+				return true;
+			});
+		}
+		if (!statusFilter) return list;
+		return list.filter((d) => deliveryStatusToKey(d.status) === statusFilter);
 	});
 
 	const DELIVERY_STATUS_LABELS: Record<string, string> = {
@@ -161,7 +173,7 @@
 	async function handleDeleteSelected() {
 		if (selectedIds.size === 0) return;
 		const count = selectedIds.size;
-		if (!confirm(`Êtes-vous sûr de vouloir supprimer ${count} tournée${count > 1 ? 's' : ''} ?`)) return;
+		if (!confirm(`Êtes-vous sûr de vouloir supprimer ${count} livraison${count > 1 ? 's' : ''} ?`)) return;
 		deleting = true;
 		deleteError = null;
 		try {
@@ -177,11 +189,11 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Tournées" subtitle="Suivi des tournées et du temps réel chauffeur." />
+	<PageHeader title="Livraisons" subtitle="Liste des livraisons et suivi temps réel chauffeur." />
 
 	<DateFilterCard
-		chartTitle={chartData.byHour ? 'Tournées par heure' : chartData.byMonth ? 'Tournées par mois' : 'Tournées par jour'}
-		chartDescription="Répartition par statut des tournées."
+		chartTitle={chartData.byHour ? 'Livraisons par heure' : chartData.byMonth ? 'Livraisons par mois' : 'Livraisons par jour'}
+		chartDescription="Répartition par statut des livraisons."
 		chartDefaultOpen={false}
 		onDateFilterChange={onDateFilterChange}
 	>
@@ -206,11 +218,11 @@
 		<CardHeader class="space-y-1">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<CardTitle>Tournées du jour</CardTitle>
+					<CardTitle>Liste des livraisons</CardTitle>
 					<p class="text-sm text-muted-foreground">
 						{statusFilter
-							? `${filteredDeliveries.length} sur ${deliveriesState.routes.length} tournée${deliveriesState.routes.length > 1 ? 's' : ''}`
-							: `${deliveriesState.routes.length} tournée${deliveriesState.routes.length > 1 ? 's' : ''}`}
+							? `${filteredDeliveries.length} sur ${deliveriesState.routes.length} livraison${deliveriesState.routes.length > 1 ? 's' : ''}`
+							: `${deliveriesState.routes.length} livraison${deliveriesState.routes.length > 1 ? 's' : ''}`}
 						{deliveriesState.lastUpdateAt ? ` · Dernière MAJ: ${deliveriesState.lastUpdateAt}` : ''}
 					</p>
 				</div>
@@ -238,6 +250,14 @@
 			{/if}
 			</CardHeader>
 			<CardContent class="space-y-4">
+				{#if urlDriverId || urlDate}
+					<div class="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+						<span class="text-muted-foreground">Filtre tournée actif.</span>
+						<Button variant="link" href="/deliveries" class="h-auto p-0 font-normal">
+							Voir toutes les livraisons
+						</Button>
+					</div>
+				{/if}
 				{#if deliveriesState.error}
 					<Alert variant="destructive">
 						<AlertTitle>Erreur</AlertTitle>
@@ -254,7 +274,7 @@
 				{#if selectedIds.size > 0}
 					<div class="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/50 px-3 py-2">
 						<span class="text-sm text-muted-foreground">
-							{selectedIds.size} tournée{selectedIds.size > 1 ? 's' : ''} sélectionnée{selectedIds.size > 1 ? 's' : ''}
+							{selectedIds.size} livraison{selectedIds.size > 1 ? 's' : ''} sélectionnée{selectedIds.size > 1 ? 's' : ''}
 							{statusFilter ? ` (${DELIVERY_STATUS_LABELS[statusFilter]})` : ''}
 						</span>
 						<DropdownMenu.Root>
@@ -293,12 +313,12 @@
 				{/if}
 
 				{#if deliveriesState.loading && !deliveriesState.routes.length}
-					<div class="py-8 text-center text-muted-foreground">Chargement des tournées...</div>
+					<div class="py-8 text-center text-muted-foreground">Chargement des livraisons...</div>
 				{:else if filteredDeliveries.length === 0}
 					<div class="py-8 text-center text-muted-foreground text-sm">
 						{statusFilter
-							? `Aucune tournée avec le statut « ${DELIVERY_STATUS_LABELS[statusFilter]} ».`
-							: 'Aucune tournée.'}
+							? `Aucune livraison avec le statut « ${DELIVERY_STATUS_LABELS[statusFilter]} ».`
+							: 'Aucune livraison.'}
 						{#if statusFilter}
 							<Button variant="link" class="ml-1 h-auto p-0" onclick={clearStatusFilter}>
 								Effacer le filtre
@@ -319,9 +339,8 @@
 								</TableHead>
 								<TableHead>Statut</TableHead>
 								<TableHead class="tabular-nums">ETA</TableHead>
-								<TableHead>Tournée</TableHead>
+								<TableHead>Livraison</TableHead>
 								<TableHead>Chauffeur</TableHead>
-								<TableHead>Arrêts</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -349,7 +368,6 @@
 										</Button>
 									</TableCell>
 									<TableCell>{delivery.driver}</TableCell>
-									<TableCell class="tabular-nums">{delivery.stops}</TableCell>
 								</TableRow>
 							{/each}
 						</TableBody>

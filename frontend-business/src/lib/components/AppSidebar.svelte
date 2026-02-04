@@ -27,6 +27,8 @@
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import PlusCircleIcon from '@lucide/svelte/icons/plus-circle';
 	import MapPinIcon from '@lucide/svelte/icons/map-pin';
+	import ListIcon from '@lucide/svelte/icons/list';
+	import RouteIcon from '@lucide/svelte/icons/route';
 
 	let pathname = $derived(page.url.pathname);
 	let isDark = $derived(themeState.value === 'dark');
@@ -114,17 +116,23 @@
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton
-							tooltipContent="Tournées"
+							tooltipContent="Livraison"
 							isActive={pathname === '/deliveries' || pathname.startsWith('/deliveries/')}
 						>
 							{#snippet child({ props })}
 								<a href="/deliveries" {...props}>
 									<TruckIcon class="size-4 shrink-0" aria-hidden="true" />
-									<span>Tournées</span>
+									<span>Livraisons</span>
 								</a>
 							{/snippet}
 						</SidebarMenuButton>
 						<SidebarMenuSub>
+							<SidebarMenuSubItem>
+								<SidebarMenuSubButton href="/deliveries/routes" isActive={pathname === '/deliveries/routes'}>
+									<RouteIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Liste des tournées</span>
+								</SidebarMenuSubButton>
+							</SidebarMenuSubItem>
 							<SidebarMenuSubItem>
 								<SidebarMenuSubButton href="/deliveries/new" isActive={pathname === '/deliveries/new'}>
 									<PlusCircleIcon class="size-4 shrink-0" aria-hidden="true" />

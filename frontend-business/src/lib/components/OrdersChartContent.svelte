@@ -108,7 +108,7 @@
 	const stackedData = $derived.by((): StackedRow[] => {
 		if (!labels.length) return [];
 		const keys = periodKeys ?? labels;
-		const totalLabel = variant === 'delivery' ? 'Tournées' : 'Commandes';
+		const totalLabel = variant === 'delivery' ? 'Livraisons' : 'Commandes';
 		if (byHour) {
 			return labels.map((period, i) => ({
 				period,

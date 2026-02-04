@@ -55,7 +55,7 @@
 			<div class="flex flex-wrap items-center justify-between gap-4">
 				<TabsList class="h-9 w-full md:w-auto">
 					<TabsTrigger value="commandes-attente">Commandes en attente</TabsTrigger>
-					<TabsTrigger value="tournees">Tournées</TabsTrigger>
+					<TabsTrigger value="tournees">Livraisons</TabsTrigger>
 					<TabsTrigger value="section-2">Section 2</TabsTrigger>
 				</TabsList>
 				<Button variant="outline" size="sm" onclick={handleAddSection}>
@@ -138,7 +138,7 @@
 					{#if deliveriesState.loading && !deliveriesState.routes.length}
 						<Card>
 							<CardContent class="py-8 text-center text-muted-foreground">
-								Chargement des tournées...
+								Chargement des livraisons...
 							</CardContent>
 						</Card>
 					{:else if deliveriesState.error}
@@ -163,7 +163,7 @@
 												<TableRow>
 													<TableHead>Statut</TableHead>
 													<TableHead class="tabular-nums">ETA</TableHead>
-													<TableHead>Tournée</TableHead>
+													<TableHead>Livraison</TableHead>
 													<TableHead>Chauffeur</TableHead>
 													<TableHead>Arrêts</TableHead>
 												</TableRow>
@@ -203,7 +203,7 @@
 							</CardHeader>
 							<CardContent class="min-w-0">
 								{#if routesEnCours.length === 0}
-									<div class="py-6 text-center text-muted-foreground text-sm">Aucune tournée en cours.</div>
+									<div class="py-6 text-center text-muted-foreground text-sm">Aucune livraison en cours.</div>
 								{:else}
 									<div class="min-w-0 overflow-x-auto">
 										<Table>
@@ -211,7 +211,7 @@
 												<TableRow>
 													<TableHead>Statut</TableHead>
 													<TableHead class="tabular-nums">ETA</TableHead>
-													<TableHead>Tournée</TableHead>
+													<TableHead>Livraison</TableHead>
 													<TableHead>Chauffeur</TableHead>
 													<TableHead>Arrêts</TableHead>
 												</TableRow>

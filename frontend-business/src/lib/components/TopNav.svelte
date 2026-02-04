@@ -11,7 +11,7 @@
 	const links = [
 		{ href: '/dashboard', label: 'Dashboard' },
 		{ href: '/orders', label: 'Commandes' },
-		{ href: '/deliveries', label: 'Tournées' }
+		{ href: '/deliveries', label: 'Livraisons' }
 	];
 
 	let { title, subtitle } = $props<{

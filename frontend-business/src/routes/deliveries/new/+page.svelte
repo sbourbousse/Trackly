@@ -11,7 +11,6 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
-	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
 	import {
 		Table,
@@ -27,7 +26,6 @@
 	let drivers = $state<ApiDriver[]>([]);
 	let selectedOrderIds = $state<Set<string>>(new Set());
 	let selectedDriverId = $state('');
-	let routeName = $state('');
 	let loading = $state(false);
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
@@ -125,15 +123,6 @@
 						<CardTitle>Informations de la tournée</CardTitle>
 					</CardHeader>
 					<CardContent class="grid gap-4 sm:grid-cols-2">
-						<div class="space-y-2">
-							<Label for="route">Nom de la tournée (optionnel)</Label>
-							<Input
-								id="route"
-								type="text"
-								bind:value={routeName}
-								placeholder="Ex: Tournée Est - Matin"
-							/>
-						</div>
 						<div class="space-y-2">
 							<Label for="driver">Livreur *</Label>
 							<select

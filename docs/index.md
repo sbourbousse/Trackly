@@ -70,6 +70,7 @@ Suivre l'évolution du projet :
 - **Backend** : .NET 9, ASP.NET Core Minimal APIs, Entity Framework Core
 - **Frontend Business** : SvelteKit, Svelte 5 (Runes API)
 - **Frontend Driver** : Svelte 5 PWA
+- **Frontend Landing Page** : Next.js 14+ (App Router), React/TypeScript, Tailwind, shadcn/ui — site vitrine SEO (`frontend-landing-page/`)
 - **Base de données** : PostgreSQL
 - **Temps Réel** : SignalR
 - **Documentation** : MkDocs Material avec Mermaid

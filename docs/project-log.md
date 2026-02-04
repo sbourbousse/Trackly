@@ -3,6 +3,36 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-04 | Landing page : aperçus d’apps, couleurs partagées, carte en image
+
+**Tâche** : Améliorer la landing avec des bouts de chaque application (surtout business), partager les couleurs avec le reste du projet et exporter des composants lazy ; carte en image.
+
+**Frontend-landing-page** :
+- **Design tokens** : `lib/design-tokens.css` avec variables `--trackly-stone-*` et `--trackly-teal-*` alignées avec frontend-business (stone + teal). Import dans `app/globals.css`.
+- **Composants preview (lazy)** : `components/previews/` — `AppBusinessPreview` (dashboard : onglets, tableau, badges), `AppDriverPreview` (PWA chauffeur), `AppTrackingPreview` (suivi client), `MapPreview` (image statique). Chargés via `next/dynamic` avec `ssr: false` et skeleton de chargement.
+- **Carte** : image statique `public/map-preview.svg` (grille + pins teal/stone). Remplaçable par une capture d’écran réelle.
+- **Section Features** : 4 cartes (Dashboard Business, Carte & tournées, Suivi temps réel, App chauffeur) utilisant ces previews lazy.
+
+**Docs** : `frontend-landing-page/docs/DESIGN_SYSTEM.md` mis à jour (tokens partagés, aperçus lazy, carte en image).
+
+---
+
+## 2026-02-04 | Landing page Trackly (frontend-landing-page)
+
+**Tâche** : Ajout d’une landing page optimisée SEO pour présenter Trackly et acquérir des leads.
+
+**Dossier** : `frontend-landing-page/` (projet Next.js 14+ App Router, React/TypeScript).
+
+**Contenu** :
+- Sections : Hero, Problème/Solution, Fonctionnalités (Bento Grid), Tarification (Starter / Pro), Preuve/confiance, CTA final, Footer
+- SEO : meta (title, description 150–160 car.), Open Graph, Twitter Card, JSON-LD (Organization, WebSite, SoftwareApplication), URL canonique `/`
+- Design : Tailwind CSS + shadcn/ui, thème stone + teal, cohérent avec le reste du projet
+- Documentation interne : `frontend-landing-page/docs/` (PROJECT_CONTEXT, SEO_STRATEGY, DESIGN_SYSTEM, ARCHITECTURE, CONTENT_LANDING, MVP_SCOPE)
+
+**Référence** : Voir [docs/LANDING-PAGE-PROMPT.md](LANDING-PAGE-PROMPT.md) pour le prompt et les exigences SEO d’origine.
+
+---
+
 ## 2026-02-04 | Entité Tournée (Route) en base
 
 **Tâche** : Créer une vraie entité Tournée (Route) en base pour distinguer plusieurs tournées le même jour et gérer correctement les tournées de nuit.

@@ -1,0 +1,43 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Design tokens Trackly (stone + teal) — partagés avec frontend-business */
+@import "../lib/design-tokens.css";
+
+:root {
+  --background: var(--trackly-stone-50, #fafaf9);
+  --foreground: var(--trackly-stone-900, #1c1917);
+  --primary: var(--trackly-teal-600, #0d9488);
+  --primary-foreground: var(--trackly-teal-50, #f0fdfa);
+  --muted: var(--trackly-stone-100, #f5f5f4);
+  --muted-foreground: var(--trackly-stone-500, #78716c);
+  --border: var(--trackly-stone-200, #e7e5e4);
+  --radius: 0.5rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #1c1917;
+    --foreground: #fafaf9;
+    --muted: #292524;
+    --muted-foreground: #a8a29e;
+    --border: #44403c;
+  }
+}
+
+body {
+  color: var(--foreground);
+  background: var(--background);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+  /* Focus visible pour accessibilité clavier (WCAG) */
+  :focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+}

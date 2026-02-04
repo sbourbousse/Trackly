@@ -1,0 +1,8 @@
+# Règles projet Trackly Landing
+
+- Répondre et rédiger en **français**.
+- Maintenir à jour les fichiers Markdown à la **racine** du projet et dans **docs/** (README, contexte, SEO, design, architecture, contenu, MVP).
+- Rester cohérent avec le **thème stone + teal** et le **design system** (voir docs/DESIGN_SYSTEM.md).
+- Respecter les bonnes pratiques **SEO** décrites dans docs/SEO_STRATEGY.md (meta, canonical, JSON-LD, structure sémantique).
+- Éviter le **contenu dupliqué** : une URL canonique pour la page d’accueil (/).
+- Pour le MVP : plan Pro décrit (SMS, support prioritaire), bouton « Bientôt disponible » ; mettre en avant le plan Starter gratuit (aucune carte bancaire) et les CTA « Découvrir la démo » / « S'inscrire (Gratuit) ».

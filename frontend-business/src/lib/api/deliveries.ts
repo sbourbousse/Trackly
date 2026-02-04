@@ -6,6 +6,7 @@ export type ApiDelivery = {
 	id: string;
 	orderId: string;
 	driverId: string;
+	routeId?: string | null;
 	status: string;
 	createdAt?: string;
 	completedAt: string | null;
@@ -16,6 +17,7 @@ export type DeliveriesListFilters = {
 	dateFrom?: string;
 	dateTo?: string;
 	dateFilter?: 'CreatedAt' | 'OrderDate';
+	routeId?: string;
 };
 
 export const getDeliveries = async (filters?: DeliveriesListFilters) => {
@@ -23,17 +25,12 @@ export const getDeliveries = async (filters?: DeliveriesListFilters) => {
 		const { mockDeliveriesApi } = await import('../offline/mockApi');
 		return await mockDeliveriesApi.getDeliveries(filters);
 	}
-	const path = filters && (filters.dateFrom ?? filters.dateTo ?? filters.dateFilter)
-		? `/api/deliveries?${new URLSearchParams(
-				Object.fromEntries(
-					[
-						filters.dateFrom && ['dateFrom', filters.dateFrom],
-						filters.dateTo && ['dateTo', filters.dateTo],
-						filters.dateFilter && ['dateFilter', filters.dateFilter]
-					].filter((x): x is [string, string] => Boolean(x))
-				)
-			)}`
-		: '/api/deliveries';
+	const entries: [string, string][] = [];
+	if (filters?.dateFrom) entries.push(['dateFrom', filters.dateFrom]);
+	if (filters?.dateTo) entries.push(['dateTo', filters.dateTo]);
+	if (filters?.dateFilter) entries.push(['dateFilter', filters.dateFilter]);
+	if (filters?.routeId) entries.push(['routeId', filters.routeId]);
+	const path = entries.length ? `/api/deliveries?${new URLSearchParams(entries)}` : '/api/deliveries';
 	return await apiFetch<ApiDelivery[]>(path);
 };
 
@@ -106,7 +103,8 @@ export const createDeliveriesBatch = async (request: CreateDeliveriesBatchReques
 		method: 'POST',
 		body: JSON.stringify({
 			driverId: request.driverId,
-			orderIds: request.orderIds
+			orderIds: request.orderIds,
+			...(request.name != null && request.name !== '' && { name: request.name })
 		})
 	});
 };

@@ -3,6 +3,28 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-04 | Entité Tournée (Route) en base
+
+**Tâche** : Créer une vraie entité Tournée (Route) en base pour distinguer plusieurs tournées le même jour et gérer correctement les tournées de nuit.
+
+**Backend** :
+- Nouvelle entité `Route` : Id, TenantId, DriverId, Name (optionnel), CreatedAt, DeletedAt
+- `Delivery.RouteId` (FK nullable) ; migration `AddRouteAndRouteIdToDelivery`
+- `CreateDeliveriesBatch` crée une Route puis N Deliveries avec le même RouteId ; requête accepte `Name` optionnel
+- Nouveau endpoint `GET /api/routes` (filtres dateFrom, dateTo, driverId) ; `GET /api/deliveries` accepte `routeId`
+- DTOs : RouteResponse, RouteListResponse ; DeliveryResponse inclut RouteId
+
+**Frontend** :
+- API `getRoutes(filters)` et `DeliveriesListFilters.routeId` ; `createDeliveriesBatch` envoie `name`
+- Page Tournées (`/deliveries/routes`) utilise GET /api/routes au lieu du regroupement client
+- Lien « Voir les livraisons » vers `/deliveries?routeId=...` ; page Livraisons charge avec filtre routeId
+- Formulaire Créer tournée : champ « Nom de la tournée (optionnel) » renvoyé à l’API
+- Mode offline : mockRoutesApi, getMockRoutes, createMockDeliveries avec name et routeId
+
+**Notes** : Chaque création de tournée = 1 Route + N Deliveries. Les tournées de nuit (une seule Route) ne sont plus coupées par minuit.
+
+---
+
 ## 2026-02-04 | Livraisons vs Tournées – Navigation et liste des tournées
 
 **Tâche** : Clarifier la distinction Livraisons (liste des livraisons) / Tournées (regroupement chauffeur + date). Renommer la page actuelle « Tournées » en « Livraisons » et ajouter une interface dédiée listant les tournées.

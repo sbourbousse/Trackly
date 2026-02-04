@@ -47,12 +47,14 @@
 		return 'pending';
 	}
 
+	const urlRouteId = $derived(page.url.searchParams.get('routeId'));
 	const urlDriverId = $derived(page.url.searchParams.get('driverId'));
 	const urlDate = $derived(page.url.searchParams.get('date'));
 
 	const filteredDeliveries = $derived.by(() => {
 		let list = deliveriesState.routes;
-		if (urlDriverId || urlDate) {
+		// Filtre client-side par chauffeur+date (liens legacy) si pas de routeId
+		if (!urlRouteId && (urlDriverId || urlDate)) {
 			list = list.filter((d) => {
 				if (urlDriverId && d.driver !== urlDriverId) return false;
 				if (urlDate && (d.createdAt?.slice(0, 10) ?? '') !== urlDate) return false;
@@ -140,7 +142,8 @@
 		const _ = dateRangeState.dateRange;
 		const __ = dateRangeState.dateFilter;
 		const ___ = dateRangeState.timeRange;
-		deliveriesActions.loadDeliveries();
+		const routeId = page.url.searchParams.get('routeId') || undefined;
+		deliveriesActions.loadDeliveries({ ...getListFilters(), routeId });
 		ordersActions.loadOrders();
 		loadDeliveryStats();
 	});
@@ -250,7 +253,7 @@
 			{/if}
 			</CardHeader>
 			<CardContent class="space-y-4">
-				{#if urlDriverId || urlDate}
+				{#if urlRouteId || urlDriverId || urlDate}
 					<div class="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
 						<span class="text-muted-foreground">Filtre tournée actif.</span>
 						<Button variant="link" href="/deliveries" class="h-auto p-0 font-normal">

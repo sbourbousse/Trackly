@@ -6,6 +6,7 @@
 import type { ApiOrder, ApiOrderDetail } from '../api/orders';
 import type { ApiDelivery, ApiDeliveryDetail } from '../api/deliveries';
 import type { ApiDriver } from '../api/drivers';
+import type { ApiRoute } from '../api/routes';
 
 // Tenant de démo
 export const DEMO_TENANT_ID = 'demo-tenant-001';
@@ -101,6 +102,7 @@ function generateMockDeliveries(): ApiDelivery[] {
       id: 'delivery-001',
       orderId: 'order-002',
       driverId: 'driver-001',
+      routeId: 'route-001',
       status: 'InProgress',
       createdAt: new Date(now - 3600000).toISOString(),
       completedAt: null
@@ -109,6 +111,7 @@ function generateMockDeliveries(): ApiDelivery[] {
       id: 'delivery-002',
       orderId: 'order-004',
       driverId: 'driver-001',
+      routeId: 'route-001',
       status: 'Completed',
       createdAt: new Date(now - 86400000).toISOString(),
       completedAt: new Date(now - 3600000).toISOString()
@@ -117,6 +120,7 @@ function generateMockDeliveries(): ApiDelivery[] {
       id: 'delivery-003',
       orderId: 'order-005',
       driverId: 'driver-002',
+      routeId: 'route-002',
       status: 'Completed',
       createdAt: new Date(now - 172800000).toISOString(),
       completedAt: new Date(now - 86400000).toISOString()
@@ -125,12 +129,21 @@ function generateMockDeliveries(): ApiDelivery[] {
       id: 'delivery-004',
       orderId: 'order-008',
       driverId: 'driver-003',
+      routeId: 'route-003',
       status: 'Completed',
       createdAt: new Date(now - 259200000).toISOString(),
       completedAt: new Date(now - 172800000).toISOString()
     }
   ];
 }
+
+// Routes de démo (tournées) - id, driverId, name, createdAt
+type MockRoute = { id: string; driverId: string; name: string | null; createdAt: string };
+let mockRoutesState: MockRoute[] = [
+  { id: 'route-001', driverId: 'driver-001', name: 'Matin Est', createdAt: new Date(Date.now() - 86400000).toISOString() },
+  { id: 'route-002', driverId: 'driver-002', name: null, createdAt: new Date(Date.now() - 172800000).toISOString() },
+  { id: 'route-003', driverId: 'driver-003', name: null, createdAt: new Date(Date.now() - 259200000).toISOString() }
+];
 
 // État mutable
 let mockOrdersState = generateMockOrders();
@@ -237,11 +250,18 @@ export function getMockDeliveryDetail(id: string): ApiDeliveryDetail | null {
 }
 
 /**
- * Crée des livraisons en batch
+ * Crée des livraisons en batch (avec une tournée / route)
  */
-export function createMockDeliveries(driverId: string, orderIds: string[]): { created: number; deliveries: ApiDelivery[] } {
+export function createMockDeliveries(driverId: string, orderIds: string[], name?: string | null): { created: number; deliveries: ApiDelivery[] } {
+  const routeId = `route-${Date.now()}`;
+  mockRoutesState.push({
+    id: routeId,
+    driverId,
+    name: name?.trim() || null,
+    createdAt: new Date().toISOString()
+  });
+
   const newDeliveries: ApiDelivery[] = [];
-  
   for (const orderId of orderIds) {
     const order = mockOrdersState.find(o => o.id === orderId);
     if (order && order.status === 'Pending') {
@@ -249,19 +269,49 @@ export function createMockDeliveries(driverId: string, orderIds: string[]): { cr
         id: `delivery-${Date.now()}-${orderId}`,
         orderId,
         driverId,
+        routeId,
         status: 'Pending',
         createdAt: new Date().toISOString(),
         completedAt: null
       };
       mockDeliveriesState.push(delivery);
       newDeliveries.push(delivery);
-      
-      // Mettre à jour le statut de la commande
       order.status = 'InDelivery';
     }
   }
-
   return { created: newDeliveries.length, deliveries: newDeliveries };
+}
+
+/**
+ * Récupère les tournées (routes) pour la liste
+ */
+export function getMockRoutes(filters?: { dateFrom?: string; dateTo?: string; driverId?: string }): ApiRoute[] {
+  const driversByName = new Map(mockDriversState.map(d => [d.id, d.name]));
+  const countByRoute = new Map<string, number>();
+  for (const d of mockDeliveriesState) {
+    if (d.routeId) {
+      countByRoute.set(d.routeId, (countByRoute.get(d.routeId) ?? 0) + 1);
+    }
+  }
+  let list = mockRoutesState.map(r => ({
+    id: r.id,
+    driverId: r.driverId,
+    name: r.name,
+    createdAt: r.createdAt,
+    deliveryCount: countByRoute.get(r.id) ?? 0,
+    driverName: driversByName.get(r.driverId) ?? 'Non assigné'
+  }));
+  if (filters?.dateFrom) {
+    list = list.filter(r => r.createdAt >= filters.dateFrom!);
+  }
+  if (filters?.dateTo) {
+    list = list.filter(r => r.createdAt <= filters.dateTo!);
+  }
+  if (filters?.driverId) {
+    list = list.filter(r => r.driverId === filters.driverId);
+  }
+  list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
+  return list;
 }
 
 /**
@@ -299,6 +349,11 @@ export function createMockDriver(data: { name: string; phone: string }): ApiDriv
 export function resetMockData(): void {
   mockOrdersState = generateMockOrders();
   mockDeliveriesState = generateMockDeliveries();
+  mockRoutesState = [
+    { id: 'route-001', driverId: 'driver-001', name: 'Matin Est', createdAt: new Date(Date.now() - 86400000).toISOString() },
+    { id: 'route-002', driverId: 'driver-002', name: null, createdAt: new Date(Date.now() - 172800000).toISOString() },
+    { id: 'route-003', driverId: 'driver-003', name: null, createdAt: new Date(Date.now() - 259200000).toISOString() }
+  ];
   mockDriversState = [...DEMO_DRIVERS];
   console.log('[Offline] Données de démonstration réinitialisées');
 }

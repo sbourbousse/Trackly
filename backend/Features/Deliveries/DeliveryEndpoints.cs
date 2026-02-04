@@ -27,7 +27,7 @@ public static class DeliveryEndpoints
     }
 
     /// <summary>
-    /// Filtres optionnels : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate".
+    /// Filtres optionnels : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate", routeId (tournée).
     /// OrderDate filtre sur la date de la commande associée.
     /// </summary>
     private static async Task<IResult> GetDeliveries(
@@ -36,6 +36,7 @@ public static class DeliveryEndpoints
         DateTimeOffset? dateFrom,
         DateTimeOffset? dateTo,
         string? dateFilter,
+        Guid? routeId,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -48,6 +49,9 @@ public static class DeliveryEndpoints
         IQueryable<Delivery> query = dbContext.Deliveries
             .AsNoTracking()
             .Where(d => d.TenantId == tenantContext.TenantId && d.DeletedAt == null);
+
+        if (routeId.HasValue && routeId.Value != Guid.Empty)
+            query = query.Where(d => d.RouteId == routeId.Value);
 
         if (useOrderDate && (dateFrom.HasValue || dateTo.HasValue))
         {
@@ -342,6 +346,17 @@ public static class DeliveryEndpoints
                 statusCode: StatusCodes.Status403Forbidden);
         }
 
+        // Créer une tournée (Route) pour ce batch
+        var route = new Route
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantContext.TenantId,
+            DriverId = request.DriverId,
+            Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim(),
+            CreatedAt = DateTimeOffset.UtcNow
+        };
+        dbContext.Routes.Add(route);
+
         var deliveries = new List<Delivery>();
         var createdDeliveries = new List<DeliveryResponse>();
 
@@ -360,6 +375,7 @@ public static class DeliveryEndpoints
                 TenantId = tenantContext.TenantId,
                 OrderId = orderId,
                 DriverId = request.DriverId,
+                RouteId = route.Id,
                 Status = DeliveryStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow
             };
@@ -574,6 +590,7 @@ public static class DeliveryEndpoints
             delivery.Id,
             delivery.OrderId,
             delivery.DriverId,
+            delivery.RouteId,
             delivery.Status,
             delivery.CreatedAt,
             delivery.CompletedAt);

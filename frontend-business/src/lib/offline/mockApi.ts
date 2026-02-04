@@ -5,6 +5,7 @@
 
 import type { ApiOrder, ApiOrderDetail, CreateOrderRequest, OrdersListFilters, ImportOrderRequest, DeleteOrdersBatchRequest } from '../api/orders';
 import type { ApiDelivery, ApiDeliveryDetail, DeliveriesListFilters, CreateDeliveriesBatchRequest, DeleteDeliveriesBatchRequest } from '../api/deliveries';
+import type { RoutesListFilters } from '../api/routes';
 import type { ApiDriver, CreateDriverRequest } from '../api/drivers';
 import type { AuthResponse, AuthLoginPayload, AuthRegisterPayload } from '../api/client';
 import { offlineConfig } from './config';
@@ -17,6 +18,7 @@ import {
   getMockDeliveryDetail,
   createMockDeliveries,
   deleteMockDeliveries,
+  getMockRoutes,
   getMockDrivers,
   createMockDriver,
   DEMO_TENANT_ID,
@@ -196,6 +198,17 @@ export const mockDeliveriesApi = {
       deleted,
       message: `${deleted} livraison(s) supprimée(s)`
     };
+  }
+};
+
+/**
+ * Mock pour l'API des tournées (routes)
+ */
+export const mockRoutesApi = {
+  async getRoutes(filters?: RoutesListFilters): Promise<import('../api/routes').ApiRoute[]> {
+    console.log('[Mock API] GET /api/routes', filters);
+    await delay();
+    return getMockRoutes(filters);
   }
 };
 

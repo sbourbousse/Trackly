@@ -8,6 +8,8 @@ public sealed class Delivery : ITenantIsolated
     public Guid TenantId { get; set; }
     public Guid OrderId { get; set; }
     public Guid DriverId { get; set; }
+    /// <summary>Tournée à laquelle appartient cette livraison (créée avec le batch).</summary>
+    public Guid? RouteId { get; set; }
     public DeliveryStatus Status { get; set; } = DeliveryStatus.Pending;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? CompletedAt { get; set; }

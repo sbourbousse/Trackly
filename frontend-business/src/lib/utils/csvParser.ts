@@ -1,7 +1,9 @@
 export type ParsedCsvRow = {
 	customerName: string;
 	address: string;
-	[key: string]: string;
+	phoneNumber?: string | undefined;
+	internalComment?: string | undefined;
+	[key: string]: string | undefined;
 };
 
 /**
@@ -42,6 +44,12 @@ export function parseCsv(file: File): Promise<ParsedCsvRow[]> {
 				const addressIndex = normalizedHeaders.findIndex(h => 
 					h.includes('adresse') || h.includes('address') || h.includes('adr')
 				);
+				const phoneNumberIndex = normalizedHeaders.findIndex(h => 
+					h.includes('telephone') || h.includes('phone') || h.includes('tel') || h.includes('mobile')
+				);
+				const internalCommentIndex = normalizedHeaders.findIndex(h => 
+					h.includes('commentaire') || h.includes('comment') || h.includes('note') || h.includes('remarque')
+				);
 				
 				if (customerNameIndex === -1 || addressIndex === -1) {
 					reject(new Error(
@@ -65,11 +73,15 @@ export function parseCsv(file: File): Promise<ParsedCsvRow[]> {
 					
 					const customerName = values[customerNameIndex]?.trim();
 					const address = values[addressIndex]?.trim();
+					const phoneNumber = phoneNumberIndex !== -1 ? values[phoneNumberIndex]?.trim() : undefined;
+					const internalComment = internalCommentIndex !== -1 ? values[internalCommentIndex]?.trim() : undefined;
 					
 					if (customerName && address) {
 						rows.push({
 							customerName,
 							address,
+							phoneNumber,
+							internalComment,
 							// Garder toutes les colonnes pour affichage
 							...Object.fromEntries(
 								headers.map((header, idx) => [header, values[idx] || ''])

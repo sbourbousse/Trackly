@@ -19,6 +19,8 @@ Le parser détecte automatiquement :
 - **Séparateur** : virgule (`,`) ou point-virgule (`;`)
 - **Colonnes client** : `client`, `customer`, `nom`, `name` (insensible à la casse, accents ignorés)
 - **Colonnes adresse** : `adresse`, `address`, `adr` (insensible à la casse, accents ignorés)
+- **Colonnes téléphone** (optionnel) : `telephone`, `phone`, `tel`, `mobile` (insensible à la casse, accents ignorés)
+- **Colonnes commentaire** (optionnel) : `commentaire`, `comment`, `note`, `remarque` (insensible à la casse, accents ignorés)
 
 ## Utilisation
 
@@ -33,6 +35,14 @@ Le parser détecte automatiquement :
 Client,Adresse
 Nom Client 1,Adresse 1
 Nom Client 2,Adresse 2
+```
+
+## Exemple avec tous les champs
+
+```csv
+Client,Adresse,Téléphone,Commentaire
+Nom Client 1,123 Rue Exemple,+33 6 12 34 56 78,Client VIP
+Nom Client 2,456 Avenue Test,+33 6 98 76 54 32,Livraison fragile
 ```
 
 Les autres colonnes sont ignorées mais conservées pour l'affichage.

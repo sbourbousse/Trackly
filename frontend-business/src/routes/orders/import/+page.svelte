@@ -88,6 +88,8 @@
 				return {
 					customerName: row.customerName,
 					address: row.address,
+					phoneNumber: row.phoneNumber || undefined,
+					internalComment: row.internalComment || undefined,
 					orderDate: dateVal.trim() || undefined
 				};
 			});
@@ -214,6 +216,8 @@
 									<TableRow>
 										<TableHead>Client</TableHead>
 										<TableHead>Adresse</TableHead>
+										<TableHead>Téléphone</TableHead>
+										<TableHead>Commentaire</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -221,11 +225,13 @@
 										<TableRow>
 											<TableCell>{row.customerName}</TableCell>
 											<TableCell>{row.address}</TableCell>
+											<TableCell>{row.phoneNumber || '-'}</TableCell>
+											<TableCell>{row.internalComment || '-'}</TableCell>
 										</TableRow>
 									{/each}
 									{#if parsedRows.length > 10}
 										<TableRow>
-											<TableCell colspan="2" class="text-center text-muted-foreground">
+											<TableCell colspan={4} class="text-center text-muted-foreground">
 												... et {parsedRows.length - 10} autre(s) ligne(s)
 											</TableCell>
 										</TableRow>

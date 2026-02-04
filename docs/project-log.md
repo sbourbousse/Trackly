@@ -3,6 +3,42 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-04 | Suppression de la colonne ETA non fonctionnelle
+
+**Tâche** : Supprimer la colonne ETA (Estimated Time of Arrival) qui affichait une valeur hardcodée "11:40" sans fonctionnalité réelle.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/stores/deliveries.svelte.ts` – Suppression du champ `eta` des types `DeliveryRoute` et `DeliveryStop`
+- `frontend-business/src/routes/dashboard/+page.svelte` – Suppression de la colonne ETA des tableaux "Tournées prévues" et "En cours"
+- `frontend-business/src/routes/deliveries/+page.svelte` – Suppression de la colonne ETA du tableau des livraisons
+
+**Notes** : La colonne ETA n'était pas calculée et affichait une valeur statique. L'API backend ne fournit pas cette information. La colonne pourra être réintroduite ultérieurement si un calcul d'ETA réel est implémenté.
+
+---
+
+## 2026-02-04 | Indicateur visuel d'urgence des dates de commande
+
+**Tâche** : Ajouter un indicateur visuel pour les dates de commande avec codes couleur selon l'urgence et tooltip avec temps relatif.
+
+**Fichiers créés** :
+- `frontend-business/src/lib/components/OrderDateIndicator.svelte` – Composant d'affichage des dates avec indicateur d'urgence
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/orders/+page.svelte` – Utilisation du composant OrderDateIndicator dans le tableau des commandes
+- `frontend-business/src/routes/orders/[id]/+page.svelte` – Utilisation du composant dans la page de détail de commande
+- `frontend-business/src/routes/dashboard/+page.svelte` – Utilisation du composant dans le tableau de bord
+
+**Fonctionnalités** :
+- **Rouge** : Date dépassée (retard)
+- **Jaune** : Moins de 30 minutes restantes (urgent)
+- **Orange** : Entre 30 minutes et 2 heures (bientôt)
+- **Gris** : Plus de 2 heures (normal)
+- **Tooltip au hover** : Affiche le temps relatif en français (ex: "En retard de 2 heures", "Dans 15 minutes", "Demain", etc.)
+
+**Notes** : Le composant utilise les composants UI Tooltip existants avec un délai de 200ms. Les calculs sont réactifs et se mettent à jour automatiquement grâce à `$derived`.
+
+---
+
 ## 2026-02-04 | Entité Tournée (Route) en base
 
 **Tâche** : Créer une vraie entité Tournée (Route) en base pour distinguer plusieurs tournées le même jour et gérer correctement les tournées de nuit.

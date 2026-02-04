@@ -12,6 +12,7 @@
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import OrderDateIndicator from '$lib/components/OrderDateIndicator.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -350,16 +351,8 @@
 									<TableCell>
 										<StatusBadge type="order" status={order.status} />
 									</TableCell>
-									<TableCell class="tabular-nums text-muted-foreground whitespace-nowrap">
-										{order.orderDate
-											? new Date(order.orderDate).toLocaleString('fr-FR', {
-													day: '2-digit',
-													month: '2-digit',
-													year: 'numeric',
-													hour: '2-digit',
-													minute: '2-digit'
-												})
-											: '—'}
+									<TableCell>
+										<OrderDateIndicator orderDate={order.orderDate} />
 									</TableCell>
 									<TableCell class="tabular-nums font-medium" onclick={(e) => e.stopPropagation()}>
 										<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">

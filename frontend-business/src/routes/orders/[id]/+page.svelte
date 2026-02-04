@@ -6,6 +6,7 @@
 	import type { ApiOrderDetail } from '$lib/api/orders';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import OrderDateIndicator from '$lib/components/OrderDateIndicator.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -111,15 +112,7 @@
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Date et heure de la commande</p>
 							<p class="font-medium">
-								{order.orderDate
-									? new Date(order.orderDate).toLocaleString('fr-FR', {
-											day: '2-digit',
-											month: '2-digit',
-											year: 'numeric',
-											hour: '2-digit',
-											minute: '2-digit'
-										})
-									: '—'}
+								<OrderDateIndicator orderDate={order.orderDate} />
 							</p>
 						</div>
 						<div class="space-y-1">

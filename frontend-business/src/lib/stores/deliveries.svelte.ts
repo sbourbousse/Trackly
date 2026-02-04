@@ -7,7 +7,6 @@ export type DeliveryRoute = {
 	driver: string;
 	stops: number;
 	status: DeliveryStatus;
-	eta: string;
 	/** ISO date string pour le graphique par période (ex. 2025-02-04T10:00:00Z). */
 	createdAt?: string | null;
 };
@@ -17,7 +16,6 @@ export type DeliveryStop = {
 	name: string;
 	address: string;
 	status: 'Prevu' | 'En cours' | 'Livre';
-	eta: string;
 };
 
 export let deliveriesState = $state({
@@ -54,11 +52,10 @@ export const deliveriesActions = {
 
 			deliveriesState.routes = deliveries.map((delivery) => ({
 				id: delivery.id,
-				route: `Tournee ${delivery.id.slice(0, 4).toUpperCase()}`,
+				route: `${delivery.id.slice(0, 8).toUpperCase()}`,
 				driver: delivery.driverId || 'Non assigne',
 				stops: 1,
 				status: delivery.status as DeliveryStatus,
-				eta: '11:40',
 				createdAt: delivery.createdAt ?? null
 			}));
 			deliveriesState.lastUpdateAt = new Date().toLocaleTimeString('fr-FR', {

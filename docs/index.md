@@ -35,6 +35,7 @@ Comprendre l'architecture et les choix techniques :
 
 - **[Architecture Map](architecture-map.md)** - Vue d'ensemble technique
 - **[Project Context](project-context.md)** - Contexte et vision du projet
+- **[Détail tournée : progress bar, ETA, tri](tournee-detail-tracking-eta.md)** - Spec détail tournée, tracking temps réel, ordre des livraisons
 - **[Business Logic - Deletions](business-logic-deletions.md)** - Logique de suppression
 
 ### Documentation Projet

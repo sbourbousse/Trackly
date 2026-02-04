@@ -10,6 +10,8 @@ public static class RouteEndpoints
     {
         var group = app.MapGroup("/api/routes");
         group.MapGet("/", GetRoutes);
+        group.MapGet("/{id:guid}", GetRoute);
+        group.MapPatch("/{routeId:guid}/deliveries/order", ReorderDeliveries);
         return app;
     }
 
@@ -74,5 +76,125 @@ public static class RouteEndpoints
             .ToList();
 
         return Results.Ok(new RouteListResponse { Routes = responses });
+    }
+
+    /// <summary>
+    /// Détail d'une tournée avec ses livraisons ordonnées par Sequence.
+    /// </summary>
+    private static async Task<IResult> GetRoute(
+        Guid id,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var route = await dbContext.Routes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == id && r.TenantId == tenantContext.TenantId && r.DeletedAt == null, cancellationToken);
+
+        if (route == null)
+        {
+            return Results.NotFound("Tournée introuvable.");
+        }
+
+        var driver = await dbContext.Drivers
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == route.DriverId, cancellationToken);
+        var driverName = driver?.Name ?? "Non assigné";
+
+        var deliveries = await dbContext.Deliveries
+            .AsNoTracking()
+            .Where(d => d.RouteId == route.Id && d.DeletedAt == null)
+            .OrderBy(d => d.Sequence ?? int.MaxValue)
+            .ThenBy(d => d.CreatedAt)
+            .ToListAsync(cancellationToken);
+
+        var orderIds = deliveries.Select(d => d.OrderId).Distinct().ToList();
+        var orders = await dbContext.Orders
+            .AsNoTracking()
+            .Where(o => orderIds.Contains(o.Id) && o.DeletedAt == null)
+            .ToDictionaryAsync(o => o.Id, o => new { o.CustomerName, o.Address }, cancellationToken);
+
+        var deliveryResponses = deliveries
+            .Select(d =>
+            {
+                string customerName = "Inconnu";
+                string address = "Adresse inconnue";
+                if (orders.TryGetValue(d.OrderId, out var o))
+                {
+                    customerName = o.CustomerName ?? customerName;
+                    address = o.Address ?? address;
+                }
+                return new DeliveryInRouteResponse(
+                    d.Id,
+                    d.OrderId,
+                    d.Sequence,
+                    d.Status,
+                    d.CreatedAt,
+                    d.CompletedAt,
+                    customerName,
+                    address);
+            })
+            .ToList();
+
+        return Results.Ok(new RouteDetailResponse(
+            route.Id,
+            route.DriverId,
+            route.Name,
+            route.CreatedAt,
+            driverName,
+            deliveryResponses));
+    }
+
+    /// <summary>
+    /// Réordonne les livraisons d'une tournée. Body : { "deliveryIds": ["guid", ...] }.
+    /// </summary>
+    private static async Task<IResult> ReorderDeliveries(
+        Guid routeId,
+        ReorderRouteDeliveriesRequest request,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        if (request.DeliveryIds == null || request.DeliveryIds.Count == 0)
+        {
+            return Results.BadRequest("Aucune livraison fournie.");
+        }
+
+        var route = await dbContext.Routes
+            .FirstOrDefaultAsync(r => r.Id == routeId && r.TenantId == tenantContext.TenantId && r.DeletedAt == null, cancellationToken);
+
+        if (route == null)
+        {
+            return Results.NotFound("Tournée introuvable.");
+        }
+
+        var deliveries = await dbContext.Deliveries
+            .Where(d => d.RouteId == routeId && d.TenantId == tenantContext.TenantId && d.DeletedAt == null)
+            .ToListAsync(cancellationToken);
+
+        var deliveryIdsSet = deliveries.Select(d => d.Id).ToHashSet();
+        if (request.DeliveryIds.Count != deliveryIdsSet.Count || request.DeliveryIds.Any(id => !deliveryIdsSet.Contains(id)))
+        {
+            return Results.BadRequest("La liste des livraisons doit contenir exactement les livraisons de cette tournée.");
+        }
+
+        for (var i = 0; i < request.DeliveryIds.Count; i++)
+        {
+            var delivery = deliveries.First(d => d.Id == request.DeliveryIds[i]);
+            delivery.Sequence = i;
+        }
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return Results.Ok(new { message = "Ordre mis à jour." });
     }
 }

@@ -7,6 +7,7 @@ public sealed record DeliveryResponse(
     Guid OrderId,
     Guid DriverId,
     Guid? RouteId,
+    int? Sequence,
     DeliveryStatus Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt);
@@ -36,6 +37,8 @@ public sealed record DeliveryDetailResponse(
     Guid Id,
     Guid OrderId,
     Guid DriverId,
+    Guid? RouteId,
+    int? Sequence,
     DeliveryStatus Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt,
@@ -70,3 +73,26 @@ public sealed record RouteListResponse
 {
     public List<RouteResponse> Routes { get; init; } = new();
 }
+
+/// <summary>Détail d'une tournée avec ses livraisons ordonnées par Sequence.</summary>
+public sealed record RouteDetailResponse(
+    Guid Id,
+    Guid DriverId,
+    string? Name,
+    DateTimeOffset CreatedAt,
+    string DriverName,
+    List<DeliveryInRouteResponse> Deliveries);
+
+/// <summary>Livraison dans le contexte d'une tournée (pour GET route/{id}).</summary>
+public sealed record DeliveryInRouteResponse(
+    Guid Id,
+    Guid OrderId,
+    int? Sequence,
+    DeliveryStatus Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? CompletedAt,
+    string CustomerName,
+    string Address);
+
+/// <summary>Body pour réordonner les livraisons d'une tournée.</summary>
+public sealed record ReorderRouteDeliveriesRequest(List<Guid> DeliveryIds);

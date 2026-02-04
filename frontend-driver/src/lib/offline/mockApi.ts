@@ -8,6 +8,7 @@ import { offlineConfig } from './config';
 import {
   getCurrentMockDeliveries,
   getMockDeliveryDetail,
+  getMockRouteDetail,
   updateMockDeliveryStatus,
   DEMO_TENANT_ID
 } from './mockData';
@@ -24,12 +25,14 @@ function delay(): Promise<void> {
  */
 export const mockDeliveriesApi = {
   /**
-   * Récupère la liste des livraisons
+   * Récupère la liste des livraisons (optionnel driverId pour filtrer)
    */
-  async getDeliveries(): Promise<ApiDelivery[]> {
-    console.log('[Mock API] GET /api/deliveries');
+  async getDeliveries(driverId?: string | null): Promise<ApiDelivery[]> {
+    console.log('[Mock API] GET /api/deliveries', driverId ? { driverId } : '');
     await delay();
-    return getCurrentMockDeliveries();
+    const list = getCurrentMockDeliveries();
+    if (!driverId) return list;
+    return list.filter(d => d.driverId === driverId);
   },
 
   /**
@@ -73,6 +76,19 @@ export const mockDeliveriesApi = {
     if (!updated) {
       throw new Error(`Livraison ${id} introuvable`);
     }
+  }
+};
+
+/**
+ * Mock pour l'API des tournées (détail pour progress X/Y livrées)
+ */
+export const mockRoutesApi = {
+  async getRoute(routeId: string): Promise<import('../api/routes').ApiRouteDetail> {
+    console.log('[Mock API] GET /api/routes/' + routeId);
+    await delay();
+    const detail = getMockRouteDetail(routeId);
+    if (!detail) throw new Error('Tournée introuvable.');
+    return detail;
   }
 };
 

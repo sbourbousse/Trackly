@@ -6,7 +6,10 @@ export type ApiDelivery = {
 	id: string;
 	orderId: string;
 	driverId: string;
+	routeId?: string | null;
+	sequence?: number | null;
 	status: string;
+	createdAt?: string;
 	completedAt: string | null;
 };
 
@@ -14,6 +17,8 @@ export type ApiDeliveryDetail = {
 	id: string;
 	orderId: string;
 	driverId: string;
+	routeId?: string | null;
+	sequence?: number | null;
 	status: string;
 	createdAt: string;
 	completedAt: string | null;
@@ -22,11 +27,15 @@ export type ApiDeliveryDetail = {
 	driverName: string;
 };
 
-export const getDeliveries = async () => {
+/** Livraisons du chauffeur (optionnel driverId pour filtrer côté API). */
+export const getDeliveries = async (driverId?: string | null) => {
 	if (offlineConfig.enabled) {
-		return await mockDeliveriesApi.getDeliveries();
+		return await mockDeliveriesApi.getDeliveries(driverId);
 	}
-	return await apiFetch<ApiDelivery[]>('/api/deliveries');
+	const params = new URLSearchParams();
+	if (driverId) params.set('driverId', driverId);
+	const path = params.toString() ? `/api/deliveries?${params}` : '/api/deliveries';
+	return await apiFetch<ApiDelivery[]>(path);
 };
 
 export const getDelivery = async (id: string) => {

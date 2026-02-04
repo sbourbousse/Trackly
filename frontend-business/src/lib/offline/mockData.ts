@@ -6,7 +6,7 @@
 import type { ApiOrder, ApiOrderDetail } from '../api/orders';
 import type { ApiDelivery, ApiDeliveryDetail } from '../api/deliveries';
 import type { ApiDriver } from '../api/drivers';
-import type { ApiRoute } from '../api/routes';
+import type { ApiRoute, ApiRouteDetail, ApiDeliveryInRoute } from '../api/routes';
 
 // Tenant de démo
 export const DEMO_TENANT_ID = 'demo-tenant-001';
@@ -103,6 +103,7 @@ function generateMockDeliveries(): ApiDelivery[] {
       orderId: 'order-002',
       driverId: 'driver-001',
       routeId: 'route-001',
+      sequence: 0,
       status: 'InProgress',
       createdAt: new Date(now - 3600000).toISOString(),
       completedAt: null
@@ -112,6 +113,7 @@ function generateMockDeliveries(): ApiDelivery[] {
       orderId: 'order-004',
       driverId: 'driver-001',
       routeId: 'route-001',
+      sequence: 1,
       status: 'Completed',
       createdAt: new Date(now - 86400000).toISOString(),
       completedAt: new Date(now - 3600000).toISOString()
@@ -121,6 +123,7 @@ function generateMockDeliveries(): ApiDelivery[] {
       orderId: 'order-005',
       driverId: 'driver-002',
       routeId: 'route-002',
+      sequence: 0,
       status: 'Completed',
       createdAt: new Date(now - 172800000).toISOString(),
       completedAt: new Date(now - 86400000).toISOString()
@@ -130,6 +133,7 @@ function generateMockDeliveries(): ApiDelivery[] {
       orderId: 'order-008',
       driverId: 'driver-003',
       routeId: 'route-003',
+      sequence: 0,
       status: 'Completed',
       createdAt: new Date(now - 259200000).toISOString(),
       completedAt: new Date(now - 172800000).toISOString()
@@ -262,6 +266,7 @@ export function createMockDeliveries(driverId: string, orderIds: string[], name?
   });
 
   const newDeliveries: ApiDelivery[] = [];
+  let sequence = 0;
   for (const orderId of orderIds) {
     const order = mockOrdersState.find(o => o.id === orderId);
     if (order && order.status === 'Pending') {
@@ -270,6 +275,7 @@ export function createMockDeliveries(driverId: string, orderIds: string[], name?
         orderId,
         driverId,
         routeId,
+        sequence: sequence++,
         status: 'Pending',
         createdAt: new Date().toISOString(),
         completedAt: null
@@ -312,6 +318,55 @@ export function getMockRoutes(filters?: { dateFrom?: string; dateTo?: string; dr
   }
   list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
   return list;
+}
+
+/**
+ * Récupère le détail d'une tournée avec livraisons ordonnées par sequence.
+ */
+export function getMockRouteDetail(routeId: string): ApiRouteDetail | null {
+  const route = mockRoutesState.find(r => r.id === routeId);
+  if (!route) return null;
+  const driver = mockDriversState.find(d => d.id === route.driverId);
+  const deliveries = mockDeliveriesState
+    .filter(d => d.routeId === routeId)
+    .sort((a, b) => (a.sequence ?? 999) - (b.sequence ?? 999));
+  const deliveriesInRoute: ApiDeliveryInRoute[] = deliveries.map(d => {
+    const order = mockOrdersState.find(o => o.id === d.orderId);
+    return {
+      id: d.id,
+      orderId: d.orderId,
+      sequence: d.sequence ?? null,
+      status: d.status,
+      createdAt: d.createdAt ?? new Date().toISOString(),
+      completedAt: d.completedAt,
+      customerName: order?.customerName ?? 'Inconnu',
+      address: order?.address ?? 'Adresse inconnue'
+    };
+  });
+  return {
+    id: route.id,
+    driverId: route.driverId,
+    name: route.name,
+    createdAt: route.createdAt,
+    driverName: driver?.name ?? 'Non assigné',
+    deliveries: deliveriesInRoute
+  };
+}
+
+/**
+ * Réordonne les livraisons d'une tournée (met à jour sequence dans mockDeliveriesState).
+ */
+export function reorderMockRouteDeliveries(routeId: string, deliveryIds: string[]): void {
+  const route = mockRoutesState.find(r => r.id === routeId);
+  if (!route) return;
+  const routeDeliveries = mockDeliveriesState.filter(d => d.routeId === routeId);
+  if (deliveryIds.length !== routeDeliveries.length || deliveryIds.some(id => !routeDeliveries.some(d => d.id === id))) {
+    return;
+  }
+  deliveryIds.forEach((id, index) => {
+    const d = mockDeliveriesState.find(x => x.id === id);
+    if (d) d.sequence = index;
+  });
 }
 
 /**

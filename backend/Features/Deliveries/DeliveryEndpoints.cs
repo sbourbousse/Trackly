@@ -27,8 +27,8 @@ public static class DeliveryEndpoints
     }
 
     /// <summary>
-    /// Filtres optionnels : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate", routeId (tournée).
-    /// OrderDate filtre sur la date de la commande associée.
+    /// Filtres optionnels : dateFrom, dateTo (ISO 8601), dateFilter = "CreatedAt" | "OrderDate", routeId (tournée), driverId (chauffeur).
+    /// OrderDate filtre sur la date de la commande associée. driverId utilisé par l'app chauffeur.
     /// </summary>
     private static async Task<IResult> GetDeliveries(
         TracklyDbContext dbContext,
@@ -37,6 +37,7 @@ public static class DeliveryEndpoints
         DateTimeOffset? dateTo,
         string? dateFilter,
         Guid? routeId,
+        Guid? driverId,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -52,6 +53,8 @@ public static class DeliveryEndpoints
 
         if (routeId.HasValue && routeId.Value != Guid.Empty)
             query = query.Where(d => d.RouteId == routeId.Value);
+        if (driverId.HasValue && driverId.Value != Guid.Empty)
+            query = query.Where(d => d.DriverId == driverId.Value);
 
         if (useOrderDate && (dateFrom.HasValue || dateTo.HasValue))
         {
@@ -74,8 +77,12 @@ public static class DeliveryEndpoints
                 query = query.Where(d => d.CreatedAt <= dateTo.Value);
         }
 
-        var deliveries = await query
-            .OrderByDescending(d => d.CreatedAt)
+        // Ordre par tournée puis sequence (app chauffeur ou détail tournée) ; sinon par date
+        var orderedQuery = (routeId.HasValue && routeId.Value != Guid.Empty) || (driverId.HasValue && driverId.Value != Guid.Empty)
+            ? query.OrderBy(d => d.RouteId ?? Guid.Empty).ThenBy(d => d.Sequence ?? int.MaxValue).ThenBy(d => d.CreatedAt)
+            : query.OrderByDescending(d => d.CreatedAt);
+
+        var deliveries = await orderedQuery
             .Select(d => ToResponse(d))
             .ToListAsync(cancellationToken);
 
@@ -225,6 +232,8 @@ public static class DeliveryEndpoints
             delivery.Id,
             delivery.OrderId,
             delivery.DriverId,
+            delivery.RouteId,
+            delivery.Sequence,
             delivery.Status,
             delivery.CreatedAt,
             delivery.CompletedAt,
@@ -359,6 +368,7 @@ public static class DeliveryEndpoints
 
         var deliveries = new List<Delivery>();
         var createdDeliveries = new List<DeliveryResponse>();
+        var sequence = 0;
 
         foreach (var orderId in request.OrderIds)
         {
@@ -376,6 +386,7 @@ public static class DeliveryEndpoints
                 OrderId = orderId,
                 DriverId = request.DriverId,
                 RouteId = route.Id,
+                Sequence = sequence++,
                 Status = DeliveryStatus.Pending,
                 CreatedAt = DateTimeOffset.UtcNow
             };
@@ -591,6 +602,7 @@ public static class DeliveryEndpoints
             delivery.OrderId,
             delivery.DriverId,
             delivery.RouteId,
+            delivery.Sequence,
             delivery.Status,
             delivery.CreatedAt,
             delivery.CompletedAt);

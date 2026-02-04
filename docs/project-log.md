@@ -3,6 +3,61 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-04 | Implémentation détail tournée : progress bar, ETA, tri livraisons
+
+**Tâche** : Implémenter l’interface de détail d’une tournée avec progress bar (X/Y livrées), tracking temps réel et tri des livraisons (spec [docs/tournee-detail-tracking-eta.md](tournee-detail-tracking-eta.md)).
+
+**Backend** :
+- `Delivery.Sequence` (int?) ajouté ; migration `AddSequenceToDelivery`. Création batch : Sequence = 0, 1, 2…
+- `DeliveryResponse` et `DeliveryDetailResponse` : champ `Sequence` exposé.
+- GET `/api/deliveries` avec `routeId` : tri par `Sequence` puis `CreatedAt`.
+- GET `/api/routes/{id}` : détail tournée + livraisons ordonnées par Sequence (DTOs `RouteDetailResponse`, `DeliveryInRouteResponse`).
+- PATCH `/api/routes/{routeId}/deliveries/order` : body `{ "deliveryIds": ["guid", ...] }`, met à jour `Sequence` 0, 1, 2…
+
+**Frontend** :
+- API : `getRoute(routeId)`, `reorderRouteDeliveries(routeId, deliveryIds)` ; types `ApiRouteDetail`, `ApiDeliveryInRoute`.
+- Composant `RouteProgressBar.svelte` : X/Y livrées, barre de progression (style App chauffeur landing).
+- Page `/deliveries/routes/[routeId]` : en-tête, progress bar, liste livraisons (ordre + statut + client + adresse), boutons Monter/Descendre pour réordonner, tracking SignalR + carte si livraison en cours.
+- Liste tournées : lien « Détail » vers `/deliveries/routes/[id]`, lien « Livraisons » vers `/deliveries?routeId=…`.
+- Store deliveries : ETA affiché = « Arrêt N » si `sequence` présent, sinon « – ».
+- Mode offline : `getMockRouteDetail`, `reorderMockRouteDeliveries` ; mock données avec `sequence`.
+
+**À faire** : Appliquer la migration en base (`dotnet ef database update` ou script de déploiement).
+
+---
+
+## 2026-02-04 | App chauffeur : progress bar, ordre des arrêts, routeId/sequence
+
+**Tâche** : Aligner l’app driver (frontend-driver) avec la tournée, la progress bar (X/Y livrées) et l’ordre des arrêts (sequence).
+
+**Backend** :
+- `DeliveryDetailResponse` : ajout de `RouteId` (pour que le chauffeur puisse charger le détail de la tournée et afficher la progress).
+- GET `/api/deliveries` : filtre optionnel **`driverId`** ; tri par `RouteId` puis `Sequence` quand `driverId` ou `routeId` est fourni (app chauffeur = ses livraisons ordonnées par tournée et arrêt).
+
+**Frontend-driver** :
+- **API** : `ApiDelivery` et `ApiDeliveryDetail` avec `routeId` et `sequence`. `getDeliveries(driverId?)` envoie `driverId` en query pour ne récupérer que les livraisons du chauffeur. Nouveau module **`lib/api/routes.ts`** avec `getRoute(routeId)` pour le détail tournée (progress X/Y).
+- **Page Liste (Deliveries.svelte)** : progress bar « X / Y livrées » en haut ; tri des livraisons par `routeId` puis `sequence` ; libellé « Arrêt N » par livraison quand `sequence` présent.
+- **Page Détail (DeliveryDetail.svelte)** : si la livraison a un `routeId`, appel à `getRoute(routeId)` et affichage d’une progress bar « X / Y livrées » + « Arrêt N sur M » ; titre du type « Arrêt 3 / 5 — Livraison XXX ».
+- **Mode offline** : mock données avec `routeId`, `sequence`, `createdAt` ; `getMockRouteDetail(routeId)` ; `mockRoutesApi.getRoute(routeId)`.
+
+---
+
+## 2026-02-04 | Spec détail tournée : progress bar, ETA, tri livraisons
+
+**Tâche** : Rassembler le minimum pour une interface de détail d’une tournée avec progress bar (X/Y livrées), ETA temps réel du chauffeur et tri de l’ordre des livraisons.
+
+**Document créé** : [docs/tournee-detail-tracking-eta.md](tournee-detail-tracking-eta.md)
+
+**Contenu** :
+- Objectif : page détail tournée avec progress bar (style App chauffeur landing), liste ordonnée des livraisons, tracking SignalR, tri des arrêts.
+- Backend (minimum) : champ `Sequence` sur `Delivery`, GET `/api/routes/{id}` (détail + livraisons ordonnées), PATCH reorder (`/api/routes/{routeId}/deliveries/order`).
+- Frontend (minimum) : page `/deliveries/routes/[routeId]`, composant progress bar réutilisable, liste livraisons par Sequence, tracking pour la livraison en cours, boutons ou drag-and-drop pour réordonner.
+- ETA : option simple = « Arrêt N/M » ; option avancée = champ ou calcul ETA (après MVP).
+
+**Référence** : Lazy component App chauffeur (`frontend-landing-page/components/previews/AppDriverPreview.tsx`).
+
+---
+
 ## 2026-02-04 | Landing page : aperçus d’apps, couleurs partagées, carte en image
 
 **Tâche** : Améliorer la landing avec des bouts de chaque application (surtout business), partager les couleurs avec le reste du projet et exporter des composants lazy ; carte en image.

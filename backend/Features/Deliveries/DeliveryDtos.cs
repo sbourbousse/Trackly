@@ -6,6 +6,8 @@ public sealed record DeliveryResponse(
     Guid Id,
     Guid OrderId,
     Guid DriverId,
+    Guid? RouteId,
+    int? Sequence,
     DeliveryStatus Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt);
@@ -15,7 +17,7 @@ public sealed record DeliveryTrackingResponse(
     DeliveryStatus Status,
     DateTimeOffset? CompletedAt);
 
-public sealed record CreateDeliveriesBatchRequest(Guid DriverId, List<Guid> OrderIds);
+public sealed record CreateDeliveriesBatchRequest(Guid DriverId, List<Guid> OrderIds, string? Name = null);
 
 public sealed record CreateDeliveriesBatchResponse
 {
@@ -35,6 +37,8 @@ public sealed record DeliveryDetailResponse(
     Guid Id,
     Guid OrderId,
     Guid DriverId,
+    Guid? RouteId,
+    int? Sequence,
     DeliveryStatus Status,
     DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt,
@@ -54,3 +58,41 @@ public sealed record DeliveryStatsResponse
 public sealed record DeliveryCountByDay(string Date, int Count);
 
 public sealed record DeliveryCountByHour(string Hour, int Count);
+
+// --- Routes (tournées) ---
+
+public sealed record RouteResponse(
+    Guid Id,
+    Guid DriverId,
+    string? Name,
+    DateTimeOffset CreatedAt,
+    int DeliveryCount,
+    string DriverName);
+
+public sealed record RouteListResponse
+{
+    public List<RouteResponse> Routes { get; init; } = new();
+}
+
+/// <summary>Détail d'une tournée avec ses livraisons ordonnées par Sequence.</summary>
+public sealed record RouteDetailResponse(
+    Guid Id,
+    Guid DriverId,
+    string? Name,
+    DateTimeOffset CreatedAt,
+    string DriverName,
+    List<DeliveryInRouteResponse> Deliveries);
+
+/// <summary>Livraison dans le contexte d'une tournée (pour GET route/{id}).</summary>
+public sealed record DeliveryInRouteResponse(
+    Guid Id,
+    Guid OrderId,
+    int? Sequence,
+    DeliveryStatus Status,
+    DateTimeOffset CreatedAt,
+    DateTimeOffset? CompletedAt,
+    string CustomerName,
+    string Address);
+
+/// <summary>Body pour réordonner les livraisons d'une tournée.</summary>
+public sealed record ReorderRouteDeliveriesRequest(List<Guid> DeliveryIds);

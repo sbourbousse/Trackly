@@ -27,6 +27,8 @@
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import PlusCircleIcon from '@lucide/svelte/icons/plus-circle';
 	import MapPinIcon from '@lucide/svelte/icons/map-pin';
+	import ListIcon from '@lucide/svelte/icons/list';
+	import RouteIcon from '@lucide/svelte/icons/route';
 
 	let pathname = $derived(page.url.pathname);
 	let isDark = $derived(themeState.value === 'dark');
@@ -58,6 +60,19 @@
 							{/snippet}
 						</SidebarMenuButton>
 					</SidebarMenuItem>
+					<SidebarMenuItem>
+						<SidebarMenuButton
+							tooltipContent="Carte"
+							isActive={pathname === '/map'}
+						>
+							{#snippet child({ props })}
+								<a href="/map" {...props}>
+									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Carte</span>
+								</a>
+							{/snippet}
+						</SidebarMenuButton>
+					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarGroupContent>
 		</SidebarGroup>
@@ -78,12 +93,6 @@
 							{/snippet}
 						</SidebarMenuButton>
 						<SidebarMenuSub>
-							<SidebarMenuSubItem>
-								<SidebarMenuSubButton href="/orders/map" isActive={pathname === '/orders/map'}>
-									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />
-									<span>Carte</span>
-								</SidebarMenuSubButton>
-							</SidebarMenuSubItem>
 							<SidebarMenuSubItem>
 								<SidebarMenuSubButton href="/orders/new" isActive={pathname === '/orders/new'}>
 									<FilePlusIcon class="size-4 shrink-0" aria-hidden="true" />
@@ -107,21 +116,21 @@
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton
-							tooltipContent="Tournées"
+							tooltipContent="Livraison"
 							isActive={pathname === '/deliveries' || pathname.startsWith('/deliveries/')}
 						>
 							{#snippet child({ props })}
 								<a href="/deliveries" {...props}>
 									<TruckIcon class="size-4 shrink-0" aria-hidden="true" />
-									<span>Tournées</span>
+									<span>Livraisons</span>
 								</a>
 							{/snippet}
 						</SidebarMenuButton>
 						<SidebarMenuSub>
 							<SidebarMenuSubItem>
-								<SidebarMenuSubButton href="/deliveries/map" isActive={pathname === '/deliveries/map'}>
-									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />
-									<span>Carte</span>
+								<SidebarMenuSubButton href="/deliveries/routes" isActive={pathname === '/deliveries/routes'}>
+									<RouteIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Liste des tournées</span>
 								</SidebarMenuSubButton>
 							</SidebarMenuSubItem>
 							<SidebarMenuSubItem>
@@ -152,12 +161,6 @@
 							{/snippet}
 						</SidebarMenuButton>
 						<SidebarMenuSub>
-							<SidebarMenuSubItem>
-								<SidebarMenuSubButton href="/drivers/map" isActive={pathname === '/drivers/map'}>
-									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />
-									<span>Carte (temps réel)</span>
-								</SidebarMenuSubButton>
-							</SidebarMenuSubItem>
 							<SidebarMenuSubItem>
 								<SidebarMenuSubButton href="/drivers/new" isActive={pathname === '/drivers/new'}>
 									<PlusCircleIcon class="size-4 shrink-0" aria-hidden="true" />

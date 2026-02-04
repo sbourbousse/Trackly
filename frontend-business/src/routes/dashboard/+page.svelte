@@ -16,34 +16,13 @@
 	import { dateRangeState } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
-	import { getOrdersStats, type OrderStatsResponse } from '$lib/api/orders';
-	import { getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
 	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
-	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 	import PlusIcon from '@lucide/svelte/icons/plus';
 
-	let orderStats = $state<OrderStatsResponse | null>(null);
-	let orderStatsLoading = $state(false);
 	let activeTab = $state('commandes-attente');
 
-	async function loadOrderStats() {
-		const filters = getListFilters();
-		if (!filters.dateFrom || !filters.dateTo) {
-			orderStats = null;
-			return;
-		}
-		orderStatsLoading = true;
-		try {
-			orderStats = await getOrdersStats(filters);
-		} catch {
-			orderStats = null;
-		} finally {
-			orderStatsLoading = false;
-		}
-	}
-
 	async function onDateFilterChange() {
-		await Promise.all([deliveriesActions.loadDeliveries(), ordersActions.loadOrders(), loadOrderStats()]);
+		await Promise.all([deliveriesActions.loadDeliveries(), ordersActions.loadOrders()]);
 	}
 
 	$effect(() => {
@@ -52,49 +31,6 @@
 		const ___ = dateRangeState.timeRange;
 		deliveriesActions.loadDeliveries();
 		ordersActions.loadOrders();
-		loadOrderStats();
-	});
-
-	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-
-	const chartData = $derived.by(() => {
-		if (!orderStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
-		if (orderStats.byHour.length > 0) {
-			return {
-				labels: orderStats.byHour.map((x) => x.hour),
-				values: orderStats.byHour.map((x) => x.count),
-				periodKeys: [] as string[],
-				byHour: true,
-				byMonth: false
-			};
-		}
-		const dayCount = getDateRangeDayCount();
-		if (dayCount > 30 && orderStats.byDay.length > 0) {
-			const byMonthMap = new Map<string, number>();
-			for (const { date, count } of orderStats.byDay) {
-				const [y, m] = date.split('-');
-				const key = `${y}-${m}`;
-				byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + count);
-			}
-			const sorted = [...byMonthMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-			return {
-				labels: sorted.map(([key]) => {
-					const [, m] = key.split('-');
-					return `${MONTH_LABELS[Number(m) - 1]} ${key.slice(0, 4)}`;
-				}),
-				values: sorted.map(([, count]) => count),
-				periodKeys: sorted.map(([key]) => key),
-				byHour: false,
-				byMonth: true
-			};
-		}
-		return {
-			labels: orderStats.byDay.map((x) => x.date),
-			values: orderStats.byDay.map((x) => x.count),
-			periodKeys: orderStats.byDay.map((x) => x.date),
-			byHour: false,
-			byMonth: false
-		};
 	});
 
 	const isPrevue = (s: string) => s === 'Pending' || s === 'Prevue';
@@ -112,31 +48,14 @@
 	<PageHeader title="Trackly Business" subtitle="Vue rapide des tournées et livraisons." />
 	<Badge variant="secondary" class="w-fit">Plan Starter · 7 livraisons restantes</Badge>
 
-	<DateFilterCard
-		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
-		chartDefaultOpen={false}
-		onDateFilterChange={onDateFilterChange}
-	>
-		{#snippet chart()}
-			<OrdersChartContent
-				loading={orderStatsLoading}
-				labels={chartData.labels}
-				values={chartData.values}
-				orders={ordersState.items}
-				periodKeys={chartData.periodKeys}
-				byHour={chartData.byHour}
-				byMonth={chartData.byMonth}
-				emptyMessage="Sélectionnez une plage pour afficher le graphique."
-			/>
-		{/snippet}
-	</DateFilterCard>
+	<DateFilterCard onDateFilterChange={onDateFilterChange} />
 
 	<section class="flex min-w-0 flex-col gap-4">
 		<Tabs bind:value={activeTab} class="flex flex-col gap-4">
 			<div class="flex flex-wrap items-center justify-between gap-4">
 				<TabsList class="h-9 w-full md:w-auto">
 					<TabsTrigger value="commandes-attente">Commandes en attente</TabsTrigger>
-					<TabsTrigger value="tournees">Tournées</TabsTrigger>
+					<TabsTrigger value="tournees">Livraisons</TabsTrigger>
 					<TabsTrigger value="section-2">Section 2</TabsTrigger>
 				</TabsList>
 				<Button variant="outline" size="sm" onclick={handleAddSection}>
@@ -219,7 +138,7 @@
 					{#if deliveriesState.loading && !deliveriesState.routes.length}
 						<Card>
 							<CardContent class="py-8 text-center text-muted-foreground">
-								Chargement des tournées...
+								Chargement des livraisons...
 							</CardContent>
 						</Card>
 					{:else if deliveriesState.error}
@@ -244,7 +163,7 @@
 												<TableRow>
 													<TableHead>Statut</TableHead>
 													<TableHead class="tabular-nums">ETA</TableHead>
-													<TableHead>Tournée</TableHead>
+													<TableHead>Livraison</TableHead>
 													<TableHead>Chauffeur</TableHead>
 													<TableHead>Arrêts</TableHead>
 												</TableRow>
@@ -284,7 +203,7 @@
 							</CardHeader>
 							<CardContent class="min-w-0">
 								{#if routesEnCours.length === 0}
-									<div class="py-6 text-center text-muted-foreground text-sm">Aucune tournée en cours.</div>
+									<div class="py-6 text-center text-muted-foreground text-sm">Aucune livraison en cours.</div>
 								{:else}
 									<div class="min-w-0 overflow-x-auto">
 										<Table>
@@ -292,7 +211,7 @@
 												<TableRow>
 													<TableHead>Statut</TableHead>
 													<TableHead class="tabular-nums">ETA</TableHead>
-													<TableHead>Tournée</TableHead>
+													<TableHead>Livraison</TableHead>
 													<TableHead>Chauffeur</TableHead>
 													<TableHead>Arrêts</TableHead>
 												</TableRow>

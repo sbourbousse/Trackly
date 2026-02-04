@@ -134,17 +134,16 @@ classDiagram
 - `Name` : Nom du chauffeur
 - `Phone` : Numéro de téléphone
 
-## Concept de "Tournée"
+## Entité Route (Tournée)
 
-**Important** : Il n'existe pas d'entité `Route` ou `Tournée` dans la base de données. Une "tournée" est un **regroupement logique** de livraisons (`Delivery`) qui :
-- Partagent le même `DriverId` (même chauffeur)
-- Sont créées le même jour (généralement)
-- Sont affichées ensemble dans l'interface utilisateur
+**Depuis 2026-02-04** : Une tournée est une **entité en base** `Route` :
+- **Route** : Id, TenantId, DriverId, Name (optionnel), CreatedAt, DeletedAt
+- **Delivery** possède un `RouteId` (FK vers Route) : chaque livraison créée via « Créer tournée » est rattachée à une Route
 
-**Exemple** :
-```
-Tournée "Est - Matin" = Toutes les livraisons avec DriverId = "driver-123" créées aujourd'hui
-```
+**Avantages** :
+- Plusieurs tournées distinctes le même jour pour un même chauffeur (matin / après-midi / nuit)
+- Tournées de nuit : une seule Route même si les livraisons enjambent minuit
+- Nom optionnel de la tournée stocké en base (ex. « Est - Matin », « Nuit 22h-6h »)
 
 ## Diagramme Entité-Relation (ERD)
 

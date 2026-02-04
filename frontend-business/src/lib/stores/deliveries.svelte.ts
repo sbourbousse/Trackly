@@ -8,6 +8,8 @@ export type DeliveryRoute = {
 	stops: number;
 	status: DeliveryStatus;
 	eta: string;
+	/** ISO date string pour le graphique par période (ex. 2025-02-04T10:00:00Z). */
+	createdAt?: string | null;
 };
 
 export type DeliveryStop = {
@@ -56,7 +58,8 @@ export const deliveriesActions = {
 				driver: delivery.driverId || 'Non assigne',
 				stops: 1,
 				status: delivery.status as DeliveryStatus,
-				eta: '11:40'
+				eta: delivery.sequence != null ? `Arrêt ${delivery.sequence + 1}` : '–',
+				createdAt: delivery.createdAt ?? null
 			}));
 			deliveriesState.lastUpdateAt = new Date().toLocaleTimeString('fr-FR', {
 				hour: '2-digit',
@@ -66,7 +69,7 @@ export const deliveriesActions = {
 			console.error('[Deliveries] Erreur lors du chargement:', error);
 			deliveriesState.error = error instanceof Error 
 				? error.message 
-				: 'Erreur lors du chargement des tournees';
+				: 'Erreur lors du chargement des livraisons';
 			// Garde les données existantes en cas d'erreur
 		} finally {
 			deliveriesState.loading = false;

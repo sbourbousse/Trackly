@@ -294,6 +294,7 @@ app.UseMiddleware<TenantMiddleware>();
 
 app.MapOrderEndpoints();
 app.MapDeliveryEndpoints();
+app.MapRouteEndpoints();
 app.MapDriverEndpoints();
 app.MapGeocodeEndpoints();
 

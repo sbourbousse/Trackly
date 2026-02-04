@@ -3,6 +3,11 @@
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { createDriver } from '$lib/api/drivers';
 	import type { CreateDriverRequest } from '$lib/api/drivers';
+	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
+	import { Button } from '$lib/components/ui/button';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import { Input } from '$lib/components/ui/input';
+	import { Label } from '$lib/components/ui/label';
 
 	let name = $state('');
 	let phone = $state('');
@@ -50,108 +55,64 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-2xl min-w-0 flex-col gap-6">
+<div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
 	<PageHeader title="Nouveau livreur" subtitle="Ajouter un livreur à votre équipe" />
 
 	{#if success}
-		<div class="success-message" style="padding: 1rem; background: #efe; color: #3c3; border-radius: 4px; margin-bottom: 1rem;">
-			✓ Livreur créé avec succès ! Redirection...
-		</div>
+		<Alert class="border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
+			<AlertTitle>Succès</AlertTitle>
+			<AlertDescription>Livreur créé avec succès. Redirection...</AlertDescription>
+		</Alert>
 	{/if}
 
 	{#if error}
-		<div class="error-message" style="padding: 1rem; background: #fee; color: #c33; border-radius: 4px; margin-bottom: 1rem;">
-			{error}
-		</div>
+		<Alert variant="destructive">
+			<AlertTitle>Erreur</AlertTitle>
+			<AlertDescription>{error}</AlertDescription>
+		</Alert>
 	{/if}
 
-	<form onsubmit={handleSubmit}>
-		<section class="panel">
-			<div class="panel-header">
-				<h2>Informations du livreur</h2>
-			</div>
-
-			<div style="display: grid; gap: 1.5rem; padding: 1.5rem;">
-				<label class="form-field">
-					<span>Nom <span style="color: #c33;">*</span></span>
-					<input
+	<form onsubmit={handleSubmit} class="space-y-6">
+		<Card>
+			<CardHeader>
+				<CardTitle>Informations du livreur</CardTitle>
+			</CardHeader>
+			<CardContent class="grid gap-4 sm:grid-cols-2">
+				<div class="space-y-2">
+					<Label for="name">Nom *</Label>
+					<Input
+						id="name"
 						type="text"
 						bind:value={name}
 						placeholder="Ex: Jean Dupont"
 						required
 						disabled={submitting}
 					/>
-				</label>
-
-				<label class="form-field">
-					<span>Téléphone <span style="color: #c33;">*</span></span>
-					<input
+				</div>
+				<div class="space-y-2">
+					<Label for="phone">Téléphone *</Label>
+					<Input
+						id="phone"
 						type="tel"
 						bind:value={phone}
 						placeholder="Ex: +33 6 12 34 56 78"
 						required
 						disabled={submitting}
 					/>
-				</label>
-			</div>
-		</section>
+				</div>
+			</CardContent>
+		</Card>
 
-		<div style="display: flex; gap: 1rem; margin-top: 1.5rem; justify-content: flex-end;">
-			<button
-				type="button"
-				class="ghost-button"
-				onclick={() => goto('/drivers')}
-				disabled={submitting}
-			>
+		<div class="flex justify-end gap-3">
+			<Button type="button" variant="outline" onclick={() => goto('/drivers')} disabled={submitting}>
 				Annuler
-			</button>
-			<button
+			</Button>
+			<Button
 				type="submit"
-				class="primary-button"
 				disabled={submitting || !name.trim() || !phone.trim()}
 			>
 				{submitting ? 'Création...' : 'Créer le livreur'}
-			</button>
+			</Button>
 		</div>
 	</form>
 </div>
-
-<style>
-	.form-field {
-		display: flex;
-		flex-direction: column;
-		gap: 0.5rem;
-	}
-
-	.form-field span {
-		font-weight: 500;
-		font-size: 0.875rem;
-	}
-
-	.form-field input {
-		padding: 0.75rem;
-		border: 2px solid var(--border);
-		border-radius: 6px;
-		font-size: 1rem;
-	}
-
-	.form-field input:focus {
-		outline: none;
-		border-color: var(--primary);
-	}
-
-	.success-message {
-		animation: slideIn 0.3s ease-out;
-	}
-
-	@keyframes slideIn {
-		from {
-			opacity: 0;
-			transform: translateY(-10px);
-		}
-		to {
-			opacity: 1;
-			transform: translateY(0);
-		}
-	}
-</style>

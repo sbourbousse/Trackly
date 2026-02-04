@@ -85,7 +85,8 @@
 		try {
 			await createDeliveriesBatch({
 				driverId: selectedDriverId,
-				orderIds: Array.from(selectedOrderIds)
+				orderIds: Array.from(selectedOrderIds),
+				name: routeName.trim() || undefined
 			});
 			success = true;
 			setTimeout(() => goto('/deliveries'), 1500);
@@ -130,8 +131,9 @@
 							<Input
 								id="route"
 								type="text"
-								bind:value={routeName}
-								placeholder="Ex: Tournée Est - Matin"
+								value={routeName}
+								oninput={(e) => (routeName = e.currentTarget.value)}
+								placeholder="Ex: Est - Matin, Nuit 22h-6h"
 							/>
 						</div>
 						<div class="space-y-2">
@@ -141,7 +143,7 @@
 								bind:value={selectedDriverId}
 								required
 								disabled={submitting}
-								class="border-input ring-offset-background focus-visible:border-ring focus-visible:ring-ring/50 flex h-9 w-full rounded-md border bg-transparent px-3 py-1 text-sm shadow-xs outline-none focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
+								class="border-input bg-background dark:bg-input/30 ring-offset-background flex h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								<option value="">Sélectionner un livreur</option>
 								{#each drivers as driver}

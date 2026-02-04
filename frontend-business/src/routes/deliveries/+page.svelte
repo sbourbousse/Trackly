@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { page } from '$app/state';
 	import { DropdownMenu } from 'bits-ui';
 	import MoreVerticalIcon from '@lucide/svelte/icons/more-vertical';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
@@ -7,8 +8,7 @@
 	import { dateRangeState, getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { deleteDeliveriesBatch, getDeliveriesStats, type DeliveryStatsResponse } from '$lib/api/deliveries';
-	import { ordersState, ordersActions } from '$lib/stores/orders.svelte';
-	import { getOrdersStats, type OrderStatsResponse } from '$lib/api/orders';
+	import { ordersActions } from '$lib/stores/orders.svelte';
 	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 
@@ -36,15 +36,58 @@
 	let deleteError = $state<string | null>(null);
 	let deliveryStats = $state<DeliveryStatsResponse | null>(null);
 	let deliveryStatsLoading = $state(false);
+	let statusFilter = $state<string | null>(null);
+
+	function deliveryStatusToKey(s: string): string {
+		const lower = (s ?? '').toLowerCase();
+		if (lower === 'pending' || lower === 'prevue' || lower === 'prévue' || lower === '0') return 'pending';
+		if (lower === 'inprogress' || lower === 'en cours' || lower === '1') return 'inprogress';
+		if (lower === 'completed' || lower === 'livrée' || lower === 'livree' || lower === '2') return 'completed';
+		if (lower === 'failed' || lower === 'échouée' || lower === 'echouee' || lower === '3') return 'failed';
+		return 'pending';
+	}
+
+	const urlRouteId = $derived(page.url.searchParams.get('routeId'));
+	const urlDriverId = $derived(page.url.searchParams.get('driverId'));
+	const urlDate = $derived(page.url.searchParams.get('date'));
+
+	const filteredDeliveries = $derived.by(() => {
+		let list = deliveriesState.routes;
+		// Filtre client-side par chauffeur+date (liens legacy) si pas de routeId
+		if (!urlRouteId && (urlDriverId || urlDate)) {
+			list = list.filter((d) => {
+				if (urlDriverId && d.driver !== urlDriverId) return false;
+				if (urlDate && (d.createdAt?.slice(0, 10) ?? '') !== urlDate) return false;
+				return true;
+			});
+		}
+		if (!statusFilter) return list;
+		return list.filter((d) => deliveryStatusToKey(d.status) === statusFilter);
+	});
+
+	const DELIVERY_STATUS_LABELS: Record<string, string> = {
+		pending: 'Prévue',
+		inprogress: 'En cours',
+		completed: 'Livrée',
+		failed: 'Échouée'
+	};
+
+	function handleStatusClick(statusKey: string | null) {
+		statusFilter = statusKey;
+	}
+
+	function clearStatusFilter() {
+		statusFilter = null;
+	}
 
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 	const chartData = $derived.by(() => {
-		if (!orderStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
-		if (orderStats.byHour.length > 0) {
+		if (!deliveryStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
+		if (deliveryStats.byHour.length > 0) {
 			return {
-				labels: orderStats.byHour.map((x) => x.hour),
-				values: orderStats.byHour.map((x) => x.count),
+				labels: deliveryStats.byHour.map((x) => x.hour),
+				values: deliveryStats.byHour.map((x) => x.count),
 				periodKeys: [] as string[],
 				byHour: true,
 				byMonth: false
@@ -71,9 +114,9 @@
 			};
 		}
 		return {
-			labels: orderStats.byDay.map((x) => x.date),
-			values: orderStats.byDay.map((x) => x.count),
-			periodKeys: orderStats.byDay.map((x) => x.date),
+			labels: deliveryStats.byDay.map((x) => x.date),
+			values: deliveryStats.byDay.map((x) => x.count),
+			periodKeys: deliveryStats.byDay.map((x) => x.date),
 			byHour: false,
 			byMonth: false
 		};
@@ -99,9 +142,10 @@
 		const _ = dateRangeState.dateRange;
 		const __ = dateRangeState.dateFilter;
 		const ___ = dateRangeState.timeRange;
-		deliveriesActions.loadDeliveries();
+		const routeId = page.url.searchParams.get('routeId') || undefined;
+		deliveriesActions.loadDeliveries({ ...getListFilters(), routeId });
 		ordersActions.loadOrders();
-		loadOrderStats();
+		loadDeliveryStats();
 	});
 
 	$effect(() => {
@@ -118,10 +162,10 @@
 	}
 
 	function toggleSelectAll() {
-		if (selectedIds.size === deliveriesState.routes.length) {
+		if (selectedIds.size === filteredDeliveries.length) {
 			selectedIds = new Set();
 		} else {
-			selectedIds = new Set(deliveriesState.routes.map((d) => d.id));
+			selectedIds = new Set(filteredDeliveries.map((d) => d.id));
 		}
 	}
 
@@ -132,7 +176,7 @@
 	async function handleDeleteSelected() {
 		if (selectedIds.size === 0) return;
 		const count = selectedIds.size;
-		if (!confirm(`Êtes-vous sûr de vouloir supprimer ${count} tournée${count > 1 ? 's' : ''} ?`)) return;
+		if (!confirm(`Êtes-vous sûr de vouloir supprimer ${count} livraison${count > 1 ? 's' : ''} ?`)) return;
 		deleting = true;
 		deleteError = null;
 		try {
@@ -148,24 +192,27 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Tournées" subtitle="Suivi des tournées et du temps réel chauffeur." />
+	<PageHeader title="Livraisons" subtitle="Liste des livraisons et suivi temps réel chauffeur." />
 
 	<DateFilterCard
-		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
-		chartDescription="Répartition par statut pour la planification des tournées."
+		chartTitle={chartData.byHour ? 'Livraisons par heure' : chartData.byMonth ? 'Livraisons par mois' : 'Livraisons par jour'}
+		chartDescription="Répartition par statut des livraisons."
 		chartDefaultOpen={false}
 		onDateFilterChange={onDateFilterChange}
 	>
 		{#snippet chart()}
 			<OrdersChartContent
+				variant="delivery"
 				loading={deliveryStatsLoading}
 				labels={chartData.labels}
 				values={chartData.values}
-				orders={ordersState.items}
+				deliveries={deliveriesState.routes}
 				periodKeys={chartData.periodKeys}
 				byHour={chartData.byHour}
 				byMonth={chartData.byMonth}
 				emptyMessage="Sélectionnez une plage pour afficher le graphique."
+				selectedStatus={statusFilter}
+				onStatusClick={handleStatusClick}
 			/>
 		{/snippet}
 	</DateFilterCard>
@@ -174,9 +221,11 @@
 		<CardHeader class="space-y-1">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<CardTitle>Tournées du jour</CardTitle>
+					<CardTitle>Liste des livraisons</CardTitle>
 					<p class="text-sm text-muted-foreground">
-						{deliveriesState.routes.length} tournée{deliveriesState.routes.length > 1 ? 's' : ''}
+						{statusFilter
+							? `${filteredDeliveries.length} sur ${deliveriesState.routes.length} livraison${deliveriesState.routes.length > 1 ? 's' : ''}`
+							: `${deliveriesState.routes.length} livraison${deliveriesState.routes.length > 1 ? 's' : ''}`}
 						{deliveriesState.lastUpdateAt ? ` · Dernière MAJ: ${deliveriesState.lastUpdateAt}` : ''}
 					</p>
 				</div>
@@ -192,8 +241,26 @@
 					</Button>
 				</div>
 			</div>
+			{#if statusFilter}
+				<div class="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+					<span class="text-muted-foreground">Filtre actif:</span>
+					<span class="font-medium">{DELIVERY_STATUS_LABELS[statusFilter]}</span>
+					<Button variant="ghost" size="sm" class="ml-auto h-6 px-2" onclick={clearStatusFilter}>
+						<XIcon class="size-3.5" />
+						Effacer
+					</Button>
+				</div>
+			{/if}
 			</CardHeader>
 			<CardContent class="space-y-4">
+				{#if urlRouteId || urlDriverId || urlDate}
+					<div class="flex items-center gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm">
+						<span class="text-muted-foreground">Filtre tournée actif.</span>
+						<Button variant="link" href="/deliveries" class="h-auto p-0 font-normal">
+							Voir toutes les livraisons
+						</Button>
+					</div>
+				{/if}
 				{#if deliveriesState.error}
 					<Alert variant="destructive">
 						<AlertTitle>Erreur</AlertTitle>
@@ -210,7 +277,8 @@
 				{#if selectedIds.size > 0}
 					<div class="flex flex-wrap items-center justify-between gap-2 rounded-md border bg-muted/50 px-3 py-2">
 						<span class="text-sm text-muted-foreground">
-							{selectedIds.size} tournée{selectedIds.size > 1 ? 's' : ''} sélectionnée{selectedIds.size > 1 ? 's' : ''}
+							{selectedIds.size} livraison{selectedIds.size > 1 ? 's' : ''} sélectionnée{selectedIds.size > 1 ? 's' : ''}
+							{statusFilter ? ` (${DELIVERY_STATUS_LABELS[statusFilter]})` : ''}
 						</span>
 						<DropdownMenu.Root>
 							<DropdownMenu.Trigger
@@ -248,7 +316,18 @@
 				{/if}
 
 				{#if deliveriesState.loading && !deliveriesState.routes.length}
-					<div class="py-8 text-center text-muted-foreground">Chargement des tournées...</div>
+					<div class="py-8 text-center text-muted-foreground">Chargement des livraisons...</div>
+				{:else if filteredDeliveries.length === 0}
+					<div class="py-8 text-center text-muted-foreground text-sm">
+						{statusFilter
+							? `Aucune livraison avec le statut « ${DELIVERY_STATUS_LABELS[statusFilter]} ».`
+							: 'Aucune livraison.'}
+						{#if statusFilter}
+							<Button variant="link" class="ml-1 h-auto p-0" onclick={clearStatusFilter}>
+								Effacer le filtre
+							</Button>
+						{/if}
+					</div>
 				{:else}
 					<div class="min-w-0 overflow-x-auto">
 					<Table>
@@ -256,20 +335,19 @@
 							<TableRow>
 								<TableHead class="w-10">
 									<Checkbox
-										checked={selectedIds.size === deliveriesState.routes.length && deliveriesState.routes.length > 0}
+										checked={selectedIds.size === filteredDeliveries.length && filteredDeliveries.length > 0}
 										onCheckedChange={toggleSelectAll}
 										aria-label="Tout sélectionner"
 									/>
 								</TableHead>
 								<TableHead>Statut</TableHead>
 								<TableHead class="tabular-nums">ETA</TableHead>
-								<TableHead>Tournée</TableHead>
+								<TableHead>Livraison</TableHead>
 								<TableHead>Chauffeur</TableHead>
-								<TableHead>Arrêts</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
-							{#each deliveriesState.routes as delivery}
+							{#each filteredDeliveries as delivery}
 								<TableRow
 									class={cn(
 										'cursor-pointer transition-colors hover:bg-muted/50',
@@ -293,7 +371,6 @@
 										</Button>
 									</TableCell>
 									<TableCell>{delivery.driver}</TableCell>
-									<TableCell class="tabular-nums">{delivery.stops}</TableCell>
 								</TableRow>
 							{/each}
 						</TableBody>

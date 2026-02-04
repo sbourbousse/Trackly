@@ -1,3 +1,7 @@
-// Désactive le SSR : cette page utilise tracking.svelte.ts qui charge @microsoft/signalr
-// (APIs navigateur uniquement). Évite une erreur 500 lors du chargement du module côté serveur.
+import { redirect } from '@sveltejs/kit';
+
 export const ssr = false;
+
+export function load() {
+	redirect(302, '/map?layer=drivers');
+}

@@ -1,6 +1,7 @@
 using System.Reflection;
 using Microsoft.EntityFrameworkCore;
 using Trackly.Backend.Features.Deliveries;
+using RouteEntity = Trackly.Backend.Features.Deliveries.Route;
 using Trackly.Backend.Features.Drivers;
 using Trackly.Backend.Features.Orders;
 using Trackly.Backend.Features.Auth;
@@ -25,11 +26,17 @@ public sealed class TracklyDbContext : DbContext
     public DbSet<TracklyUser> Users => Set<TracklyUser>();
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<Delivery> Deliveries => Set<Delivery>();
+    public DbSet<RouteEntity> Routes => Set<RouteEntity>();
     public DbSet<Driver> Drivers => Set<Driver>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
+        modelBuilder.Entity<Delivery>()
+            .HasOne<RouteEntity>()
+            .WithMany()
+            .HasForeignKey(d => d.RouteId)
+            .IsRequired(false);
         ApplyTenantFilters(modelBuilder);
     }
 

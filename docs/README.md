@@ -19,7 +19,8 @@ La documentation métier se trouve dans le dossier [`metier/`](./metier/README.m
 ### 🏗️ Documentation Technique
 
 - **[Architecture Map](./architecture-map.md)** - Vue d'ensemble de l'architecture technique
-- **[Project Context](./project-context.md)** - Contexte et vision du projet
+- **[Project Context](./project-context.md)** - Contexte et vision du projet (inclut frontend-landing-page)
+- **[Landing Page – Prompt et exigences](./LANDING-PAGE-PROMPT.md)** - Création et SEO de la landing (dossier `frontend-landing-page/`)
 - **[Business Logic - Deletions](./business-logic-deletions.md)** - Logique de suppression (soft delete)
 
 ### 📝 Documentation Projet

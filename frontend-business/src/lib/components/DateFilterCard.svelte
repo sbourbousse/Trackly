@@ -201,7 +201,7 @@
 								{#if dateRangeState.useManualTime}
 									<div class="flex items-center gap-1">
 										<select
-											class="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm"
+											class="border-input bg-background dark:bg-input/30 flex h-9 w-20 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
 											value={dateRangeState.timeRange?.start ?? '08:00'}
 											onchange={(e) => {
 												const v = (e.target as HTMLSelectElement).value;
@@ -218,7 +218,7 @@
 										</select>
 										<span class="text-muted-foreground text-sm">–</span>
 										<select
-											class="border-input bg-background h-8 w-20 rounded-md border px-2 text-sm"
+											class="border-input bg-background dark:bg-input/30 flex h-9 w-20 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
 											value={dateRangeState.timeRange?.end ?? '20:00'}
 											onchange={(e) => {
 												const v = (e.target as HTMLSelectElement).value;
@@ -236,7 +236,7 @@
 									</div>
 								{:else}
 									<select
-										class="border-input bg-background h-8 w-full rounded-md border px-2 text-sm"
+										class="border-input bg-background dark:bg-input/30 flex h-9 w-full min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
 										value={dateRangeState.timePreset}
 										onchange={(e) => {
 											const v = (e.target as HTMLSelectElement).value as TimePreset;
@@ -258,7 +258,7 @@
 			<label class="text-muted-foreground flex items-center gap-1.5 text-sm">
 				<span>Filtrer par :</span>
 				<select
-					class="border-input bg-background ring-offset-background focus-visible:ring-ring h-8 rounded-md border px-2 py-1 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2"
+					class="border-input bg-background dark:bg-input/30 ring-offset-background flex h-9 min-w-0 rounded-md border px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none md:text-sm focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px]"
 					value={dateRangeState.dateFilter}
 					onchange={handleDateFilterChange}
 					aria-label="Type de filtre date"

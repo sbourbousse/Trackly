@@ -3,6 +3,132 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-04 | Implémentation détail tournée : progress bar, ETA, tri livraisons
+
+**Tâche** : Implémenter l’interface de détail d’une tournée avec progress bar (X/Y livrées), tracking temps réel et tri des livraisons (spec [docs/tournee-detail-tracking-eta.md](tournee-detail-tracking-eta.md)).
+
+**Backend** :
+- `Delivery.Sequence` (int?) ajouté ; migration `AddSequenceToDelivery`. Création batch : Sequence = 0, 1, 2…
+- `DeliveryResponse` et `DeliveryDetailResponse` : champ `Sequence` exposé.
+- GET `/api/deliveries` avec `routeId` : tri par `Sequence` puis `CreatedAt`.
+- GET `/api/routes/{id}` : détail tournée + livraisons ordonnées par Sequence (DTOs `RouteDetailResponse`, `DeliveryInRouteResponse`).
+- PATCH `/api/routes/{routeId}/deliveries/order` : body `{ "deliveryIds": ["guid", ...] }`, met à jour `Sequence` 0, 1, 2…
+
+**Frontend** :
+- API : `getRoute(routeId)`, `reorderRouteDeliveries(routeId, deliveryIds)` ; types `ApiRouteDetail`, `ApiDeliveryInRoute`.
+- Composant `RouteProgressBar.svelte` : X/Y livrées, barre de progression (style App chauffeur landing).
+- Page `/deliveries/routes/[routeId]` : en-tête, progress bar, liste livraisons (ordre + statut + client + adresse), boutons Monter/Descendre pour réordonner, tracking SignalR + carte si livraison en cours.
+- Liste tournées : lien « Détail » vers `/deliveries/routes/[id]`, lien « Livraisons » vers `/deliveries?routeId=…`.
+- Store deliveries : ETA affiché = « Arrêt N » si `sequence` présent, sinon « – ».
+- Mode offline : `getMockRouteDetail`, `reorderMockRouteDeliveries` ; mock données avec `sequence`.
+
+**À faire** : Appliquer la migration en base (`dotnet ef database update` ou script de déploiement).
+
+---
+
+## 2026-02-04 | App chauffeur : progress bar, ordre des arrêts, routeId/sequence
+
+**Tâche** : Aligner l’app driver (frontend-driver) avec la tournée, la progress bar (X/Y livrées) et l’ordre des arrêts (sequence).
+
+**Backend** :
+- `DeliveryDetailResponse` : ajout de `RouteId` (pour que le chauffeur puisse charger le détail de la tournée et afficher la progress).
+- GET `/api/deliveries` : filtre optionnel **`driverId`** ; tri par `RouteId` puis `Sequence` quand `driverId` ou `routeId` est fourni (app chauffeur = ses livraisons ordonnées par tournée et arrêt).
+
+**Frontend-driver** :
+- **API** : `ApiDelivery` et `ApiDeliveryDetail` avec `routeId` et `sequence`. `getDeliveries(driverId?)` envoie `driverId` en query pour ne récupérer que les livraisons du chauffeur. Nouveau module **`lib/api/routes.ts`** avec `getRoute(routeId)` pour le détail tournée (progress X/Y).
+- **Page Liste (Deliveries.svelte)** : progress bar « X / Y livrées » en haut ; tri des livraisons par `routeId` puis `sequence` ; libellé « Arrêt N » par livraison quand `sequence` présent.
+- **Page Détail (DeliveryDetail.svelte)** : si la livraison a un `routeId`, appel à `getRoute(routeId)` et affichage d’une progress bar « X / Y livrées » + « Arrêt N sur M » ; titre du type « Arrêt 3 / 5 — Livraison XXX ».
+- **Mode offline** : mock données avec `routeId`, `sequence`, `createdAt` ; `getMockRouteDetail(routeId)` ; `mockRoutesApi.getRoute(routeId)`.
+
+---
+
+## 2026-02-04 | Spec détail tournée : progress bar, ETA, tri livraisons
+
+**Tâche** : Rassembler le minimum pour une interface de détail d’une tournée avec progress bar (X/Y livrées), ETA temps réel du chauffeur et tri de l’ordre des livraisons.
+
+**Document créé** : [docs/tournee-detail-tracking-eta.md](tournee-detail-tracking-eta.md)
+
+**Contenu** :
+- Objectif : page détail tournée avec progress bar (style App chauffeur landing), liste ordonnée des livraisons, tracking SignalR, tri des arrêts.
+- Backend (minimum) : champ `Sequence` sur `Delivery`, GET `/api/routes/{id}` (détail + livraisons ordonnées), PATCH reorder (`/api/routes/{routeId}/deliveries/order`).
+- Frontend (minimum) : page `/deliveries/routes/[routeId]`, composant progress bar réutilisable, liste livraisons par Sequence, tracking pour la livraison en cours, boutons ou drag-and-drop pour réordonner.
+- ETA : option simple = « Arrêt N/M » ; option avancée = champ ou calcul ETA (après MVP).
+
+**Référence** : Lazy component App chauffeur (`frontend-landing-page/components/previews/AppDriverPreview.tsx`).
+
+---
+
+## 2026-02-04 | Landing page : aperçus d’apps, couleurs partagées, carte en image
+
+**Tâche** : Améliorer la landing avec des bouts de chaque application (surtout business), partager les couleurs avec le reste du projet et exporter des composants lazy ; carte en image.
+
+**Frontend-landing-page** :
+- **Design tokens** : `lib/design-tokens.css` avec variables `--trackly-stone-*` et `--trackly-teal-*` alignées avec frontend-business (stone + teal). Import dans `app/globals.css`.
+- **Composants preview (lazy)** : `components/previews/` — `AppBusinessPreview` (dashboard : onglets, tableau, badges), `AppDriverPreview` (PWA chauffeur), `AppTrackingPreview` (suivi client), `MapPreview` (image statique). Chargés via `next/dynamic` avec `ssr: false` et skeleton de chargement.
+- **Carte** : image statique `public/map-preview.svg` (grille + pins teal/stone). Remplaçable par une capture d’écran réelle.
+- **Section Features** : 4 cartes (Dashboard Business, Carte & tournées, Suivi temps réel, App chauffeur) utilisant ces previews lazy.
+
+**Docs** : `frontend-landing-page/docs/DESIGN_SYSTEM.md` mis à jour (tokens partagés, aperçus lazy, carte en image).
+
+---
+
+## 2026-02-04 | Landing page Trackly (frontend-landing-page)
+
+**Tâche** : Ajout d’une landing page optimisée SEO pour présenter Trackly et acquérir des leads.
+
+**Dossier** : `frontend-landing-page/` (projet Next.js 14+ App Router, React/TypeScript).
+
+**Contenu** :
+- Sections : Hero, Problème/Solution, Fonctionnalités (Bento Grid), Tarification (Starter / Pro), Preuve/confiance, CTA final, Footer
+- SEO : meta (title, description 150–160 car.), Open Graph, Twitter Card, JSON-LD (Organization, WebSite, SoftwareApplication), URL canonique `/`
+- Design : Tailwind CSS + shadcn/ui, thème stone + teal, cohérent avec le reste du projet
+- Documentation interne : `frontend-landing-page/docs/` (PROJECT_CONTEXT, SEO_STRATEGY, DESIGN_SYSTEM, ARCHITECTURE, CONTENT_LANDING, MVP_SCOPE)
+
+**Référence** : Voir [docs/LANDING-PAGE-PROMPT.md](LANDING-PAGE-PROMPT.md) pour le prompt et les exigences SEO d’origine.
+
+---
+
+## 2026-02-04 | Entité Tournée (Route) en base
+
+**Tâche** : Créer une vraie entité Tournée (Route) en base pour distinguer plusieurs tournées le même jour et gérer correctement les tournées de nuit.
+
+**Backend** :
+- Nouvelle entité `Route` : Id, TenantId, DriverId, Name (optionnel), CreatedAt, DeletedAt
+- `Delivery.RouteId` (FK nullable) ; migration `AddRouteAndRouteIdToDelivery`
+- `CreateDeliveriesBatch` crée une Route puis N Deliveries avec le même RouteId ; requête accepte `Name` optionnel
+- Nouveau endpoint `GET /api/routes` (filtres dateFrom, dateTo, driverId) ; `GET /api/deliveries` accepte `routeId`
+- DTOs : RouteResponse, RouteListResponse ; DeliveryResponse inclut RouteId
+
+**Frontend** :
+- API `getRoutes(filters)` et `DeliveriesListFilters.routeId` ; `createDeliveriesBatch` envoie `name`
+- Page Tournées (`/deliveries/routes`) utilise GET /api/routes au lieu du regroupement client
+- Lien « Voir les livraisons » vers `/deliveries?routeId=...` ; page Livraisons charge avec filtre routeId
+- Formulaire Créer tournée : champ « Nom de la tournée (optionnel) » renvoyé à l’API
+- Mode offline : mockRoutesApi, getMockRoutes, createMockDeliveries avec name et routeId
+
+**Notes** : Chaque création de tournée = 1 Route + N Deliveries. Les tournées de nuit (une seule Route) ne sont plus coupées par minuit.
+
+---
+
+## 2026-02-04 | Livraisons vs Tournées – Navigation et liste des tournées
+
+**Tâche** : Clarifier la distinction Livraisons (liste des livraisons) / Tournées (regroupement chauffeur + date). Renommer la page actuelle « Tournées » en « Livraisons » et ajouter une interface dédiée listant les tournées.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/AppSidebar.svelte` – Catégorie « Livraison » avec sous-éléments : Livraisons (/deliveries), Tournées (/deliveries/routes), Créer tournée
+- `frontend-business/src/routes/deliveries/+page.svelte` – Titre et libellés « Livraisons », filtre optionnel `driverId` + `date` (URL) pour détail tournée
+- `frontend-business/src/routes/dashboard/+page.svelte` – Onglet et cartes « Livraisons » (prévues / en cours)
+- `frontend-business/src/lib/components/TopNav.svelte` – Lien « Livraisons »
+- `frontend-business/src/lib/components/OrdersChartContent.svelte` – Libellé « Livraisons » pour variant delivery
+- `frontend-business/src/lib/stores/deliveries.svelte.ts` – Message d’erreur « livraisons »
+
+**Fichiers créés** :
+- `frontend-business/src/routes/deliveries/routes/+page.svelte` – Page « Tournées » : liste regroupée par chauffeur et date, lien « Voir les livraisons » vers /deliveries?driverId=…&date=…
+
+**Notes** : Une tournée reste un regroupement logique (pas d’entité en base). La page /deliveries affiche une ligne par livraison ; /deliveries/routes affiche une ligne par groupe (driverId + date) avec nombre d’arrêts et statut agrégé.
+
+---
+
 ## 2026-01-26 | Mise en place structure Agent-First
 
 **Tâche** : Création de la structure de fichiers "Agent-First" pour maximiser l'autonomie des agents IA.

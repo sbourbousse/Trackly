@@ -7,6 +7,7 @@ export type ApiDelivery = {
 	orderId: string;
 	driverId: string;
 	routeId?: string | null;
+	sequence?: number | null;
 	status: string;
 	createdAt?: string;
 	completedAt: string | null;
@@ -38,6 +39,7 @@ export type ApiDeliveryDetail = {
 	id: string;
 	orderId: string;
 	driverId: string;
+	sequence?: number | null;
 	status: string;
 	createdAt: string;
 	completedAt: string | null;

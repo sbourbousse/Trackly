@@ -10,6 +10,10 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 
+	const completedCount = $derived(deliveries.filter(d => d.status === 'Completed' || d.status === 'Livree').length);
+	const totalCount = $derived(deliveries.length);
+	const progressPercent = $derived(totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0);
+
 	onMount(() => {
 		loadDeliveries();
 	});
@@ -19,14 +23,24 @@
 		error = null;
 
 		try {
-			const data = await getDeliveries();
-			// Filtrer les livraisons du driver (en dev, on montre tout)
-			deliveries = data.filter(d => !driverId || d.driverId === driverId || !d.driverId);
+			const data = await getDeliveries(driverId ?? undefined);
+			// Tri par tournée puis sequence (ordre des arrêts)
+			deliveries = [...data].sort((a, b) => {
+				const routeA = a.routeId ?? '';
+				const routeB = b.routeId ?? '';
+				if (routeA !== routeB) return routeA.localeCompare(routeB);
+				return (a.sequence ?? 999) - (b.sequence ?? 999);
+			});
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Erreur lors du chargement';
 		} finally {
 			loading = false;
 		}
+	}
+
+	function stopLabel(delivery: ApiDelivery): string {
+		if (delivery.sequence != null && delivery.routeId) return `Arrêt ${delivery.sequence + 1}`;
+		return 'Livraison';
 	}
 
 	function getStatusBadge(status: string) {
@@ -85,6 +99,17 @@
 			</p>
 		</div>
 	{:else}
+		{#if totalCount > 0}
+			<div class="card" style="margin-bottom: 1rem; padding: 1rem 1.25rem;">
+				<div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+					<span style="font-size: 0.875rem; color: var(--text-muted);">Tournée</span>
+					<span style="font-size: 0.875rem; font-weight: 600; color: var(--primary);">{completedCount} / {totalCount} livrées</span>
+				</div>
+				<div style="height: 8px; background: var(--border); border-radius: 4px; overflow: hidden;">
+					<div style="height: 100%; width: {progressPercent}%; background: var(--primary); border-radius: 4px; transition: width 0.3s;"></div>
+				</div>
+			</div>
+		{/if}
 		<div class="delivery-list">
 			{#each deliveries as delivery}
 				<button
@@ -103,9 +128,11 @@
 						box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
 					"
 				>
-					<h3>Livraison {delivery.id.slice(0, 8).toUpperCase()}</h3>
-					<p>Commande: {delivery.orderId.slice(0, 8).toUpperCase()}</p>
-					<div style="margin-top: 1rem;">
+					<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
+						<div>
+							<h3>{stopLabel(delivery)} — {delivery.id.slice(0, 8).toUpperCase()}</h3>
+							<p>Commande: {delivery.orderId.slice(0, 8).toUpperCase()}</p>
+						</div>
 						<span class="badge {getStatusBadge(delivery.status)}">
 							{getStatusLabel(delivery.status)}
 						</span>

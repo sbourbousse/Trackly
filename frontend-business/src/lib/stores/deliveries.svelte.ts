@@ -56,6 +56,7 @@ export const deliveriesActions = {
 				driver: delivery.driverId || 'Non assigne',
 				stops: 1,
 				status: delivery.status as DeliveryStatus,
+				eta: delivery.sequence != null ? `Arrêt ${delivery.sequence + 1}` : '–',
 				createdAt: delivery.createdAt ?? null
 			}));
 			deliveriesState.lastUpdateAt = new Date().toLocaleTimeString('fr-FR', {

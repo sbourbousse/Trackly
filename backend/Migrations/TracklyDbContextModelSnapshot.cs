@@ -75,6 +75,9 @@ namespace Trackly.Backend.Migrations
                     b.Property<Guid?>("RouteId")
                         .HasColumnType("uuid");
 
+                    b.Property<int?>("Sequence")
+                        .HasColumnType("integer");
+
                     b.Property<int>("Status")
                         .HasColumnType("integer");
 

@@ -19,6 +19,8 @@ import {
   createMockDeliveries,
   deleteMockDeliveries,
   getMockRoutes,
+  getMockRouteDetail,
+  reorderMockRouteDeliveries,
   getMockDrivers,
   createMockDriver,
   DEMO_TENANT_ID,
@@ -209,6 +211,19 @@ export const mockRoutesApi = {
     console.log('[Mock API] GET /api/routes', filters);
     await delay();
     return getMockRoutes(filters);
+  },
+  async getRoute(routeId: string): Promise<import('../api/routes').ApiRouteDetail> {
+    console.log('[Mock API] GET /api/routes/' + routeId);
+    await delay();
+    const detail = getMockRouteDetail(routeId);
+    if (!detail) throw new Error('Tournée introuvable.');
+    return detail;
+  },
+  async reorderRouteDeliveries(routeId: string, deliveryIds: string[]): Promise<{ message: string }> {
+    console.log('[Mock API] PATCH /api/routes/' + routeId + '/deliveries/order', deliveryIds);
+    await delay();
+    reorderMockRouteDeliveries(routeId, deliveryIds);
+    return { message: 'Ordre mis à jour.' };
   }
 };
 

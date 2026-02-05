@@ -25,6 +25,8 @@ Driver App (Svelte 5 PWA) : Interface mobile simple pour valider les livraisons.
 
 Client Tracking (Page Web ultra-légère) : Suivi en temps réel sans téléchargement.
 
+Landing Page (Next.js) : Site vitrine optimisé SEO pour présenter Trackly et acquérir des leads (dossier `frontend-landing-page`).
+
 2. docs/architecture-global.md (Structure Technique)
 Ce fichier définit le cadre de développement et l'organisation des fichiers.
 
@@ -37,7 +39,7 @@ Structure Backend : Séparation par domaines (Features/Orders, Features/Tracking
 Base de données : PostgreSQL unique avec isolation par TenantId (Shared Database, Shared Schema).
 
 Structure du Monorepo
-/ (root) ├── backend/ # API.NET 9 (C#) ├── frontend-business/ # SvelteKit (Dashboard) ├── frontend-driver/ # Svelte 5 PWA (Chauffeur) ├── frontend-tracking/ # Svelte (Tracking client) ├── shared/ # Types TypeScript générés automatiquement └── docs/ # Documentation projet
+/ (root) ├── backend/ # API .NET 9 (C#) ├── frontend-business/ # SvelteKit (Dashboard) ├── frontend-driver/ # Svelte 5 PWA (Chauffeur) ├── frontend-tracking/ # Svelte (Tracking client) ├── frontend-landing-page/ # Next.js (Landing SEO, site vitrine) ├── shared/ # Types TypeScript générés automatiquement └── docs/ # Documentation projet
 
 Partage de Types
 Utilisation de NSwag ou TypeGen pour synchroniser les DTO C# avec les interfaces TypeScript dans shared/.

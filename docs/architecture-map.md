@@ -6,15 +6,15 @@
 │                    Trackly - Monolithe Modulaire            │
 └─────────────────────────────────────────────────────────────┘
 
-┌──────────────┐      ┌──────────────┐      ┌──────────────┐
-│  Frontend    │      │  Frontend    │      │  Frontend    │
-│  Business    │      │  Driver      │      │  Tracking    │
-│  (SvelteKit) │      │  (PWA)       │      │  (Svelte)    │
-└──────┬───────┘      └──────┬───────┘      └──────┬───────┘
+┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐
+│  Frontend    │  │  Frontend    │  │  Frontend    │  │  Frontend        │
+│  Business    │  │  Driver      │  │  Tracking    │  │  Landing Page    │
+│  (SvelteKit) │  │  (PWA)       │  │  (Svelte)    │  │  (Next.js, SEO)  │
+└──────┬───────┘  └──────┬───────┘  └──────┬───────┘  └────────┬─────────┘
        │                     │                     │
        │                     │                     │
        └─────────────────────┼─────────────────────┘
-                             │
+                             │  (Landing : site vitrine, pas d’API)
                     ┌────────▼────────┐
                     │  Backend .NET 9 │
                     │  (Minimal APIs) │

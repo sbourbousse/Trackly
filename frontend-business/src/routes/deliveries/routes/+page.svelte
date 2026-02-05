@@ -124,17 +124,33 @@
 						<TableBody>
 							{#each routeList as route}
 								<TableRow>
-									<TableCell class="font-medium">{routeDisplayName(route)}</TableCell>
+									<TableCell class="font-medium">
+										<Button
+											variant="link"
+											href="/deliveries/routes/{encodeURIComponent(route.id)}"
+											class="h-auto p-0 font-normal"
+										>
+											{routeDisplayName(route)}
+										</Button>
+									</TableCell>
 									<TableCell>{route.driverName}</TableCell>
 									<TableCell class="tabular-nums">{formatRouteDate(route.createdAt)}</TableCell>
 									<TableCell class="tabular-nums">{route.deliveryCount}</TableCell>
-									<TableCell>
+									<TableCell class="space-x-2">
+										<Button
+											variant="link"
+											href="/deliveries/routes/{encodeURIComponent(route.id)}"
+											class="h-auto p-0 font-normal"
+										>
+											Détail
+										</Button>
+										<span class="text-muted-foreground">·</span>
 										<Button
 											variant="link"
 											href="/deliveries?routeId={encodeURIComponent(route.id)}"
 											class="h-auto p-0 font-normal"
 										>
-											Voir les livraisons
+											Livraisons
 										</Button>
 									</TableCell>
 								</TableRow>

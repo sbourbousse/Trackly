@@ -35,6 +35,7 @@ Comprendre l'architecture et les choix techniques :
 
 - **[Architecture Map](architecture-map.md)** - Vue d'ensemble technique
 - **[Project Context](project-context.md)** - Contexte et vision du projet
+- **[Détail tournée : progress bar, ETA, tri](tournee-detail-tracking-eta.md)** - Spec détail tournée, tracking temps réel, ordre des livraisons
 - **[Business Logic - Deletions](business-logic-deletions.md)** - Logique de suppression
 
 ### Documentation Projet
@@ -70,6 +71,7 @@ Suivre l'évolution du projet :
 - **Backend** : .NET 9, ASP.NET Core Minimal APIs, Entity Framework Core
 - **Frontend Business** : SvelteKit, Svelte 5 (Runes API)
 - **Frontend Driver** : Svelte 5 PWA
+- **Frontend Landing Page** : Next.js 14+ (App Router), React/TypeScript, Tailwind, shadcn/ui — site vitrine SEO (`frontend-landing-page/`)
 - **Base de données** : PostgreSQL
 - **Temps Réel** : SignalR
 - **Documentation** : MkDocs Material avec Mermaid

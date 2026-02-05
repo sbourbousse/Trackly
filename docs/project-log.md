@@ -432,4 +432,153 @@
 
 ---
 
+## 2026-02-05 | Création de l'application cliente de suivi (frontend-tracking)
+
+**Tâche** : Créer une application Next.js moderne pour le suivi des livraisons par les clients finaux.
+
+**Dossier créé** : `frontend-tracking/` (projet Next.js 15 + App Router, React 18, TypeScript)
+
+**Contenu** :
+- **Stack** : Next.js 15 (App Router), React 18, Tailwind CSS, Framer Motion, React Leaflet
+- **Pages** : 
+  - `/` : Page d'accueil avec présentation des fonctionnalités
+  - `/track/[id]` : Page de suivi dynamique avec carte, infos et actions
+- **Fonctionnalités clés** :
+  - Rafraîchissement automatique toutes les 30 secondes via `useAutoRefresh` hook
+  - Carte interactive avec React Leaflet et OpenStreetMap
+  - Informations détaillées de livraison (client, adresse, livreur, statut)
+  - Boutons d'action rapide : "Appeler le livreur" (tel:) et "Contacter le commerçant" (mailto: / WhatsApp)
+  - Animations fluides avec Framer Motion
+  - Design moderne et responsive (mobile-first)
+  - Logo Trackly intégré subtilement dans le header
+- **Design System** : Design tokens partagés (stone + teal) avec frontend-business et frontend-landing-page
+- **API Client** : Client HTTP avec gestion d'erreurs et types TypeScript
+- **Composants** :
+  - `TrackingHeader` : En-tête avec logo
+  - `DeliveryMap` : Carte Leaflet (chargée dynamiquement, pas de SSR)
+  - `DeliveryInfo` : Informations de livraison
+  - `StatusBadge` : Badge de statut animé
+  - `ActionButtons` : Boutons d'action (tel: / mailto: / wa.me/)
+  - `LoadingSpinner` : Spinner animé
+  - `ErrorMessage` : Gestion des erreurs
+- **Documentation** : 
+  - `README.md` : Vue d'ensemble
+  - `QUICKSTART.md` : Installation et démarrage rapide
+  - `docs/ARCHITECTURE.md` : Architecture détaillée
+  - `docs/INTEGRATION.md` : Guide d'intégration complet
+
+**Endpoints API utilisés** :
+- `GET /api/deliveries/{id}` : Détails complets de la livraison
+- `GET /api/deliveries/{id}/tracking` : Statut de tracking (optionnel, public)
+
+**Configuration** :
+- Port : 3004 (pour ne pas entrer en conflit avec les autres frontends)
+- Variable d'env : `NEXT_PUBLIC_API_URL` (URL du backend)
+- Build : Standalone output pour déploiement optimisé
+
+**À faire** :
+- Tester le build et le démarrage
+- Intégrer une vraie API de géocodage (Nominatim ou Google Maps)
+- Ajouter SignalR pour le tracking GPS en temps réel
+- Rendre dynamiques les numéros de téléphone et emails
+- Déployer sur Vercel ou Railway
+
+**Notes** : Application ultra-légère et performante, optimisée pour mobile. Design cohérent avec le reste de l'écosystème Trackly grâce aux design tokens partagés.
+
+---
+
+## 2026-02-05 | Endpoint public de tracking et configuration CORS production
+
+**Tâche** : Créer un endpoint public pour l'application cliente et documenter la configuration CORS pour Railway.
+
+**Backend** :
+- Nouvel endpoint PUBLIC `/api/public/deliveries/{id}/tracking` (mappé AVANT TenantMiddleware)
+- Méthode `GetPublicTracking` dans `DeliveryEndpoints.cs` utilisant `IgnoreQueryFilters()`
+- Retourne : status, customerName, address, driverName, driverPhone, sequence, completedAt
+- Pas besoin d'authentification tenant (accessible aux clients finaux)
+
+**Frontend-tracking** :
+- Modification de `lib/api/deliveries.ts` pour utiliser l'endpoint public
+- URL changée : `/api/deliveries/{id}` → `/api/public/deliveries/{id}/tracking`
+
+**Documentation** :
+- Nouveau fichier `docs/CORS-PRODUCTION.md` : guide complet de configuration CORS pour Railway
+- Syntaxe variables d'environnement : `Cors__AllowedOrigins__0`, `Cors__AllowedOrigins__1`, etc.
+- Exemples de configuration pour tous les frontends
+- Section troubleshooting et bonnes pratiques de sécurité
+- Mise à jour de `RAILWAY-QUICK-START.md` avec les variables CORS
+
+**Configuration CORS production** (Railway) :
+```bash
+Cors__AllowedOrigins__0=https://trackly.app           # Frontend Tracking
+Cors__AllowedOrigins__1=https://app.trackly.app       # Frontend Business
+Cors__AllowedOrigins__2=https://driver.trackly.app    # Frontend Driver
+Cors__AllowedOrigins__3=https://www.trackly.app       # Landing Page
+```
+
+**Notes** : L'endpoint public permet aux clients finaux de suivre leur livraison sans authentification. Les informations sensibles (TenantId, détails internes) ne sont pas exposées.
+
+---
+
+## 2026-02-05 | Intégration Railway et GitHub Actions pour frontend-tracking
+
+**Tâche** : Configurer le déploiement automatique du frontend-tracking sur Railway via GitHub Actions.
+
+**Fichiers créés** :
+- `frontend-tracking/Dockerfile` : Build Next.js standalone optimisé pour production
+- `frontend-tracking/railway.json` : Configuration Railway (builder Dockerfile)
+- `frontend-tracking/.dockerignore` : Exclusions Docker
+- `frontend-tracking/DEPLOYMENT.md` : Guide complet de déploiement
+
+**GitHub Actions** :
+- `.github/workflows/ghcr.yml` : Ajout du service `frontend-tracking` dans la matrice de build
+  - Build image : `ghcr.io/<owner>/trackly-frontend-tracking:latest`
+  - Déclencheurs : push main, PR, workflow_dispatch
+  - Cache : GitHub Actions cache pour accélérer les builds
+- `.github/workflows/railway-redeploy.yml` : Ajout step redeploy frontend-tracking
+  - Secret requis : `RAILWAY_SERVICE_ID_FRONTEND_TRACKING`
+  - Redéploiement automatique après build GHCR réussi
+
+**Configuration Tailwind** :
+- `tailwind.config.ts` : Passage des variables CSS aux valeurs hexadécimales directes
+- Ajout safelist pour classes générées dynamiquement (bg-teal-100, text-teal-700, etc.)
+- Correction couleurs Stone, Teal, Green, Red pour badges de statut
+
+**Composant carte** :
+- `components/DeliveryMap.tsx` : Réécriture avec API Leaflet native (sans react-leaflet)
+- Utilisation de useEffect + useRef pour contrôle total du cycle de vie
+- Résolution erreur "Map container is already initialized" (React Strict Mode)
+- Import dynamique de Leaflet pour SSR Next.js
+
+**Documentation** :
+- `RAILWAY-QUICK-START.md` : Section frontend-tracking ajoutée
+- Variables d'environnement Railway documentées
+- Configuration secrets GitHub pour auto-redeploy
+- Ordre de déploiement des 4 services
+
+**Variables d'environnement Railway** :
+```bash
+NEXT_PUBLIC_API_URL=https://api.trackly.app
+NODE_ENV=production
+PORT=3004
+```
+
+**Secrets GitHub requis** :
+- `RAILWAY_API_TOKEN` : Token personnel Railway
+- `RAILWAY_ENVIRONMENT_ID` : ID environnement
+- `RAILWAY_SERVICE_ID_BACKEND`
+- `RAILWAY_SERVICE_ID_FRONTEND_BUSINESS`
+- `RAILWAY_SERVICE_ID_FRONTEND_DRIVER`
+- `RAILWAY_SERVICE_ID_FRONTEND_TRACKING` ← Nouveau
+
+**Workflow déploiement** :
+1. Push sur `main` → Build images GHCR (4 services)
+2. Build réussi → Redeploy Railway automatique (4 services)
+3. Railway pull images et redémarre
+4. Applications en ligne
+
+**Notes** : Le frontend-tracking est maintenant complètement intégré au pipeline CI/CD. Chaque push sur main déclenche le build et le déploiement automatique sur Railway.
+
+---
+
 _Continuer à documenter les modifications importantes au fur et à mesure..._

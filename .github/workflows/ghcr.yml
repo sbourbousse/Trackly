@@ -7,12 +7,14 @@ on:
       - "backend/**"
       - "frontend-business/**"
       - "frontend-driver/**"
+      - "frontend-tracking/**"
       - ".github/workflows/ghcr.yml"
   pull_request:
     paths:
       - "backend/**"
       - "frontend-business/**"
       - "frontend-driver/**"
+      - "frontend-tracking/**"
       - ".github/workflows/ghcr.yml"
   workflow_dispatch:
 
@@ -43,6 +45,10 @@ jobs:
             context: ./frontend-driver
             dockerfile: ./frontend-driver/Dockerfile
             image: trackly-frontend-driver
+          - service: frontend-tracking
+            context: ./frontend-tracking
+            dockerfile: ./frontend-tracking/Dockerfile
+            image: trackly-frontend-tracking
     steps:
       - name: Checkout
         uses: actions/checkout@v4

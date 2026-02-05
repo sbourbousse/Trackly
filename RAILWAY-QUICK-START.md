@@ -37,9 +37,9 @@ npm install --save-dev @sveltejs/adapter-node
 
 ### 4. Configurer les services
 
-Railway devrait détecter automatiquement les 3 services grâce aux fichiers `railway.json`.
+Railway devrait détecter automatiquement les 4 services grâce aux fichiers `railway.json`.
 
-Si ce n'est pas le cas, créez manuellement 3 services avec ces configurations :
+Si ce n'est pas le cas, créez manuellement 4 services avec ces configurations :
 
 #### Backend
 - Root: `backend`
@@ -56,12 +56,21 @@ Si ce n'est pas le cas, créez manuellement 3 services avec ces configurations :
 - Build: `npm install && npm run build`
 - Start: `npx serve -s dist -l $PORT`
 
+#### Frontend Tracking (Client)
+- Root: `frontend-tracking`
+- Build: `npm install && npm run build`
+- Start: `node .next/standalone/server.js`
+
 ### Option GHCR (images pré-buildées)
 
 Railway ne lit pas d'image GHCR depuis `railway.json`. Si vous préférez GHCR :
 
 1. Activez le workflow `.github/workflows/ghcr.yml`.
-2. Utilisez les images `ghcr.io/<owner>/trackly-backend:latest`, `ghcr.io/<owner>/trackly-frontend-business:latest`, `ghcr.io/<owner>/trackly-frontend-driver:latest`.
+2. Utilisez les images :
+   - `ghcr.io/<owner>/trackly-backend:latest`
+   - `ghcr.io/<owner>/trackly-frontend-business:latest`
+   - `ghcr.io/<owner>/trackly-frontend-driver:latest`
+   - `ghcr.io/<owner>/trackly-frontend-tracking:latest`
 3. Créez des services **Docker Image** dans Railway et collez l'image GHCR.
 4. Redeployez dans Railway après chaque push sur `main`.
 
@@ -69,11 +78,19 @@ Railway ne lit pas d'image GHCR depuis `railway.json`. Si vous préférez GHCR :
 
 #### Backend
 ```env
+# CORS - Autoriser les frontends
 Cors__AllowedOrigins__0=https://trackly-frontend-business-production.up.railway.app
 Cors__AllowedOrigins__1=https://trackly-frontend-driver-production.up.railway.app
+Cors__AllowedOrigins__2=https://trackly-frontend-tracking-production.up.railway.app
+# Ajoutez vos domaines personnalisés si vous en avez
+# Cors__AllowedOrigins__3=https://trackly.app
+# Cors__AllowedOrigins__4=https://app.trackly.app
+
 ASPNETCORE_ENVIRONMENT=Production
 ASPNETCORE_URLS=http://0.0.0.0:$PORT
 ```
+
+> **📚 Documentation CORS** : Voir `docs/CORS-PRODUCTION.md` pour la configuration complète.
 
 #### Frontend Business
 ```env
@@ -91,7 +108,16 @@ NODE_ENV=production
 PORT=$PORT
 ```
 
+#### Frontend Tracking (Client)
+```env
+NEXT_PUBLIC_API_URL=https://trackly-backend-production.up.railway.app
+NODE_ENV=production
+PORT=3004
+```
+
 **Important** : Remplacez les URLs par les URLs réelles après le premier déploiement.
+
+**Note PORT** : Le frontend-tracking utilise le port 3004 en interne, mais Railway l'expose via `$PORT`.
 
 **Note** : Les variables `VITE_*` sont injectées au runtime (au démarrage du container), pas au build time.
 

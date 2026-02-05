@@ -3,19 +3,22 @@ const trades = [
     title: "Fleuristes & Traiteurs",
     description:
       "Rassurez vos clients sur la fraîcheur avec le suivi en direct.",
-    icon: "🌸",
+    illustration: "/undraw_order-confirmed.svg",
+    illustrationAlt: "Commande confirmée pour fleuristes et traiteurs",
   },
   {
     title: "Commerces de bouche",
     description:
       "Optimisez vos tournées quotidiennes et gagnez du temps.",
-    icon: "🥖",
+    illustration: "/undraw_on-the-way.svg",
+    illustrationAlt: "Livraison en cours pour commerces de bouche",
   },
   {
     title: "Artisans",
     description:
       "Sécurisez vos livraisons avec preuve photo et signature électronique.",
-    icon: "🔧",
+    illustration: "/undraw_delivery-address.svg",
+    illustrationAlt: "Livraison sécurisée pour artisans",
   },
 ];
 
@@ -39,18 +42,21 @@ export function ProblemSolution() {
           {trades.map((trade) => (
             <article
               key={trade.title}
-              className="rounded-xl border border-stone-200 bg-gradient-to-br from-stone-50 to-stone-100/80 p-6 shadow-sm transition-shadow hover:shadow-md"
+              className="rounded-xl border border-stone-200 bg-gradient-to-br from-stone-50 to-stone-100/80 p-6 shadow-sm transition-all duration-200 hover:shadow-md hover:-translate-y-1"
             >
-              <span
-                className="text-2xl"
-                aria-hidden="true"
-              >
-                {trade.icon}
-              </span>
-              <h3 className="mt-3 text-lg font-semibold text-stone-900">
+              <div className="flex justify-center">
+                <img
+                  src={trade.illustration}
+                  alt={trade.illustrationAlt}
+                  className="h-32 w-auto"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </div>
+              <h3 className="mt-4 text-center text-lg font-semibold text-stone-900">
                 {trade.title}
               </h3>
-              <p className="mt-2 text-sm text-stone-600 leading-relaxed">
+              <p className="mt-2 text-center text-sm text-stone-600 leading-relaxed">
                 {trade.description}
               </p>
             </article>

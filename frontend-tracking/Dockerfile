@@ -27,9 +27,11 @@ WORKDIR /app
 ENV NODE_ENV=production
 
 # Copier les fichiers nécessaires depuis le builder
-COPY --from=builder /app/public ./public
 COPY --from=builder /app/.next/standalone ./
 COPY --from=builder /app/.next/static ./.next/static
+
+# Copier le dossier public (assets statiques)
+COPY --from=builder /app/public ./public
 
 # Exposer le port
 EXPOSE 3004

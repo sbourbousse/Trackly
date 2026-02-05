@@ -341,8 +341,7 @@
 									/>
 								</TableHead>
 								<TableHead>Statut</TableHead>
-								<TableHead class="tabular-nums">ETA</TableHead>
-								<TableHead>Livraison</TableHead>
+								<TableHead>Ref</TableHead>
 								<TableHead>Chauffeur</TableHead>
 							</TableRow>
 						</TableHeader>
@@ -364,7 +363,6 @@
 									<TableCell>
 										<StatusBadge type="delivery" status={delivery.status} />
 									</TableCell>
-									<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 									<TableCell onclick={(e) => e.stopPropagation()}>
 										<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
 											{delivery.route}

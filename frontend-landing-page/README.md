@@ -8,6 +8,21 @@ Landing page optimisée SEO pour **Trackly**, SaaS de gestion de livraisons pour
 - **Styles** : Tailwind CSS + shadcn/ui (thème stone + teal)
 - **Langue** : français
 
+## Configuration
+
+### Variables d'environnement
+
+La landing page utilise des variables d'environnement pour configurer les URLs de redirection :
+
+```bash
+# Copier le fichier example
+cp .env.example .env.local
+
+# Modifier les valeurs dans .env.local selon votre environnement
+```
+
+Voir [docs/ENVIRONMENT_VARIABLES.md](docs/ENVIRONMENT_VARIABLES.md) pour plus de détails.
+
 ## Commandes
 
 ```bash
@@ -22,6 +37,9 @@ npm run build
 
 # Production
 npm start
+
+# Personnaliser les couleurs des illustrations unDraw
+npm run customize-undraw
 ```
 
 ## Documentation
@@ -32,6 +50,8 @@ npm start
 - [Architecture](docs/ARCHITECTURE.md) — Structure des dossiers et routes
 - [Contenu landing](docs/CONTENT_LANDING.md) — Textes par section
 - [Périmètre MVP](docs/MVP_SCOPE.md) — Arriving soon vs disponible
+- [Illustrations unDraw](docs/UNDRAW_CUSTOMIZATION.md) — Personnalisation des couleurs et ajout de nouvelles illustrations
+- [Variables d'environnement](docs/ENVIRONMENT_VARIABLES.md) — Configuration des URLs de redirection
 
 ## Choix SEO et structure
 

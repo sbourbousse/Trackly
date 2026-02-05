@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { config } from "@/lib/config";
 
 export function Pricing() {
   return (
@@ -22,7 +23,7 @@ export function Pricing() {
               20–25 livraisons par mois. <strong>Aucune carte bancaire</strong> requise.
             </p>
             <Link
-              href="#cta"
+              href={config.signupUrl}
               className="mt-6 inline-flex w-full justify-center rounded-xl bg-teal-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2"
               aria-label="Démarrer avec le plan Starter"
             >

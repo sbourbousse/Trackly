@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
+	import OrderDateIndicator from '$lib/components/OrderDateIndicator.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -100,14 +101,8 @@
 												<TableCell>
 													<StatusBadge type="order" status={order.status} />
 												</TableCell>
-												<TableCell class="tabular-nums text-muted-foreground">
-													{order.orderDate
-														? new Date(order.orderDate).toLocaleDateString('fr-FR', {
-																day: 'numeric',
-																month: 'short',
-																year: 'numeric'
-															})
-														: '–'}
+												<TableCell>
+													<OrderDateIndicator orderDate={order.orderDate} />
 												</TableCell>
 												<TableCell>
 													<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
@@ -162,7 +157,6 @@
 											<TableHeader>
 												<TableRow>
 													<TableHead>Statut</TableHead>
-													<TableHead class="tabular-nums">ETA</TableHead>
 													<TableHead>Livraison</TableHead>
 													<TableHead>Chauffeur</TableHead>
 													<TableHead>Arrêts</TableHead>
@@ -174,7 +168,6 @@
 														<TableCell>
 															<StatusBadge type="delivery" status={delivery.status} />
 														</TableCell>
-														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 														<TableCell>
 															<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
 																{delivery.route}
@@ -210,7 +203,6 @@
 											<TableHeader>
 												<TableRow>
 													<TableHead>Statut</TableHead>
-													<TableHead class="tabular-nums">ETA</TableHead>
 													<TableHead>Livraison</TableHead>
 													<TableHead>Chauffeur</TableHead>
 													<TableHead>Arrêts</TableHead>
@@ -222,7 +214,6 @@
 														<TableCell>
 															<StatusBadge type="delivery" status={delivery.status} />
 														</TableCell>
-														<TableCell class="tabular-nums">{delivery.eta}</TableCell>
 														<TableCell>
 															<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">
 																{delivery.route}

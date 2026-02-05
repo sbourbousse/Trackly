@@ -41,11 +41,14 @@ builder.Services.AddCors(options =>
                 "http://localhost:5174",   // Port alternatif Vite
                 "http://localhost:5175",   // Frontend Driver PWA
                 "http://localhost:5176",   // Frontend Driver PWA (port alternatif)
-                "http://localhost:3000",   // Port alternatif
+                "http://localhost:3000",   // Frontend Landing (Next.js)
+                "http://localhost:3004",   // Frontend Tracking (Next.js)
                 "http://127.0.0.1:5173",
                 "http://127.0.0.1:5174",
                 "http://127.0.0.1:5175",
-                "http://127.0.0.1:5176"
+                "http://127.0.0.1:5176",
+                "http://127.0.0.1:3000",
+                "http://127.0.0.1:3004"
             )
             .AllowAnyMethod()
             .AllowAnyHeader()
@@ -289,6 +292,11 @@ app.MapGet("/api/drivers/{driverId}/tenant", async (TracklyDbContext dbContext, 
 
     return Results.Ok(new { tenantId = driver.TenantId });
 });
+
+// Endpoint public pour le suivi client (frontend-tracking) - AVANT TenantMiddleware
+app.MapGet("/api/public/deliveries/{id:guid}/tracking", 
+    async (Guid id, TracklyDbContext dbContext, CancellationToken cancellationToken) =>
+        await Trackly.Backend.Features.Deliveries.DeliveryEndpoints.GetPublicTracking(id, dbContext, cancellationToken));
 
 app.UseMiddleware<TenantMiddleware>();
 

@@ -606,4 +606,50 @@ public static class DeliveryEndpoints
             delivery.Status,
             delivery.CreatedAt,
             delivery.CompletedAt);
+
+    /// <summary>
+    /// Endpoint PUBLIC pour le tracking client (sans authentification tenant).
+    /// Utilisé par l'application frontend-tracking pour les clients finaux.
+    /// </summary>
+    public static async Task<IResult> GetPublicTracking(
+        Guid id,
+        TracklyDbContext dbContext,
+        CancellationToken cancellationToken)
+    {
+        // IgnoreQueryFilters() pour accéder aux livraisons sans filtre de tenant (endpoint public)
+        var delivery = await dbContext.Deliveries
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == id && d.DeletedAt == null, cancellationToken);
+
+        if (delivery == null)
+        {
+            return Results.NotFound(new { error = "Livraison introuvable." });
+        }
+
+        // Récupérer l'ordre et le driver séparément
+        var order = await dbContext.Orders
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == delivery.OrderId && o.DeletedAt == null, cancellationToken);
+
+        var driver = await dbContext.Drivers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .FirstOrDefaultAsync(d => d.Id == delivery.DriverId, cancellationToken);
+
+        // Retourne les informations nécessaires pour le client final
+        return Results.Ok(new
+        {
+            id = delivery.Id,
+            status = delivery.Status.ToString(),
+            completedAt = delivery.CompletedAt,
+            customerName = order?.CustomerName ?? "Client",
+            address = order?.Address ?? "Adresse non disponible",
+            driverName = driver?.Name ?? "Livreur",
+            driverPhone = driver?.Phone,
+            sequence = delivery.Sequence,
+            createdAt = delivery.CreatedAt
+        });
+    }
 }

@@ -16,6 +16,7 @@ public sealed class TenantMiddleware(RequestDelegate next)
             path.StartsWith("/api/tenants/register") ||
             path.StartsWith("/api/auth/register") ||
             path.StartsWith("/api/auth/login") ||
+            path.StartsWith("/api/public/") || // Endpoints publics pour les clients (tracking, etc.)
             (path.StartsWith("/api/drivers/") && path.EndsWith("/tenant")) ||
             path.StartsWith("/api/drivers/debug/") ||
             path.StartsWith("/hubs/")) // SignalR hubs - le tenantId sera géré dans le hub

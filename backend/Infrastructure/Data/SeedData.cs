@@ -97,8 +97,8 @@ public static class SeedData
             OrderId = order1.Id,
             DriverId = driver1.Id,
             Status = DeliveryStatus.Completed,
-            CreatedAt = order1.OrderDate,
-            CompletedAt = order1.OrderDate.AddHours(2)
+            CreatedAt = order1.OrderDate!.Value,
+            CompletedAt = order1.OrderDate!.Value.AddHours(2)
         };
         var delivery2 = new Delivery
         {
@@ -107,7 +107,7 @@ public static class SeedData
             OrderId = order2.Id,
             DriverId = driver1.Id,
             Status = DeliveryStatus.InProgress,
-            CreatedAt = order2.OrderDate
+            CreatedAt = order2.OrderDate!.Value
         };
         var delivery3 = new Delivery
         {
@@ -116,7 +116,7 @@ public static class SeedData
             OrderId = order3.Id,
             DriverId = driver2.Id,
             Status = DeliveryStatus.Pending,
-            CreatedAt = order3.OrderDate
+            CreatedAt = order3.OrderDate!.Value
         };
 
         dbContext.Deliveries.AddRange(delivery1, delivery2, delivery3);

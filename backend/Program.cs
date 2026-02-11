@@ -143,11 +143,11 @@ using (var scope = app.Services.CreateScope())
     var dbContext = scope.ServiceProvider.GetRequiredService<TracklyDbContext>();
     await dbContext.Database.MigrateAsync();
     
-    // Seed désactivé temporairement pour debug build
-    // if (app.Environment.IsDevelopment())
-    // {
-    //     await SeedData.SeedAsync(scope.ServiceProvider);
-    // }
+    // Seed uniquement en développement
+    if (app.Environment.IsDevelopment())
+    {
+        await SeedData.SeedAsync(scope.ServiceProvider);
+    }
 }
 
 // Endpoints publics (sans TenantMiddleware)

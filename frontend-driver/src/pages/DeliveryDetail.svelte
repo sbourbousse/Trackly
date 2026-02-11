@@ -100,18 +100,24 @@
 		isTracking = false;
 	}
 
-	async function handleComplete() {
+	async function handleComplete(success: boolean) {
 		if (!delivery) return;
 
-		if (!confirm('Confirmer la livraison ?')) {
+		const action = success ? 'livraison' : 'échec';
+		if (!confirm(`Confirmer ${action} ?`)) {
 			return;
+		}
+
+		// Feedback haptique si disponible
+		if (navigator.vibrate) {
+			navigator.vibrate(50);
 		}
 
 		completing = true;
 		error = null;
 
 		try {
-			await completeDelivery(deliveryId);
+			await completeDelivery(deliveryId, success);
 			await stopTracking();
 			// Retour à la liste
 			dispatch('back');
@@ -236,14 +242,27 @@
 		</div>
 
 		{#if delivery.status.toLowerCase() !== 'completed'}
-			<button
-				class="btn btn-success"
-				onclick={handleComplete}
-				disabled={completing}
-				style="width: 100%; margin-top: 1rem; font-size: 1.25rem; padding: 1.5rem;"
-			>
-				{completing ? 'Validation...' : '✅ Valider la livraison'}
-			</button>
+			<div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
+				<button
+					class="btn btn-success"
+					onclick={() => handleComplete(true)}
+					disabled={completing}
+					style="flex: 1; font-size: 1.125rem; padding: 1.5rem 0.5rem; min-height: 80px;"
+				>
+					{completing ? '...' : '✅\nLivrée'}
+				</button>
+				<button
+					class="btn btn-danger"
+					onclick={() => handleComplete(false)}
+					disabled={completing}
+					style="flex: 1; font-size: 1.125rem; padding: 1.5rem 0.5rem; min-height: 80px;"
+				>
+					{completing ? '...' : '❌\nNon livrée'}
+				</button>
+			</div>
+			<p style="text-align: center; margin-top: 0.75rem; color: var(--text-muted); font-size: 0.875rem;">
+				Appuyez longuement pour confirmer
+			</p>
 		{:else}
 			<div class="card" style="background: #d1fae5; text-align: center;">
 				<p style="color: #065f46; font-weight: 600; font-size: 1.125rem;">

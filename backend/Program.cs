@@ -14,7 +14,6 @@ using Trackly.Backend.Features.Tenants;
 using Trackly.Backend.Features.Tracking;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
-using Trackly.Backend.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 

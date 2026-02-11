@@ -205,15 +205,15 @@ export function getDateRangeDayCount(): number {
 	return Math.max(0, Math.floor((endMs - startMs) / 86400000) + 1);
 }
 
-/** Début du jour (00:00:00) en heure locale, puis ISO pour l'API. */
+/** Début du jour (00:00:00) en UTC, puis ISO pour l'API. */
 function toStartOfDayISO(d: CalendarDate): string {
-	const dt = new Date(d.year, d.month - 1, d.day, 0, 0, 0, 0);
+	const dt = new Date(Date.UTC(d.year, d.month - 1, d.day, 0, 0, 0, 0));
 	return dt.toISOString();
 }
 
-/** Fin du jour (23:59:59.999) en heure locale, puis ISO pour l'API. Inclut tout le dernier jour. */
+/** Fin du jour (23:59:59.999) en UTC, puis ISO pour l'API. Inclut tout le dernier jour. */
 function toEndOfDayISO(d: CalendarDate): string {
-	const dt = new Date(d.year, d.month - 1, d.day, 23, 59, 59, 999);
+	const dt = new Date(Date.UTC(d.year, d.month - 1, d.day, 23, 59, 59, 999));
 	return dt.toISOString();
 }
 

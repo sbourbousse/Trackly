@@ -104,7 +104,7 @@ public static class SeedData
                             deliveryStatus = orderStatus == OrderStatus.Delivered ? DeliveryStatus.Completed : DeliveryStatus.Failed;
                             if (deliveryStatus == DeliveryStatus.Completed)
                             {
-                                completedAt = new DateTimeOffset(currentDate.Date.Add(slot.End), TimeSpan.FromHours(1));
+                                completedAt = new DateTimeOffset(currentDate.Date.AddHours(12), TimeSpan.FromHours(1));
                             }
                         }
                         else if (day == 2) // Jour courant (au moment du seeding)
@@ -138,13 +138,9 @@ public static class SeedData
                             deliveryStatus = DeliveryStatus.Pending;
                         }
 
-                        // Heure de commande cohérente (entre 1h et 3h avant le créneau de livraison)
-                        var orderTime = slot.Start.Subtract(TimeSpan.FromHours(1 + random.Next(3)));
-                        if (orderTime.Hours < 6)
-                        {
-                            orderTime = TimeSpan.FromHours(18); // Si trop tôt, commande de la veille soir
-                        }
-                        var orderDate = new DateTimeOffset(currentDate.Date.Add(orderTime), TimeSpan.FromHours(1));
+                        // Heure de commande aléatoire dans la journée
+                        var orderHour = 9 + random.Next(8); // Entre 9h et 16h
+                        var orderDate = new DateTimeOffset(currentDate.Date.AddHours(orderHour), TimeSpan.FromHours(1));
 
                         var order = new Order
                         {

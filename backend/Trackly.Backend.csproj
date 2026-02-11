@@ -17,9 +17,10 @@
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" Version="9.0.2" />
   </ItemGroup>
 
-  <ItemGroup>
+  <!-- Demo files temporarily excluded - need debugging -->
+  <!-- <ItemGroup>
     <Compile Include="Infrastructure/Data/DemoData.cs" />
     <Compile Include="Services/GpsSimulationService.cs" />
-  </ItemGroup>
+  </ItemGroup> -->
 
 </Project>

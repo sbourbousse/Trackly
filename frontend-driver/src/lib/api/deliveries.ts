@@ -55,12 +55,13 @@ export const startDelivery = async (id: string) => {
 	});
 };
 
-export const completeDelivery = async (id: string) => {
+export const completeDelivery = async (id: string, success: boolean = true) => {
 	if (offlineConfig.enabled) {
-		await mockDeliveriesApi.completeDelivery(id);
+		await mockDeliveriesApi.completeDelivery(id, success);
 		return;
 	}
-	return await apiFetch(`/api/deliveries/${id}/complete`, {
+	const endpoint = success ? `/api/deliveries/${id}/complete` : `/api/deliveries/${id}/fail`;
+	return await apiFetch(endpoint, {
 		method: 'PATCH'
 	});
 };

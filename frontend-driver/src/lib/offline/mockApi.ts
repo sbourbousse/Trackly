@@ -66,13 +66,14 @@ export const mockDeliveriesApi = {
   },
 
   /**
-   * Complète une livraison
+   * Complète ou échoue une livraison
    */
-  async completeDelivery(id: string): Promise<void> {
-    console.log(`[Mock API] PATCH /api/deliveries/${id}/complete`);
+  async completeDelivery(id: string, success: boolean = true): Promise<void> {
+    console.log(`[Mock API] PATCH /api/deliveries/${id}/${success ? 'complete' : 'fail'}`);
     await delay();
     
-    const updated = updateMockDeliveryStatus(id, 'Completed');
+    const status = success ? 'Completed' : 'Failed';
+    const updated = updateMockDeliveryStatus(id, status);
     if (!updated) {
       throw new Error(`Livraison ${id} introuvable`);
     }

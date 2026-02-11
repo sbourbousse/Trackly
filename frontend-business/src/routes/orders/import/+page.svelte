@@ -1,7 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { importOrders, type ImportOrderRequest } from '$lib/api/orders';
-	import { parseCsv, type ParsedCsvRow } from '$lib/utils/csvParser';
+	import { parseCsv, type ParsedCsvRow, type CsvColumnMapping, detectColumnMapping } from '$lib/utils/csvParser';
 	import { ordersActions } from '$lib/stores/orders.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
@@ -24,11 +24,14 @@
 	let selected = $state('csv');
 	let fileInput = $state<HTMLInputElement | null>(null);
 	let parsedRows = $state<ParsedCsvRow[]>([]);
+	let columnMapping = $state<CsvColumnMapping | null>(null);
+	let csvHeaders = $state<string[]>([]);
 	let isUploading = $state(false);
 	let isParsing = $state(false);
 	let importResult = $state<{ created: number; errors: string[] } | null>(null);
 	let error = $state<string | null>(null);
 	let dragOver = $state(false);
+	let validationErrors = $state<string[]>([]);
 
 	async function handleFileSelect(event: Event) {
 		const target = event.target as HTMLInputElement;
@@ -62,15 +65,49 @@
 		isParsing = true;
 		error = null;
 		importResult = null;
+		validationErrors = [];
 		try {
-			const rows = await parseCsv(file);
-			parsedRows = rows;
+			const result = await parseCsv(file);
+			parsedRows = result.rows;
+			columnMapping = result.mapping;
+			csvHeaders = result.headers;
+			validateRows(result.rows);
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Erreur lors du parsing du CSV';
 			parsedRows = [];
+			columnMapping = null;
+			csvHeaders = [];
 		} finally {
 			isParsing = false;
 		}
+	}
+
+	function validateRows(rows: ParsedCsvRow[]) {
+		const errors: string[] = [];
+		const seen = new Set<string>();
+
+		rows.forEach((row, index) => {
+			const lineNum = index + 1;
+
+			// Validation nom client
+			if (!row.customerName || row.customerName.length < 2) {
+				errors.push(`Ligne ${lineNum}: Nom client trop court`);
+			}
+
+			// Validation adresse
+			if (!row.address || row.address.length < 5) {
+				errors.push(`Ligne ${lineNum}: Adresse invalide`);
+			}
+
+			// Détection doublons
+			const key = `${row.customerName.toLowerCase().trim()}-${row.address.toLowerCase().trim()}`;
+			if (seen.has(key)) {
+				errors.push(`Ligne ${lineNum}: Doublon détecté`);
+			}
+			seen.add(key);
+		});
+
+		validationErrors = errors;
 	}
 
 	async function handleImport() {
@@ -78,26 +115,33 @@
 			error = 'Aucune donnée à importer';
 			return;
 		}
+
+		if (validationErrors.length > 0) {
+			error = `${validationErrors.length} erreur(s) de validation. Corrigez avant d'importer.`;
+			return;
+		}
+
 		isUploading = true;
 		error = null;
 		importResult = null;
 		try {
-			const ordersToImport: ImportOrderRequest[] = parsedRows.map((row) => {
-				const r = row as Record<string, string>;
-				const dateVal = r.orderDate ?? r.date ?? r.order_date ?? '';
-				return {
-					customerName: row.customerName,
-					address: row.address,
-					orderDate: dateVal.trim() || undefined
-				};
-			});
+			const ordersToImport: ImportOrderRequest[] = parsedRows.map((row) => ({
+				customerName: row.customerName,
+				address: row.address,
+				phoneNumber: row.phoneNumber || null,
+				internalComment: row.internalComment || null,
+				orderDate: row.orderDate || undefined
+			}));
 			const result = await importOrders(ordersToImport);
 			importResult = { created: result.created, errors: result.errors };
 			await ordersActions.loadOrders();
 			if (result.errors.length === 0) {
 				setTimeout(() => {
 					parsedRows = [];
+					columnMapping = null;
+					csvHeaders = [];
 					importResult = null;
+					validationErrors = [];
 					if (fileInput) fileInput.value = '';
 				}, 3000);
 			}
@@ -181,6 +225,22 @@
 						</Alert>
 					{/if}
 
+					{#if validationErrors.length > 0}
+						<Alert variant="destructive" class="mt-2">
+							<AlertTitle>⚠️ {validationErrors.length} problème(s) détecté(s)</AlertTitle>
+							<AlertDescription>
+								<ul class="ml-4 mt-1 max-h-32 overflow-y-auto text-sm">
+									{#each validationErrors.slice(0, 10) as err}
+										<li>{err}</li>
+									{/each}
+									{#if validationErrors.length > 10}
+										<li>... et {validationErrors.length - 10} autre(s)</li>
+									{/if}
+								</ul>
+							</AlertDescription>
+						</Alert>
+					{/if}
+
 					{#if importResult}
 						<Alert class="border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
 							<AlertTitle>Import réussi</AlertTitle>
@@ -208,12 +268,51 @@
 						<CardTitle>2. Aperçu des données ({parsedRows.length} ligne(s))</CardTitle>
 					</CardHeader>
 					<CardContent class="space-y-4">
+						<!-- Mapping des colonnes détectées -->
+						{#if columnMapping}
+							<div class="mb-4 rounded-lg border bg-muted/30 p-3">
+								<p class="mb-2 text-sm font-medium">📋 Colonnes détectées :</p>
+								<div class="flex flex-wrap gap-2">
+									<span class="rounded bg-green-100 px-2 py-1 text-xs text-green-800">
+										✅ Client: {csvHeaders[columnMapping.customerName] || 'Colonne ' + (columnMapping.customerName + 1)}
+									</span>
+									<span class="rounded bg-green-100 px-2 py-1 text-xs text-green-800">
+										✅ Adresse: {csvHeaders[columnMapping.address] || 'Colonne ' + (columnMapping.address + 1)}
+									</span>
+									{#if columnMapping.phoneNumber !== null}
+										<span class="rounded bg-blue-100 px-2 py-1 text-xs text-blue-800">
+											📞 Tél: {csvHeaders[columnMapping.phoneNumber]}
+										</span>
+									{/if}
+									{#if columnMapping.internalComment !== null}
+										<span class="rounded bg-purple-100 px-2 py-1 text-xs text-purple-800">
+											💬 Commentaire: {csvHeaders[columnMapping.internalComment]}
+										</span>
+									{/if}
+									{#if columnMapping.orderDate !== null}
+										<span class="rounded bg-orange-100 px-2 py-1 text-xs text-orange-800">
+											📅 Date: {csvHeaders[columnMapping.orderDate]}
+										</span>
+									{/if}
+								</div>
+							</div>
+						{/if}
+
 						<div class="min-w-0 overflow-x-auto">
 							<Table>
 								<TableHeader>
 									<TableRow>
 										<TableHead>Client</TableHead>
 										<TableHead>Adresse</TableHead>
+										{#if columnMapping?.phoneNumber !== null}
+											<TableHead>Téléphone</TableHead>
+										{/if}
+										{#if columnMapping?.internalComment !== null}
+											<TableHead>Commentaire</TableHead>
+										{/if}
+										{#if columnMapping?.orderDate !== null}
+											<TableHead>Date</TableHead>
+										{/if}
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -221,11 +320,20 @@
 										<TableRow>
 											<TableCell>{row.customerName}</TableCell>
 											<TableCell>{row.address}</TableCell>
+											{#if columnMapping?.phoneNumber !== null}
+												<TableCell>{row.phoneNumber || '-'}</TableCell>
+											{/if}
+											{#if columnMapping?.internalComment !== null}
+												<TableCell class="max-w-xs truncate">{row.internalComment || '-'}</TableCell>
+											{/if}
+											{#if columnMapping?.orderDate !== null}
+												<TableCell>{row.orderDate || '-'}</TableCell>
+											{/if}
 										</TableRow>
 									{/each}
 									{#if parsedRows.length > 10}
 										<TableRow>
-											<TableCell colspan="2" class="text-center text-muted-foreground">
+											<TableCell colspan={2 + (columnMapping ? ['phoneNumber', 'internalComment', 'orderDate'].filter(k => columnMapping[k as keyof CsvColumnMapping] !== null).length : 0)} class="text-center text-muted-foreground">
 												... et {parsedRows.length - 10} autre(s) ligne(s)
 											</TableCell>
 										</TableRow>
@@ -233,9 +341,29 @@
 								</TableBody>
 							</Table>
 						</div>
+						<div class="rounded-lg border bg-muted/30 p-3 text-sm text-muted-foreground">
+							<p class="font-medium text-foreground mb-1">📖 Format CSV supporté :</p>
+							<ul class="ml-4 list-disc space-y-1">
+								<li><strong>Colonnes requises :</strong> client/nom, adresse/rue</li>
+								<li><strong>Colonnes optionnelles :</strong> téléphone/phone, commentaire/notes, date (JJ/MM/AAAA ou AAAA-MM-JJ)</li>
+								<li><strong>Séparateur :</strong> virgule, point-virgule ou tabulation</li>
+							</ul>
+						</div>
+
 						<div class="flex justify-end">
-							<Button type="button" onclick={handleImport} disabled={isUploading}>
-								{isUploading ? 'Import en cours...' : `Importer ${parsedRows.length} commande(s)`}
+							<Button
+								type="button"
+								onclick={handleImport}
+								disabled={isUploading || validationErrors.length > 0}
+								variant={validationErrors.length > 0 ? 'destructive' : 'default'}
+							>
+								{#if validationErrors.length > 0}
+									⚠️ Corrigez les erreurs ({validationErrors.length})
+								{:else if isUploading}
+									Import en cours...
+								{:else}
+									✅ Importer {parsedRows.length} commande(s)
+								{/if}
 							</Button>
 						</div>
 					</CardContent>

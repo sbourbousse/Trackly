@@ -151,9 +151,9 @@ public static class SeedData
                             Id = Guid.NewGuid(),
                             TenantId = tenant.Id,
                             CustomerName = customerName,
-                            Address = address.FullAddress,
+                            Address = address,
                             PhoneNumber = GeneratePhoneNumber(random),
-                            InternalComment = GenerateComment(random, demoTenant.Name),
+                            InternalComment = GenerateComment(random, "Demo"),
                             OrderDate = orderDate,
                             Status = orderStatus,
                             CreatedAt = orderDate

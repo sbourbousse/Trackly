@@ -3,6 +3,7 @@
 	import { browser } from '$app/environment';
 	import favicon from '$lib/assets/favicon.svg';
 	import AppSidebar from '$lib/components/AppSidebar.svelte';
+	import DemoBanner from '$lib/components/DemoBanner.svelte';
 	import { SidebarInset, SidebarProvider, SidebarTrigger } from '$lib/components/ui/sidebar';
 	import { Separator } from '$lib/components/ui/separator';
 	import { initTheme } from '$lib/stores/theme.svelte';
@@ -47,6 +48,8 @@
 		content="Trackly Business: tableau de bord simple pour gerer les tournees et livraisons."
 	/>
 </svelte:head>
+
+<DemoBanner />
 
 {#if withSidebar}
 	<SidebarProvider>

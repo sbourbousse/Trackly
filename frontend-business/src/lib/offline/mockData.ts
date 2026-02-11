@@ -1,414 +1,335 @@
 /**
- * Données de démonstration pour le mode offline - Business
- * Toutes les données factices sont centralisées ici
+ * Données de démonstration complètement isolées
+ * AUCUNE donnée réelle ne doit être accessible en mode démo
  */
 
 import type { ApiOrder, ApiOrderDetail } from '../api/orders';
 import type { ApiDelivery, ApiDeliveryDetail } from '../api/deliveries';
 import type { ApiDriver } from '../api/drivers';
-import type { ApiRoute, ApiRouteDetail, ApiDeliveryInRoute } from '../api/routes';
+import type { ApiRoute, ApiRouteDetail } from '../api/routes';
 
-// Tenant de démo
-export const DEMO_TENANT_ID = 'demo-tenant-001';
-export const DEMO_COMPANY_NAME = 'Demo Transport SA';
+// ⚠️ MODE DÉMO - TOUTES LES DONNÉES SONT FACTICES
+export const DEMO_BANNER = {
+  title: '🔒 MODE DÉMO',
+  message: 'Vous utilisez des données de démonstration fictives. Aucune donnée réelle n\'est affichée.',
+  color: 'bg-orange-500'
+};
 
-// Drivers de démo
+// ID de tenant fictif
+export const DEMO_TENANT_ID = 'demo-tenant-fake-001';
+
+// Livreurs fictifs
 export const DEMO_DRIVERS: ApiDriver[] = [
-  {
-    id: 'driver-001',
-    name: 'Jean Martin',
-    phone: '+33 6 12 34 56 78'
-  },
-  {
-    id: 'driver-002',
-    name: 'Marie Dupont',
-    phone: '+33 6 23 45 67 89'
-  },
-  {
-    id: 'driver-003',
-    name: 'Pierre Durand',
-    phone: '+33 6 34 56 78 90'
-  }
+  { id: 'demo-driver-001', name: 'Alice Martin', phone: '+33 6 00 00 00 01' },
+  { id: 'demo-driver-002', name: 'Bob Bernard', phone: '+33 6 00 00 00 02' },
+  { id: 'demo-driver-003', name: 'Carla Dubois', phone: '+33 6 00 00 00 03' }
 ];
 
-// Commandes de démo
+// Clients fictifs (noms générés aléatoirement, aucune correspondance réelle)
+const DEMO_CUSTOMERS = [
+  { name: 'Entreprise Alpha', address: '1 Place de la Comédie, 34000 Montpellier', phone: '+33 6 11 11 11 11' },
+  { name: 'Boutique Beta', address: '25 Rue Foch, 34000 Montpellier', phone: '+33 6 22 22 22 22' },
+  { name: 'SARL Gamma', address: '8 Avenue de la Liberté, 34000 Montpellier', phone: '+33 6 33 33 33 33' },
+  { name: 'Atelier Delta', address: '42 Rue de l\'Université, 34000 Montpellier', phone: '+33 6 44 44 44 44' },
+  { name: 'Librairie Epsilon', address: '15 Boulevard Louis Blanc, 34000 Montpellier', phone: '+33 6 55 55 55 55' },
+  { name: 'Café Zêta', address: '3 Rue de la Loge, 34000 Montpellier', phone: '+33 6 66 66 66 66' },
+  { name: 'Pharmacie Êta', address: '67 Avenue de Toulouse, 34000 Montpellier', phone: '+33 6 77 77 77 77' },
+  { name: 'Boulangerie Thêta', address: '12 Rue de l\'Aiguillerie, 34000 Montpellier', phone: '+33 6 88 88 88 88' }
+];
+
+// Commandes fictives
 function generateMockOrders(): ApiOrder[] {
-  const now = Date.now();
-  return [
-    {
-      id: 'order-001',
-      customerName: 'Sophie Dubois',
-      address: '123 Rue de la Paix, 75002 Paris',
-      orderDate: new Date(now - 86400000).toISOString(),
-      status: 'Pending'
-    },
-    {
-      id: 'order-002',
-      customerName: 'Marc Leroy',
-      address: '45 Avenue des Champs-Élysées, 75008 Paris',
-      orderDate: new Date(now - 172800000).toISOString(),
-      status: 'InDelivery'
-    },
-    {
-      id: 'order-003',
-      customerName: 'Marie Lambert',
-      address: '78 Boulevard Saint-Germain, 75005 Paris',
-      orderDate: new Date(now - 259200000).toISOString(),
-      status: 'Pending'
-    },
-    {
-      id: 'order-004',
-      customerName: 'Pierre Rousseau',
-      address: '12 Rue du Commerce, 75015 Paris',
-      orderDate: new Date(now - 345600000).toISOString(),
-      status: 'Delivered'
-    },
-    {
-      id: 'order-005',
-      customerName: 'Claire Bernard',
-      address: '56 Rue de Rivoli, 75004 Paris',
-      orderDate: new Date(now - 432000000).toISOString(),
-      status: 'Delivered'
-    },
-    {
-      id: 'order-006',
-      customerName: 'Thomas Petit',
-      address: '34 Avenue Montaigne, 75008 Paris',
-      orderDate: new Date(now).toISOString(),
-      status: 'Pending'
-    },
-    {
-      id: 'order-007',
-      customerName: 'Emma Roux',
-      address: '89 Rue du Faubourg Saint-Honoré, 75008 Paris',
-      orderDate: new Date(now - 86400000).toISOString(),
-      status: 'Pending'
-    },
-    {
-      id: 'order-008',
-      customerName: 'Lucas Moreau',
-      address: '23 Boulevard Haussmann, 75009 Paris',
-      orderDate: new Date(now - 172800000).toISOString(),
-      status: 'Delivered'
-    }
-  ];
+  return DEMO_CUSTOMERS.map((customer, index) => ({
+    id: `demo-order-${String(index + 1).padStart(3, '0')}`,
+    customerName: customer.name,
+    address: customer.address,
+    orderDate: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
+    status: ['Pending', 'InDelivery', 'Delivered'][Math.floor(Math.random() * 3)]
+  }));
 }
 
-// Livraisons de démo
+// Livraisons fictives
 function generateMockDeliveries(): ApiDelivery[] {
-  const now = Date.now();
-  return [
-    {
-      id: 'delivery-001',
-      orderId: 'order-002',
-      driverId: 'driver-001',
-      routeId: 'route-001',
-      sequence: 0,
-      status: 'InProgress',
-      createdAt: new Date(now - 3600000).toISOString(),
-      completedAt: null
-    },
-    {
-      id: 'delivery-002',
-      orderId: 'order-004',
-      driverId: 'driver-001',
-      routeId: 'route-001',
-      sequence: 1,
-      status: 'Completed',
-      createdAt: new Date(now - 86400000).toISOString(),
-      completedAt: new Date(now - 3600000).toISOString()
-    },
-    {
-      id: 'delivery-003',
-      orderId: 'order-005',
-      driverId: 'driver-002',
-      routeId: 'route-002',
-      sequence: 0,
-      status: 'Completed',
-      createdAt: new Date(now - 172800000).toISOString(),
-      completedAt: new Date(now - 86400000).toISOString()
-    },
-    {
-      id: 'delivery-004',
-      orderId: 'order-008',
-      driverId: 'driver-003',
-      routeId: 'route-003',
-      sequence: 0,
-      status: 'Completed',
-      createdAt: new Date(now - 259200000).toISOString(),
-      completedAt: new Date(now - 172800000).toISOString()
-    }
-  ];
+  return DEMO_CUSTOMERS.slice(0, 5).map((customer, index) => {
+    const driver = DEMO_DRIVERS[index % DEMO_DRIVERS.length];
+    return {
+      id: `demo-delivery-${String(index + 1).padStart(3, '0')}`,
+      orderId: `demo-order-${String(index + 1).padStart(3, '0')}`,
+      driverId: driver.id,
+      routeId: `demo-route-001`,
+      status: ['Pending', 'InProgress', 'Completed'][Math.floor(Math.random() * 3)],
+      createdAt: new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000).toISOString(),
+      completedAt: Math.random() > 0.5 ? new Date().toISOString() : null
+    };
+  });
 }
 
-// Routes de démo (tournées) - id, driverId, name, createdAt
-type MockRoute = { id: string; driverId: string; name: string | null; createdAt: string };
-let mockRoutesState: MockRoute[] = [
-  { id: 'route-001', driverId: 'driver-001', name: 'Matin Est', createdAt: new Date(Date.now() - 86400000).toISOString() },
-  { id: 'route-002', driverId: 'driver-002', name: null, createdAt: new Date(Date.now() - 172800000).toISOString() },
-  { id: 'route-003', driverId: 'driver-003', name: null, createdAt: new Date(Date.now() - 259200000).toISOString() }
-];
-
-// État mutable
-let mockOrdersState = generateMockOrders();
-let mockDeliveriesState = generateMockDeliveries();
-let mockDriversState = [...DEMO_DRIVERS];
+// État interne des données de démo
+let mockOrdersState: ApiOrder[] = [];
+let mockDeliveriesState: ApiDelivery[] = [];
 
 /**
- * Récupère les commandes
+ * Initialise les données de démo (appelé au démarrage)
+ */
+export function initMockData(): void {
+  mockOrdersState = generateMockOrders();
+  mockDeliveriesState = generateMockDeliveries();
+  console.log('[Demo] 🎭 Données de démo initialisées - AUCUNE donnée réelle');
+}
+
+/**
+ * Récupère les commandes de démo
  */
 export function getMockOrders(): ApiOrder[] {
-  return mockOrdersState;
+  if (mockOrdersState.length === 0) {
+    initMockData();
+  }
+  return [...mockOrdersState];
 }
 
 /**
- * Récupère les détails d'une commande
+ * Récupère une commande de démo par ID
  */
 export function getMockOrderDetail(id: string): ApiOrderDetail | null {
   const order = mockOrdersState.find(o => o.id === id);
   if (!order) return null;
-
-  const orderDeliveries = mockDeliveriesState
-    .filter(d => d.orderId === id)
-    .map(d => {
-      const driver = mockDriversState.find(dr => dr.id === d.driverId);
-      return {
+  
+  return {
+    ...order,
+    createdAt: order.orderDate || new Date().toISOString(),
+    deliveries: mockDeliveriesState
+      .filter(d => d.orderId === id)
+      .map(d => ({
         id: d.id,
         driverId: d.driverId,
-        driverName: driver?.name,
+        driverName: DEMO_DRIVERS.find(drv => drv.id === d.driverId)?.name || 'Inconnu',
         status: d.status,
-        createdAt: d.createdAt || new Date().toISOString(),
+        createdAt: d.createdAt,
         completedAt: d.completedAt
-      };
-    });
-
-  return {
-    id: order.id,
-    customerName: order.customerName,
-    address: order.address,
-    orderDate: order.orderDate,
-    status: order.status,
-    createdAt: new Date(Date.now() - 86400000).toISOString(),
-    deliveries: orderDeliveries
+      }))
   };
 }
 
 /**
- * Crée une nouvelle commande
+ * Crée une nouvelle commande de démo
  */
-export function createMockOrder(data: { customerName: string; address: string; phoneNumber?: string | null; internalComment?: string | null; orderDate?: string | null }): ApiOrder {
+export function createMockOrder(data: {
+  customerName: string;
+  address: string;
+  phoneNumber?: string | null;
+  internalComment?: string | null;
+  orderDate?: string | null;
+}): ApiOrder {
   const newOrder: ApiOrder = {
-    id: `order-${Date.now()}`,
+    id: `demo-order-${Date.now()}`,
     customerName: data.customerName,
     address: data.address,
     orderDate: data.orderDate || new Date().toISOString(),
     status: 'Pending'
   };
-  mockOrdersState.push(newOrder);
+  mockOrdersState.unshift(newOrder);
   return newOrder;
 }
 
 /**
- * Supprime des commandes
+ * Supprime des commandes de démo
  */
-export function deleteMockOrders(ids: string[]): { deleted: number; deletedDeliveries: number } {
-  const beforeCount = mockOrdersState.length;
+export function deleteMockOrders(ids: string[]): void {
   mockOrdersState = mockOrdersState.filter(o => !ids.includes(o.id));
-  const deleted = beforeCount - mockOrdersState.length;
-
-  const beforeDeliveries = mockDeliveriesState.length;
+  // Supprimer aussi les livraisons associées
   mockDeliveriesState = mockDeliveriesState.filter(d => !ids.includes(d.orderId));
-  const deletedDeliveries = beforeDeliveries - mockDeliveriesState.length;
-
-  return { deleted, deletedDeliveries };
 }
 
 /**
- * Récupère les livraisons
+ * Importe des commandes de démo
+ */
+export function importMockOrders(orders: Array<{
+  customerName: string;
+  address: string;
+  phoneNumber?: string | null;
+  internalComment?: string | null;
+  orderDate?: string | null;
+}>): ApiOrder[] {
+  const newOrders = orders.map((o, index) => ({
+    id: `demo-order-import-${Date.now()}-${index}`,
+    customerName: o.customerName,
+    address: o.address,
+    orderDate: o.orderDate || new Date().toISOString(),
+    status: 'Pending' as const
+  }));
+  mockOrdersState.unshift(...newOrders);
+  return newOrders;
+}
+
+/**
+ * Récupère les livraisons de démo
  */
 export function getMockDeliveries(): ApiDelivery[] {
-  return mockDeliveriesState;
+  if (mockDeliveriesState.length === 0) {
+    initMockData();
+  }
+  return [...mockDeliveriesState];
 }
 
 /**
- * Récupère les détails d'une livraison
+ * Récupère une livraison de démo par ID
  */
-export function getMockDeliveryDetail(id: string): ApiDeliveryDetail | null {
+export function getMockDeliveryById(id: string): ApiDeliveryDetail | null {
   const delivery = mockDeliveriesState.find(d => d.id === id);
   if (!delivery) return null;
-
+  
   const order = mockOrdersState.find(o => o.id === delivery.orderId);
-  const driver = mockDriversState.find(d => d.id === delivery.driverId);
-
+  const driver = DEMO_DRIVERS.find(d => d.id === delivery.driverId);
+  
   return {
     id: delivery.id,
     orderId: delivery.orderId,
     driverId: delivery.driverId,
+    routeId: delivery.routeId,
+    sequence: 0,
     status: delivery.status,
-    createdAt: delivery.createdAt || new Date().toISOString(),
+    createdAt: delivery.createdAt,
     completedAt: delivery.completedAt,
     customerName: order?.customerName || 'Client inconnu',
     address: order?.address || 'Adresse inconnue',
-    driverName: driver?.name || 'Chauffeur inconnu'
+    driverName: driver?.name || 'Livreur inconnu'
   };
 }
 
 /**
- * Crée des livraisons en batch (avec une tournée / route)
+ * Démarre une livraison de démo
  */
-export function createMockDeliveries(driverId: string, orderIds: string[], name?: string | null): { created: number; deliveries: ApiDelivery[] } {
-  const routeId = `route-${Date.now()}`;
-  mockRoutesState.push({
-    id: routeId,
-    driverId,
-    name: name?.trim() || null,
-    createdAt: new Date().toISOString()
-  });
-
-  const newDeliveries: ApiDelivery[] = [];
-  let sequence = 0;
-  for (const orderId of orderIds) {
-    const order = mockOrdersState.find(o => o.id === orderId);
-    if (order && order.status === 'Pending') {
-      const delivery: ApiDelivery = {
-        id: `delivery-${Date.now()}-${orderId}`,
-        orderId,
-        driverId,
-        routeId,
-        sequence: sequence++,
-        status: 'Pending',
-        createdAt: new Date().toISOString(),
-        completedAt: null
-      };
-      mockDeliveriesState.push(delivery);
-      newDeliveries.push(delivery);
-      order.status = 'InDelivery';
-    }
+export function startMockDelivery(id: string): ApiDelivery | null {
+  const delivery = mockDeliveriesState.find(d => d.id === id);
+  if (delivery) {
+    delivery.status = 'InProgress';
+    return delivery;
   }
-  return { created: newDeliveries.length, deliveries: newDeliveries };
+  return null;
 }
 
 /**
- * Récupère les tournées (routes) pour la liste
+ * Complète une livraison de démo
  */
-export function getMockRoutes(filters?: { dateFrom?: string; dateTo?: string; driverId?: string }): ApiRoute[] {
-  const driversByName = new Map(mockDriversState.map(d => [d.id, d.name]));
-  const countByRoute = new Map<string, number>();
-  for (const d of mockDeliveriesState) {
-    if (d.routeId) {
-      countByRoute.set(d.routeId, (countByRoute.get(d.routeId) ?? 0) + 1);
-    }
+export function completeMockDelivery(id: string): void {
+  const delivery = mockDeliveriesState.find(d => d.id === id);
+  if (delivery) {
+    delivery.status = 'Completed';
+    delivery.completedAt = new Date().toISOString();
   }
-  let list = mockRoutesState.map(r => ({
-    id: r.id,
-    driverId: r.driverId,
-    name: r.name,
-    createdAt: r.createdAt,
-    deliveryCount: countByRoute.get(r.id) ?? 0,
-    driverName: driversByName.get(r.driverId) ?? 'Non assigné'
-  }));
-  if (filters?.dateFrom) {
-    list = list.filter(r => r.createdAt >= filters.dateFrom!);
-  }
-  if (filters?.dateTo) {
-    list = list.filter(r => r.createdAt <= filters.dateTo!);
-  }
-  if (filters?.driverId) {
-    list = list.filter(r => r.driverId === filters.driverId);
-  }
-  list.sort((a, b) => b.createdAt.localeCompare(a.createdAt));
-  return list;
 }
 
 /**
- * Récupère le détail d'une tournée avec livraisons ordonnées par sequence.
- */
-export function getMockRouteDetail(routeId: string): ApiRouteDetail | null {
-  const route = mockRoutesState.find(r => r.id === routeId);
-  if (!route) return null;
-  const driver = mockDriversState.find(d => d.id === route.driverId);
-  const deliveries = mockDeliveriesState
-    .filter(d => d.routeId === routeId)
-    .sort((a, b) => (a.sequence ?? 999) - (b.sequence ?? 999));
-  const deliveriesInRoute: ApiDeliveryInRoute[] = deliveries.map(d => {
-    const order = mockOrdersState.find(o => o.id === d.orderId);
-    return {
-      id: d.id,
-      orderId: d.orderId,
-      sequence: d.sequence ?? null,
-      status: d.status,
-      createdAt: d.createdAt ?? new Date().toISOString(),
-      completedAt: d.completedAt,
-      customerName: order?.customerName ?? 'Inconnu',
-      address: order?.address ?? 'Adresse inconnue'
-    };
-  });
-  return {
-    id: route.id,
-    driverId: route.driverId,
-    name: route.name,
-    createdAt: route.createdAt,
-    driverName: driver?.name ?? 'Non assigné',
-    deliveries: deliveriesInRoute
-  };
-}
-
-/**
- * Réordonne les livraisons d'une tournée (met à jour sequence dans mockDeliveriesState).
- */
-export function reorderMockRouteDeliveries(routeId: string, deliveryIds: string[]): void {
-  const route = mockRoutesState.find(r => r.id === routeId);
-  if (!route) return;
-  const routeDeliveries = mockDeliveriesState.filter(d => d.routeId === routeId);
-  if (deliveryIds.length !== routeDeliveries.length || deliveryIds.some(id => !routeDeliveries.some(d => d.id === id))) {
-    return;
-  }
-  deliveryIds.forEach((id, index) => {
-    const d = mockDeliveriesState.find(x => x.id === id);
-    if (d) d.sequence = index;
-  });
-}
-
-/**
- * Supprime des livraisons
- */
-export function deleteMockDeliveries(ids: string[]): number {
-  const beforeCount = mockDeliveriesState.length;
-  mockDeliveriesState = mockDeliveriesState.filter(d => !ids.includes(d.id));
-  return beforeCount - mockDeliveriesState.length;
-}
-
-/**
- * Récupère les drivers
+ * Récupère les livreurs de démo
  */
 export function getMockDrivers(): ApiDriver[] {
-  return mockDriversState;
+  return [...DEMO_DRIVERS];
 }
 
 /**
- * Crée un driver
+ * Récupère les tournées de démo
  */
-export function createMockDriver(data: { name: string; phone: string }): ApiDriver {
-  const newDriver: ApiDriver = {
-    id: `driver-${Date.now()}`,
-    name: data.name,
-    phone: data.phone
+export function getMockRoutes(): ApiRoute[] {
+  return [{
+    id: 'demo-route-001',
+    name: 'Tournée Centre-Ville',
+    driverId: 'demo-driver-001',
+    date: new Date().toISOString().split('T')[0],
+    status: 'Active'
+  }];
+}
+
+/**
+ * Récupère le détail d'une tournée de démo
+ */
+export function getMockRouteById(id: string): ApiRouteDetail | null {
+  if (id !== 'demo-route-001') return null;
+  
+  const deliveries = mockDeliveriesState.filter(d => d.routeId === id);
+  
+  return {
+    id: 'demo-route-001',
+    name: 'Tournée Centre-Ville',
+    driverId: 'demo-driver-001',
+    driverName: 'Alice Martin',
+    date: new Date().toISOString().split('T')[0],
+    status: 'Active',
+    deliveries: deliveries.map((d, index) => ({
+      id: d.id,
+      orderId: d.orderId,
+      status: d.status,
+      sequence: index,
+      customerName: DEMO_CUSTOMERS[index]?.name || 'Client',
+      address: DEMO_CUSTOMERS[index]?.address || 'Adresse'
+    }))
   };
-  mockDriversState.push(newDriver);
+}
+
+/**
+ * Réordonne les livraisons d'une tournée de démo
+ */
+export function reorderMockDeliveries(routeId: string, deliveryIds: string[]): void {
+  if (routeId !== 'demo-route-001') return;
+  
+  deliveryIds.forEach((id, index) => {
+    const delivery = mockDeliveriesState.find(d => d.id === id);
+    if (delivery) {
+      delivery.sequence = index;
+    }
+  });
+}
+
+// Alias pour compatibilité avec mockApi.ts
+export const getMockRouteDetail = getMockRouteById;
+export const getMockDeliveryDetail = getMockDeliveryById;
+
+/**
+ * Crée des livraisons de démo
+ */
+export function createMockDeliveries(driverId: string, orderIds: string[]): { created: number; deliveries: typeof mockDeliveriesState } {
+  const newDeliveries = orderIds.map((orderId, index) => ({
+    id: `demo-delivery-${Date.now()}-${index}`,
+    orderId,
+    driverId,
+    routeId: 'demo-route-001',
+    status: 'Pending' as const,
+    createdAt: new Date().toISOString(),
+    completedAt: null as string | null
+  }));
+  
+  mockDeliveriesState.push(...newDeliveries);
+  return { created: newDeliveries.length, deliveries: mockDeliveriesState };
+}
+
+/**
+ * Supprime des livraisons de démo
+ */
+export function deleteMockDeliveries(ids: string[]): number {
+  const initialLength = mockDeliveriesState.length;
+  mockDeliveriesState = mockDeliveriesState.filter(d => !ids.includes(d.id));
+  return initialLength - mockDeliveriesState.length;
+}
+
+/**
+ * Crée un livreur de démo
+ */
+export function createMockDriver(request: { name: string; phone: string }): ApiDriver {
+  const newDriver: ApiDriver = {
+    id: `demo-driver-${Date.now()}`,
+    name: request.name,
+    phone: request.phone
+  };
+  DEMO_DRIVERS.push(newDriver);
   return newDriver;
 }
 
 /**
- * Réinitialise toutes les données
+ * Export du nom de la compagnie démo
  */
-export function resetMockData(): void {
-  mockOrdersState = generateMockOrders();
-  mockDeliveriesState = generateMockDeliveries();
-  mockRoutesState = [
-    { id: 'route-001', driverId: 'driver-001', name: 'Matin Est', createdAt: new Date(Date.now() - 86400000).toISOString() },
-    { id: 'route-002', driverId: 'driver-002', name: null, createdAt: new Date(Date.now() - 172800000).toISOString() },
-    { id: 'route-003', driverId: 'driver-003', name: null, createdAt: new Date(Date.now() - 259200000).toISOString() }
-  ];
-  mockDriversState = [...DEMO_DRIVERS];
-  console.log('[Offline] Données de démonstration réinitialisées');
-}
+export const DEMO_COMPANY_NAME = 'Démo Transport SA';
+
+// Réordonner avec le nom exact utilisé dans mockApi
+export const reorderMockRouteDeliveries = reorderMockDeliveries;
+
+// Initialiser les données au chargement
+initMockData();

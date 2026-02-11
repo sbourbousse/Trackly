@@ -45,22 +45,23 @@
 ## Semaine 3 : Tracking + Polish (4-10 mars)
 
 ### Jour 1-3 : Carte tracking
-- [ ] **F014** : Carte tracking client (Business)
+- [x] **F014** : Carte tracking client (Business)
   - Page `/map` avec toggle "Suivi livreurs"
   - Affichage positions en temps réel
   - Filtre par période
 
-- [ ] **F007** : Finaliser Frontend Tracking
+- [x] **F007** : Finaliser Frontend Tracking
   - Page `/tracking/[deliveryId]` pour clients
-  - Carte simple + position livreur
-  - ETA estimée
+  - Connexion SignalR temps réel
+  - ETA estimée calculée
 
 ### Jour 4-5 : Polish + Dataset
-- [ ] **UX3** : Module date pour tournées
-  - Sélecteur de date pour filtrer les tournées
+- [x] **UX3** : Module date pour tournées
+  - Sélecteur de date via DateFilterCard (déjà existant)
 
-- [ ] **UX4** : Dataset Montpellier démo
-  - Jeu de données réaliste avec adresses Montpellier
+- [x] **UX4** : Dataset Montpellier démo
+  - 20 adresses réelles Montpellier
+  - Fichier CSV prêt à importer
 
 ---
 

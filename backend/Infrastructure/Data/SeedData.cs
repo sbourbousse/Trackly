@@ -30,64 +30,65 @@ public static class SeedData
         var deliveryStatuses = new[] { DeliveryStatus.Pending, DeliveryStatus.InProgress, DeliveryStatus.Completed, DeliveryStatus.Failed };
         var orderStatuses = new[] { OrderStatus.Pending, OrderStatus.Planned, OrderStatus.InTransit, OrderStatus.Delivered, OrderStatus.Cancelled };
 
-        foreach (var demoTenant in DemoData.Tenants)
+        // DONNÉES DE DÉMO TEMPORAIREMENT DÉSACTIVÉES (DemoData.cs en cours de correction)
+        // Création d'un seul tenant minimal pour les tests
+        var demoTenant = new
         {
-            // Crée le tenant
-            var tenant = new Tenant
+            Name = "Demo Tenant",
+            Plan = SubscriptionPlan.Starter,
+            Drivers = new[]
+            {
+                new { Name = "Driver 1", Phone = "+33 6 12 34 56 78" },
+                new { Name = "Driver 2", Phone = "+33 6 23 45 67 89" }
+            }
+        };
+
+        // Crée le tenant
+        var tenant = new Tenant
+        {
+            Id = Guid.NewGuid(),
+            Name = demoTenant.Name,
+            SubscriptionPlan = demoTenant.Plan,
+            CreatedAt = DateTimeOffset.UtcNow.AddDays(-30)
+        };
+
+        dbContext.Tenants.Add(tenant);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        
+        tenantContext.TenantId = tenant.Id;
+
+        // Crée les drivers
+        var drivers = new List<Driver>();
+        foreach (var demoDriver in demoTenant.Drivers)
+        {
+            var driver = new Driver
             {
                 Id = Guid.NewGuid(),
-                Name = demoTenant.Name,
-                SubscriptionPlan = demoTenant.Plan,
-                CreatedAt = DateTimeOffset.UtcNow.AddDays(-30) // Créé il y a 30 jours
+                TenantId = tenant.Id,
+                Name = demoDriver.Name,
+                Phone = demoDriver.Phone
             };
+            drivers.Add(driver);
+            dbContext.Drivers.Add(driver);
+        }
+        await dbContext.SaveChangesAsync(cancellationToken);
 
-            dbContext.Tenants.Add(tenant);
-            await dbContext.SaveChangesAsync(cancellationToken);
+        // Crée quelques commandes et livraisons simples
+        var allOrders = new List<Order>();
+        var allDeliveries = new List<Delivery>();
+        
+        for (int day = 0; day < 3; day++) // 3 jours de données seulement
+        {
+            var currentDate = baseDate.AddDays(day);
             
-            tenantContext.TenantId = tenant.Id;
-
-            // Crée les drivers
-            var drivers = new List<Driver>();
-            foreach (var demoDriver in demoTenant.Drivers)
-            {
-                var driver = new Driver
-                {
-                    Id = Guid.NewGuid(),
-                    TenantId = tenant.Id,
-                    Name = demoDriver.Name,
-                    Phone = demoDriver.Phone
-                };
-                drivers.Add(driver);
-                dbContext.Drivers.Add(driver);
-            }
-            await dbContext.SaveChangesAsync(cancellationToken);
-
-            // Crée les commandes et livraisons pour chaque créneau horaire sur 5 jours
-            var allOrders = new List<Order>();
-            var allDeliveries = new List<Delivery>();
+            // 2-3 livraisons par jour
+            var deliveriesCount = random.Next(2, 4);
             
-            for (int day = 0; day < 5; day++) // 5 jours de données
+            for (int i = 0; i < deliveriesCount; i++)
             {
-                var currentDate = baseDate.AddDays(day);
-                
-                foreach (var slot in demoTenant.DeliverySlots)
-                {
-                    // Nombre de livraisons pour ce créneau (2-5 livraisons)
-                    var deliveriesCount = random.Next(2, 6);
-                    
-                    // Sélectionne des adresses dans la zone du créneau
-                    var zoneAddresses = DemoData.GetAddressesByZone(slot.Zone);
-                    if (zoneAddresses.Count == 0)
-                    {
-                        // Fallback sur des adresses aléatoires si la zone n'a pas d'adresses définies
-                        zoneAddresses = DemoData.Addresses.OrderBy(_ => random.Next()).Take(5).ToList();
-                    }
-
-                    for (int i = 0; i < deliveriesCount && i < zoneAddresses.Count; i++)
-                    {
-                        var address = zoneAddresses[i % zoneAddresses.Count];
-                        var customerName = DemoData.CustomerNames[random.Next(DemoData.CustomerNames.Count)];
-                        var driver = drivers[random.Next(drivers.Count)];
+                var customerName = $"Client {i + 1}";
+                var driver = drivers[random.Next(drivers.Count)];
+                var address = $"{i + 1} Rue de la Paix, 34000 Montpellier";
                         
                         // Détermine le statut en fonction du jour
                         // Jours passés → livraisons terminées

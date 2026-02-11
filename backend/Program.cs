@@ -126,8 +126,8 @@ builder.Services.AddHttpClient("Nominatim", client =>
     client.DefaultRequestHeaders.Add("User-Agent", "Trackly/1.0 (contact@trackly.app)");
 });
 
-// Service de simulation GPS pour les démonstrations
-builder.Services.AddSingleton<IGpsSimulationService, GpsSimulationService>();
+// Service de simulation GPS pour les démonstrations (TEMPORAIREMENT DÉSACTIVÉ)
+// builder.Services.AddSingleton<IGpsSimulationService, GpsSimulationService>();
 
 var app = builder.Build();
 
@@ -314,80 +314,35 @@ app.MapGeocodeEndpoints();
 app.MapHub<TrackingHub>("/hubs/tracking");
 
 // ============================================================================
-// ENDPOINTS DE DÉMO GPS (développement uniquement)
+// ENDPOINTS DE DÉMO GPS (développement uniquement) - TEMPORAIREMENT DÉSACTIVÉS
 // ============================================================================
-if (app.Environment.IsDevelopment())
-{
-    // Démarrer une simulation GPS entre deux points
-    app.MapPost("/api/demo/gps/simulate", async (
-        IGpsSimulationService gpsService,
-        SimulationRequest request) =>
-    {
-        var simulationId = await gpsService.StartSimulationAsync(request);
-        return Results.Ok(new 
-        { 
-            simulationId, 
-            message = "Simulation GPS démarrée",
-            from = new { lat = request.StartLatitude, lon = request.StartLongitude },
-            to = new { lat = request.EndLatitude, lon = request.EndLongitude }
-        });
-    });
+// if (app.Environment.IsDevelopment())
+// {
+//     // Démarrer une simulation GPS entre deux points
+//     app.MapPost("/api/demo/gps/simulate", async (
+//         IGpsSimulationService gpsService,
+//         SimulationRequest request) =>
+//     {
+//         var simulationId = await gpsService.StartSimulationAsync(request);
+//         return Results.Ok(new 
+//         { 
+//             simulationId, 
+//             message = "Simulation GPS démarrée",
+//             from = new { lat = request.StartLatitude, lon = request.StartLongitude },
+//             to = new { lat = request.EndLatitude, lon = request.EndLongitude }
+//         });
+//     });
+// 
+//     // ... autres endpoints de démo
+// }
 
-    // Récupérer la position actuelle d'une simulation
-    app.MapGet("/api/demo/gps/simulate/{simulationId:guid}/position", (
-        IGpsSimulationService gpsService,
-        Guid simulationId) =>
-    {
-        var position = gpsService.GetCurrentPosition(simulationId);
-        return position != null 
-            ? Results.Ok(position) 
-            : Results.NotFound("Simulation non trouvée ou terminée");
-    });
-
-    // Lister toutes les simulations actives
-    app.MapGet("/api/demo/gps/simulations", (
-        IGpsSimulationService gpsService) =>
-    {
-        var simulations = gpsService.GetActiveSimulations();
-        return Results.Ok(simulations);
-    });
-
-    // Arrêter une simulation
-    app.MapPost("/api/demo/gps/simulate/{simulationId:guid}/stop", async (
-        IGpsSimulationService gpsService,
-        Guid simulationId) =>
-    {
-        await gpsService.StopSimulationAsync(simulationId);
-        return Results.Ok(new { message = "Simulation arrêtée", simulationId });
-    });
-
-    // Démarrer une simulation de tournée complète avec waypoints
-    app.MapPost("/api/demo/gps/route", async (
-        IGpsSimulationService gpsService,
-        RouteSimulationRequest request) =>
-    {
-        var waypoints = request.Waypoints.Select(w => (w.Lat, w.Lon)).ToList();
-        var simulationIds = await gpsService.SimulateDeliveryRouteAsync(
-            waypoints, 
-            request.AverageSpeedKmh,
-            null);
-        
-        return Results.Ok(new 
-        { 
-            simulationIds, 
-            message = $"Tournée simulée avec {waypoints.Count} waypoints",
-            waypoints = request.Waypoints
-        });
-    });
-}
-
-// Requête pour simulation de tournée
-public record RouteSimulationRequest(
-    List<Waypoint> Waypoints,
-    double AverageSpeedKmh = 25
-);
-
-public record Waypoint(double Lat, double Lon);
+// Requête pour simulation de tournée (désactivé)
+// public record RouteSimulationRequest(
+//     List<Waypoint> Waypoints,
+//     double AverageSpeedKmh = 25
+// );
+// 
+// public record Waypoint(double Lat, double Lon);
 
 // Configuration du port pour Railway et autres plateformes cloud
 var port = Environment.GetEnvironmentVariable("PORT");

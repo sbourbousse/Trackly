@@ -41,20 +41,20 @@
 		let urgency: UrgencyLevel = 'normal';
 
 		if (diffMs < 0) {
-			// Date dépassée
+			// Date dans le passé
 			urgency = 'overdue';
 			const absDiffMinutes = Math.abs(diffMinutes);
 			const absDiffHours = Math.abs(diffHours);
 			const absDiffDays = Math.abs(diffDays);
 
 			if (absDiffMinutes < 60) {
-				relativeTime = `En retard de ${absDiffMinutes} minute${absDiffMinutes > 1 ? 's' : ''}`;
+				relativeTime = `il y a ${absDiffMinutes} minute${absDiffMinutes > 1 ? 's' : ''}`;
 			} else if (absDiffHours < 24) {
-				relativeTime = `En retard de ${absDiffHours} heure${absDiffHours > 1 ? 's' : ''}`;
+				relativeTime = `il y a ${absDiffHours} heure${absDiffHours > 1 ? 's' : ''}`;
 			} else if (absDiffDays === 1) {
-				relativeTime = 'En retard de 1 jour';
+				relativeTime = 'il y a 1 jour';
 			} else {
-				relativeTime = `En retard de ${absDiffDays} jours`;
+				relativeTime = `il y a ${absDiffDays} jours`;
 			}
 		} else if (diffMinutes < 30) {
 			// Moins de 30 minutes

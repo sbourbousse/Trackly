@@ -11,6 +11,7 @@
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
+	import PackageIcon from '@lucide/svelte/icons/package';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import {
 		Table,
@@ -168,7 +169,10 @@
 
 		<Card>
 			<CardHeader>
-				<CardTitle>Livraisons ({routeDetail.deliveries.length})</CardTitle>
+				<CardTitle class="flex items-center gap-2">
+					<PackageIcon class="size-4 text-muted-foreground" />
+					Livraisons ({routeDetail.deliveries.length})
+				</CardTitle>
 				<p class="text-sm text-muted-foreground">
 					Ordre des arrêts. Utilisez les flèches pour réorganiser.
 				</p>

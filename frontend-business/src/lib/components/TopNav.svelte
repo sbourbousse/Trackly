@@ -6,12 +6,17 @@
 	import { themeState, setTheme } from '$lib/stores/theme.svelte';
 	import MoonIcon from '@lucide/svelte/icons/moon';
 	import SunIcon from '@lucide/svelte/icons/sun';
+	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
+	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
+	import PackageIcon from '@lucide/svelte/icons/package';
 	import { cn } from '$lib/utils';
+	import type { ComponentType } from 'svelte';
+	import type { IconProps } from 'lucide-svelte';
 
-	const links = [
-		{ href: '/dashboard', label: 'Dashboard' },
-		{ href: '/orders', label: 'Commandes' },
-		{ href: '/deliveries', label: 'Livraisons' }
+	const links: Array<{ href: string; label: string; icon: ComponentType<IconProps> }> = [
+		{ href: '/dashboard', label: 'Dashboard', icon: LayoutDashboardIcon },
+		{ href: '/orders', label: 'Commandes', icon: ClipboardListIcon },
+		{ href: '/deliveries', label: 'Livraisons', icon: PackageIcon }
 	];
 
 	let { title, subtitle } = $props<{
@@ -49,8 +54,9 @@
 						variant={pathname === link.href ? 'secondary' : 'ghost'}
 						size="sm"
 						href={link.href}
-						class={cn(pathname === link.href && 'bg-primary/10 text-primary hover:bg-primary/20')}
+						class={cn('flex items-center gap-1.5', pathname === link.href && 'bg-primary/10 text-primary hover:bg-primary/20')}
 					>
+						<svelte:component this={link.icon} class="size-4" />
 						{link.label}
 					</Button>
 				{/each}

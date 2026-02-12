@@ -4,6 +4,7 @@
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import XIcon from '@lucide/svelte/icons/x';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
 	import { dateRangeState } from '$lib/stores/dateRange.svelte';
 	import { getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
@@ -190,7 +191,7 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." />
+	<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." icon={ClipboardListIcon} />
 
 	<DateFilterCard
 		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
@@ -218,7 +219,10 @@
 			<CardHeader class="space-y-1">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<CardTitle>Commandes récentes</CardTitle>
+						<CardTitle class="flex items-center gap-2">
+							<ClipboardListIcon class="size-4 text-muted-foreground" />
+							Commandes récentes
+						</CardTitle>
 						<p class="text-sm text-muted-foreground">Dernière synchro: {ordersState.lastSyncAt}</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">

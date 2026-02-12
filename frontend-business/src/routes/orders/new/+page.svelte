@@ -1,5 +1,6 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
 	import { goto } from '$app/navigation';
 	import { createOrder } from '$lib/api/orders';
 	import { geocodeAddress } from '$lib/api/geocode';
@@ -9,6 +10,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
+	import ClipboardEditIcon from '@lucide/svelte/icons/clipboard-edit';
 	import { Label } from '$lib/components/ui/label';
 	import { Root as PopoverRoot, Content as PopoverContent, Trigger as PopoverTrigger } from '$lib/components/ui/popover';
 	import { Calendar } from '$lib/components/ui/calendar';
@@ -123,11 +125,14 @@
 </script>
 
 <div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
-	<PageHeader title="Nouvelle commande" subtitle="Créer une nouvelle commande à livrer." />
+	<PageHeader title="Nouvelle commande" subtitle="Créer une nouvelle commande à livrer." icon={ClipboardListIcon} />
 
 		<Card>
 			<CardHeader>
-				<CardTitle>Informations de la commande</CardTitle>
+				<CardTitle class="flex items-center gap-2">
+					<ClipboardEditIcon class="size-4 text-muted-foreground" />
+					Informations de la commande
+				</CardTitle>
 				<CardDescription>Renseignez le client et l'adresse de livraison.</CardDescription>
 			</CardHeader>
 			<CardContent>

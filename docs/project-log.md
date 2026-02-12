@@ -3,6 +3,68 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-12 | Cohérence des Icônes dans l'Application
+
+**Tâche** : Ajouter des icônes cohérentes dans toute l'application pour les concepts clés : Commandes, Livraisons, Tournées, Livreurs.
+
+**Problème** : L'application manquait d'indicateurs visuels cohérents pour identifier rapidement le type de contenu, rendant la navigation moins intuitive.
+
+**Fichier créé** :
+- `ICONS_CONSISTENCY.md` – Documentation complète du système d'icônes
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/PageHeader.svelte` – Ajout d'une prop `icon` optionnelle
+- `frontend-business/src/lib/components/TopNav.svelte` – Ajout d'icônes dans la navigation
+- `frontend-business/src/lib/components/AppSidebar.svelte` – Mise à jour des icônes pour cohérence
+- Toutes les pages principales (`routes/*`) – Ajout d'icônes dans PageHeader et CardTitle
+
+**Convention des Icônes** :
+- **Commandes** : `ClipboardList` (liste) / `ClipboardEdit` (édition)
+- **Livraisons** : `Package`
+- **Tournées** : `Route` (navigation) / `MapPin` (détails)
+- **Livreurs** : `User` (liste) / `UserCircle` (détails)
+
+**Implémentation** :
+1. **PageHeader** :
+   - Nouvelle prop `icon?: ComponentType<IconProps>`
+   - Icône affichée à gauche du titre (size-5, text-muted-foreground)
+   - Ajoutée dans toutes les pages principales (18 pages)
+
+2. **CardTitle** :
+   - Modification inline avec flexbox
+   - Icône size-4 avec gap-2
+   - ~25 CardTitle mis à jour dans le dashboard, listes, et formulaires
+
+3. **Navigation TopNav** :
+   - Icônes ajoutées aux liens de navigation
+   - Dashboard → `LayoutDashboard`
+   - Commandes → `ClipboardList`
+   - Livraisons → `Package`
+
+4. **Sidebar (AppSidebar)** :
+   - Mise à jour complète pour cohérence
+   - Commandes : `PackageIcon` → `ClipboardListIcon`
+   - Livraisons : `TruckIcon` → `PackageIcon`
+   - Livreurs : `UsersIcon` → `UserIcon`
+   - Sous-menus : icônes plus sémantiques (`ClipboardEdit`, `UserPlus`, `MapPin`)
+
+**Design** :
+- Taille : size-5 (PageHeader), size-4 (CardTitle et Navigation)
+- Couleur : `text-muted-foreground` (cohérent avec le design system)
+- Espacement : gap-2 (titres), gap-1.5 (navigation)
+
+**Résultat** :
+- ✅ Reconnaissance visuelle immédiate du type de contenu
+- ✅ Cohérence dans toute l'application
+- ✅ Navigation plus intuitive
+- ✅ Interface plus professionnelle
+- ✅ Support complet du mode sombre
+- ✅ Accessibilité respectée (icônes complètent le texte sans le remplacer)
+
+**Notes** : Utilisation de Lucide Icons (déjà présent dans le projet). Aucune nouvelle dépendance. Pattern réutilisable pour les futurs ajouts. Les icônes utilisent `svelte:component` pour le rendu dynamique.
+
+---
+
 ## 2026-02-12 | Nombre de Livraisons et Visualisation de Progression
 
 **Tâche** : Ajouter l'affichage du nombre de livraisons par commande avec code couleur si aucune livraison, et créer une visualisation intelligente de progression des tournées avec des icônes colorées.

@@ -2,6 +2,40 @@
 
 > **Format** : Date | Décision | Raison | Alternatives considérées
 
+## 2026-02-12 | Système d'Icônes Cohérent pour les Concepts Métier
+**Décision** : Définir et appliquer une convention d'icônes cohérente dans toute l'application pour les 4 concepts clés : Commandes, Livraisons, Tournées, Livreurs.
+
+**Raison** :
+- Améliore la reconnaissance visuelle et la navigation
+- Réduit la charge cognitive de l'utilisateur
+- Professionnalise l'interface
+- Crée une cohérence dans toute l'expérience utilisateur
+- Facilite l'apprentissage de l'application
+
+**Alternatives** :
+- Pas d'icônes (rejeté : moins intuitif, plus textuel)
+- Icônes uniquement dans la navigation (rejeté : manque de cohérence)
+- Icônes aléatoires sans convention (rejeté : confusion)
+- Icônes uniquement pour certaines sections (rejeté : incohérence)
+
+**Convention adoptée** :
+| Concept | Icône Principale | Icône Secondaire | Usage |
+|---------|-----------------|------------------|-------|
+| Commande | ClipboardList | ClipboardEdit | Liste vs Édition |
+| Livraison | Package | - | Toutes vues |
+| Tournée | Route | MapPin | Liste vs Détails |
+| Livreur | User | UserCircle | Liste vs Profil |
+
+**Implémentation** :
+- `PageHeader` : Prop `icon` optionnelle (size-5)
+- `CardTitle` : Inline flexbox (size-4)
+- `TopNav` : Icônes dans les liens de navigation (size-4)
+- Style : `text-muted-foreground` pour cohérence discrète
+
+**Impact** : 18 pages modifiées, ~35 instances d'icônes ajoutées. Aucune nouvelle dépendance (Lucide déjà présent).
+
+---
+
 ## 2026-02-12 | Visualisation de Progression avec Icônes au Lieu de Colonnes Textuelles
 **Décision** : Remplacer la colonne "Date" des tournées par une visualisation graphique de progression avec des icônes colorées représentant chaque livraison et son statut.
 

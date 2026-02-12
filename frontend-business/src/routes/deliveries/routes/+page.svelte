@@ -1,5 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import RouteIcon from '@lucide/svelte/icons/route';
+	import MapPinIcon from '@lucide/svelte/icons/map-pin';
 	import { dateRangeState, getListFilters } from '$lib/stores/dateRange.svelte';
 	import { getRoutes, type ApiRoute } from '$lib/api/routes';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -92,7 +94,7 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Tournées" subtitle="Liste des tournées créées (une par batch de livraisons)." />
+	<PageHeader title="Tournées" subtitle="Liste des tournées créées (une par batch de livraisons)." icon={RouteIcon} />
 
 	<DateFilterCard
 		chartTitle="Tournées"
@@ -111,7 +113,10 @@
 		<CardHeader class="space-y-1">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<CardTitle>Liste des tournées</CardTitle>
+					<CardTitle class="flex items-center gap-2">
+						<MapPinIcon class="size-4 text-muted-foreground" />
+						Liste des tournées
+					</CardTitle>
 					<p class="text-sm text-muted-foreground">
 						{routeList.length} tournée{routeList.length !== 1 ? 's' : ''}
 					</p>

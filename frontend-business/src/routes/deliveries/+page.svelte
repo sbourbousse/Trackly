@@ -5,6 +5,7 @@
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import XIcon from '@lucide/svelte/icons/x';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import PackageIcon from '@lucide/svelte/icons/package';
 	import { dateRangeState, getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { deleteDeliveriesBatch, getDeliveriesStats, type DeliveryStatsResponse } from '$lib/api/deliveries';
@@ -193,7 +194,7 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Livraisons" subtitle="Liste des livraisons et suivi temps réel chauffeur." />
+	<PageHeader title="Livraisons" subtitle="Liste des livraisons et suivi temps réel chauffeur." icon={PackageIcon} />
 
 	<DateFilterCard
 		chartTitle={chartData.byHour ? 'Livraisons par heure' : chartData.byMonth ? 'Livraisons par mois' : 'Livraisons par jour'}
@@ -222,7 +223,10 @@
 		<CardHeader class="space-y-1">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<CardTitle>Liste des livraisons</CardTitle>
+					<CardTitle class="flex items-center gap-2">
+						<PackageIcon class="size-4 text-muted-foreground" />
+						Liste des livraisons
+					</CardTitle>
 					<p class="text-sm text-muted-foreground">
 						{statusFilter
 							? `${filteredDeliveries.length} sur ${deliveriesState.routes.length} livraison${deliveriesState.routes.length > 1 ? 's' : ''}`

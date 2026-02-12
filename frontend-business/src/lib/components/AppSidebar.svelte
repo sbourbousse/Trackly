@@ -18,16 +18,15 @@
 	import { Switch } from '$lib/components/ui/switch';
 	import { themeState, setTheme } from '$lib/stores/theme.svelte';
 	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
-	import TruckIcon from '@lucide/svelte/icons/truck';
+	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
+	import ClipboardEditIcon from '@lucide/svelte/icons/clipboard-edit';
 	import PackageIcon from '@lucide/svelte/icons/package';
-	import UsersIcon from '@lucide/svelte/icons/users';
+	import UserIcon from '@lucide/svelte/icons/user';
+	import UserPlusIcon from '@lucide/svelte/icons/user-plus';
 	import MoonIcon from '@lucide/svelte/icons/moon';
 	import SunIcon from '@lucide/svelte/icons/sun';
-	import FilePlusIcon from '@lucide/svelte/icons/file-plus';
 	import UploadIcon from '@lucide/svelte/icons/upload';
-	import PlusCircleIcon from '@lucide/svelte/icons/plus-circle';
 	import MapPinIcon from '@lucide/svelte/icons/map-pin';
-	import ListIcon from '@lucide/svelte/icons/list';
 	import RouteIcon from '@lucide/svelte/icons/route';
 
 	let pathname = $derived(page.url.pathname);
@@ -87,7 +86,7 @@
 						>
 							{#snippet child({ props })}
 								<a href="/orders" {...props}>
-									<PackageIcon class="size-4 shrink-0" aria-hidden="true" />
+									<ClipboardListIcon class="size-4 shrink-0" aria-hidden="true" />
 									<span>Commandes</span>
 								</a>
 							{/snippet}
@@ -95,7 +94,7 @@
 						<SidebarMenuSub>
 							<SidebarMenuSubItem>
 								<SidebarMenuSubButton href="/orders/new" isActive={pathname === '/orders/new'}>
-									<FilePlusIcon class="size-4 shrink-0" aria-hidden="true" />
+									<ClipboardEditIcon class="size-4 shrink-0" aria-hidden="true" />
 									<span>Créer commande</span>
 								</SidebarMenuSubButton>
 							</SidebarMenuSubItem>
@@ -121,7 +120,7 @@
 						>
 							{#snippet child({ props })}
 								<a href="/deliveries" {...props}>
-									<TruckIcon class="size-4 shrink-0" aria-hidden="true" />
+									<PackageIcon class="size-4 shrink-0" aria-hidden="true" />
 									<span>Livraisons</span>
 								</a>
 							{/snippet}
@@ -135,7 +134,7 @@
 							</SidebarMenuSubItem>
 							<SidebarMenuSubItem>
 								<SidebarMenuSubButton href="/deliveries/new" isActive={pathname === '/deliveries/new'}>
-									<PlusCircleIcon class="size-4 shrink-0" aria-hidden="true" />
+									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />
 									<span>Créer tournée</span>
 								</SidebarMenuSubButton>
 							</SidebarMenuSubItem>
@@ -155,7 +154,7 @@
 						>
 							{#snippet child({ props })}
 								<a href="/drivers" {...props}>
-									<UsersIcon class="size-4 shrink-0" aria-hidden="true" />
+									<UserIcon class="size-4 shrink-0" aria-hidden="true" />
 									<span>Livreurs</span>
 								</a>
 							{/snippet}
@@ -163,7 +162,7 @@
 						<SidebarMenuSub>
 							<SidebarMenuSubItem>
 								<SidebarMenuSubButton href="/drivers/new" isActive={pathname === '/drivers/new'}>
-									<PlusCircleIcon class="size-4 shrink-0" aria-hidden="true" />
+									<UserPlusIcon class="size-4 shrink-0" aria-hidden="true" />
 									<span>Créer livreur</span>
 								</SidebarMenuSubButton>
 							</SidebarMenuSubItem>

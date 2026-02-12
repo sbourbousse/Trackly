@@ -61,13 +61,20 @@ public sealed record DeliveryCountByHour(string Hour, int Count);
 
 // --- Routes (tournées) ---
 
+public sealed record DeliveryStatusSummary(
+    int Pending,
+    int InProgress,
+    int Completed,
+    int Failed);
+
 public sealed record RouteResponse(
     Guid Id,
     Guid DriverId,
     string? Name,
     DateTimeOffset CreatedAt,
     int DeliveryCount,
-    string DriverName);
+    string DriverName,
+    DeliveryStatusSummary StatusSummary);
 
 public sealed record RouteListResponse
 {

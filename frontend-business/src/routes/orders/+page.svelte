@@ -12,7 +12,8 @@
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import OrderDateIndicator from '$lib/components/OrderDateIndicator.svelte';
+	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
+	import DeliveryCountBadge from '$lib/components/DeliveryCountBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -352,7 +353,7 @@
 										<StatusBadge type="order" status={order.status} />
 									</TableCell>
 									<TableCell>
-										<OrderDateIndicator orderDate={order.orderDate} />
+										<RelativeTimeIndicator date={order.orderDate} showTime={true} />
 									</TableCell>
 									<TableCell class="tabular-nums font-medium" onclick={(e) => e.stopPropagation()}>
 										<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
@@ -362,7 +363,9 @@
 									<TableCell>{order.client}</TableCell>
 									<TableCell class="text-muted-foreground whitespace-nowrap">{order.phoneNumber ?? '—'}</TableCell>
 									<TableCell>{order.address}</TableCell>
-									<TableCell class="tabular-nums">{order.deliveries}</TableCell>
+									<TableCell>
+										<DeliveryCountBadge count={order.deliveryCount ?? 0} />
+									</TableCell>
 								</TableRow>
 							{/each}
 						</TableBody>

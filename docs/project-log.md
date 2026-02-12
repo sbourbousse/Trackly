@@ -3,6 +3,205 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-12 | Nombre de Livraisons et Visualisation de Progression
+
+**Tâche** : Ajouter l'affichage du nombre de livraisons par commande avec code couleur si aucune livraison, et créer une visualisation intelligente de progression des tournées avec des icônes colorées.
+
+**Problème 1** : Dans la liste des commandes, impossible de savoir rapidement combien de livraisons sont associées à chaque commande, ni d'identifier les commandes sans livraison.
+
+**Problème 2** : Dans la liste des tournées, la colonne "Date" n'était pas très informative et il n'y avait aucune indication visuelle sur l'état d'avancement de chaque tournée.
+
+**Fichiers créés** :
+- `frontend-business/src/lib/components/DeliveryCountBadge.svelte` – Badge affichant le nombre de livraisons avec alerte orange si = 0
+- `frontend-business/src/lib/components/RouteProgressIndicator.svelte` – Visualisation de l'état d'avancement avec icônes colorées
+- `DELIVERY_COUNT_AND_PROGRESS.md` – Documentation complète des fonctionnalités
+
+**Fichiers modifiés - Backend** :
+- `backend/Features/Orders/OrderDtos.cs` – Ajout du champ `DeliveryCount` à `OrderResponse`
+- `backend/Features/Orders/OrderEndpoints.cs` – Modification de `GetOrders()` pour calculer le nombre de livraisons par commande, mise à jour de `ToResponse()`
+- `backend/Features/Deliveries/DeliveryDtos.cs` – Ajout de `DeliveryStatusSummary` et mise à jour de `RouteResponse`
+- `backend/Features/Deliveries/RouteEndpoints.cs` – Modification de `GetRoutes()` pour inclure le résumé des statuts des livraisons
+
+**Fichiers modifiés - Frontend** :
+- `frontend-business/src/lib/api/orders.ts` – Ajout de `deliveryCount` à `ApiOrder`
+- `frontend-business/src/lib/api/routes.ts` – Ajout de `DeliveryStatusSummary` et `statusSummary` à `ApiRoute`
+- `frontend-business/src/lib/stores/orders.svelte.ts` – Utilisation de `order.deliveryCount` au lieu de valeur fixe
+- `frontend-business/src/lib/offline/mockData.ts` – Calcul dynamique de `deliveryCount` et `statusSummary` dans les mock data
+- `frontend-business/src/routes/orders/+page.svelte` – Utilisation de `DeliveryCountBadge` dans la colonne Livraisons
+- `frontend-business/src/routes/deliveries/routes/+page.svelte` – Remplacement de la colonne "Date" par "Progression" avec `RouteProgressIndicator`
+
+**Implémentation - Backend** :
+1. **OrderResponse** : Ajout du champ `DeliveryCount` calculé par une requête groupée efficace
+2. **RouteResponse** : Ajout de `DeliveryStatusSummary` avec le nombre de livraisons dans chaque statut (Pending, InProgress, Completed, Failed)
+3. **Optimisation** : Une seule requête additionnelle avec `GroupBy` au lieu d'une requête par élément
+
+**Implémentation - Frontend** :
+1. **DeliveryCountBadge** :
+   - Badge avec code couleur orange si `count = 0` (alerte)
+   - Badge gris standard si `count > 0`
+   - Pluriel automatique ("livraison" vs "livraisons")
+
+2. **RouteProgressIndicator** :
+   - Icônes selon statut : ✓ (vert), ◉ (bleu/gris), ✗ (rouge)
+   - Opacité décroissante pour les livraisons en attente (100% → 30%)
+   - Indicateur textuel "X/Y" (X livrées sur Y total)
+   - Tooltip par icône : "Livraison #N - Statut"
+   - Tooltip sur indicateur : Résumé détaillé avec décompte par statut
+
+3. **Mock Data** :
+   - `deliveryCount` calculé dynamiquement en comptant les livraisons par commande
+   - `statusSummary` calculé en groupant les livraisons par statut
+
+**Résultat** :
+- ✅ Identification immédiate des commandes sans livraison (badge orange)
+- ✅ Vue d'ensemble instantanée de l'état de chaque tournée
+- ✅ Visualisation de l'ordre et du statut des livraisons avec icônes colorées
+- ✅ Information détaillée accessible via tooltips
+- ✅ Code couleur cohérent avec les badges de statut existants
+- ✅ Performance optimale avec requêtes groupées
+- ✅ Support complet du mode sombre
+
+**Notes** : La colonne "Date" des tournées a été remplacée car moins informative que la visualisation de progression. Les icônes utilisent les couleurs des statuts de livraison pour une cohérence visuelle maximale. L'opacité décroissante des livraisons en attente crée un effet de "file d'attente" intuitif.
+
+---
+
+## 2026-02-12 | Affichage de Temps Relatif avec Code Couleur Unifié
+
+**Tâche** : Ajouter l'affichage de temps relatif avec tooltip pour la date complète dans toutes les interfaces, avec un code couleur unifié à travers le site.
+
+**Problème** : Les dates étaient affichées en format complet dans les listes, prenant beaucoup de place et rendant difficile l'identification rapide des urgences.
+
+**Fichiers créés** :
+- `frontend-business/src/lib/components/RelativeTimeIndicator.svelte` – Nouveau composant pour affichage temps relatif avec code couleur
+- `RELATIVE_TIME_INDICATOR.md` – Documentation complète du système de temps relatif
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/deliveries/new/+page.svelte` – Ajout colonne "Date" avec temps relatif dans "Commandes à livrer"
+- `frontend-business/src/routes/deliveries/+page.svelte` – Ajout colonne "Date" avec temps relatif dans "Liste des livraisons"
+- `frontend-business/src/routes/dashboard/+page.svelte` – Remplacement `OrderDateIndicator` par `RelativeTimeIndicator` dans "Commandes récentes"
+- `frontend-business/src/routes/orders/+page.svelte` – Utilisation de `RelativeTimeIndicator` dans la liste des commandes
+- `frontend-business/src/routes/orders/[id]/+page.svelte` – Utilisation de `RelativeTimeIndicator` dans le détail
+
+**Composant RelativeTimeIndicator** :
+- **Affichage principal** : Temps relatif court (ex: "Dans 2h", "Il y a 3j", "Demain")
+- **Tooltip** : Date et heure complètes (ex: "12/02/2026 14:30")
+- **Code couleur selon urgence** :
+  - Rouge : Date passée (en retard)
+  - Jaune : < 30 minutes (urgent)
+  - Orange : 30min - 2h (bientôt)
+  - Gris : > 2h (normal)
+- **Option `showTime`** : Affiche l'heure pour dates < 24h (ex: "Dans 2h (14:30)")
+
+**Format de temps relatif** :
+- **Passé** : "Il y a Xm/h/j/sem" ou "Hier"
+- **Futur** : "Dans Xm/h/j/sem", "Maintenant", "Demain"
+- **Compacité** : Formats courts pour économiser l'espace
+
+**Interfaces mises à jour** :
+1. ✅ Nouvelle tournée → Commandes à livrer : Colonne "Date" avec temps relatif
+2. ✅ Liste des livraisons : Colonne "Date" ajoutée
+3. ✅ Dashboard → Commandes récentes : Temps relatif au lieu de date complète
+4. ✅ Liste des commandes : Uniformisation avec temps relatif
+5. ✅ Détail de commande : Temps relatif dans les infos
+
+**Code couleur unifié** : Le même système de couleur est utilisé par `OrderDateIndicator` (date complète → temps relatif dans tooltip) et `RelativeTimeIndicator` (temps relatif → date complète dans tooltip), garantissant une cohérence visuelle complète.
+
+**Résultat** : Amélioration de la lisibilité et identification immédiate des urgences grâce au code couleur, tout en conservant l'accès à la date complète via tooltip.
+
+**Notes** : Les deux composants (`OrderDateIndicator` et `RelativeTimeIndicator`) coexistent et peuvent être utilisés selon le contexte (détail vs liste). Support complet du mode sombre et format français.
+
+---
+
+## 2026-02-12 | Support des Filtres de Calendrier en Mode Démo
+
+**Tâche** : Corriger les filtres de calendrier qui ne fonctionnaient pas en mode démo.
+
+**Problème** : Lorsque l'utilisateur sélectionnait des dates dans le filtre calendrier, les données de démo ne s'adaptaient pas. Toutes les données étaient affichées quel que soit le filtre.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/offline/mockData.ts` – Ajout des filtres dans `getMockOrders()`, `getMockDeliveries()`, et `getMockRoutes()`
+- `frontend-business/src/lib/offline/mockApi.ts` – Simplification pour passer les filtres directement, amélioration de `getOrdersStats()` pour générer des stats basées sur les données filtrées
+- `frontend-business/src/lib/api/orders.ts` – Correction de l'appel à `getOrdersStats()` pour passer les filtres
+- `DEMO_FILTERS_FIX.md` – Documentation de la correction
+
+**Implémentation** :
+1. **Tournées** : Support de `dateFrom`, `dateTo`, et `driverId`
+2. **Commandes** : Support de `dateFrom`, `dateTo`, `dateFilter` (CreatedAt/OrderDate), et `search`
+3. **Livraisons** : Support de `dateFrom`, `dateTo`, `dateFilter`, et `routeId`
+4. **Stats** : Génération basée sur les vraies données filtrées au lieu de données factices
+
+**Logique de filtrage** :
+- Normalisation des dates pour comparer au niveau du jour
+- `dateFrom` inclut toute la journée de début (00:00:00)
+- `dateTo` inclut toute la journée de fin (23:59:59)
+- Recherche textuelle insensible à la casse
+- Filtres cumulatifs (tous doivent être satisfaits)
+
+**Résultat** : Les filtres de calendrier fonctionnent maintenant correctement en mode démo :
+- ✅ Filtrage des tournées par date et livreur
+- ✅ Filtrage des commandes par date et recherche textuelle
+- ✅ Filtrage des livraisons par date et tournée
+- ✅ Stats générées dynamiquement selon les filtres
+- ✅ Expérience utilisateur cohérente avec le mode en ligne
+
+**Notes** : Les filtres sont rétrocompatibles (optionnels). Si aucun filtre n'est spécifié, toutes les données sont retournées.
+
+---
+
+## 2026-02-12 | Correction du Mode Démo et Dates Cohérentes
+
+**Tâche 1** : Corriger le bouton "Mode demo" qui ne configurait pas correctement le mode démo et n'affichait pas les données de démonstration.
+
+**Problème** : Le bouton "Mode demo" effectuait une simple redirection vers `/dashboard` sans activer le mode offline, configurer le `DEMO_TENANT_ID` ou initialiser les données de démo. Résultat : l'utilisateur était connecté avec un tenantId réel (ou aucun) et aucune donnée de démo n'était affichée.
+
+**Tâche 2** : Adapter les dates des données de démo pour qu'elles soient réalistes et cohérentes avec les statuts.
+
+**Problème** : Les dates des commandes et livraisons de démo étaient générées aléatoirement dans le passé, sans cohérence avec les statuts (une commande "Pending" pouvait avoir une date passée, etc.).
+
+**Fichiers créés** :
+- `frontend-business/src/lib/stores/offline.svelte.ts` – Store réactif Svelte 5 pour gérer l'état du mode offline
+- `DEMO_MODE_FIX.md` – Documentation détaillée de la correction
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/login/+page.svelte` – Ajout de la fonction `handleDemoMode()` et modification du bouton pour l'utiliser
+- `frontend-business/src/lib/components/DemoBanner.svelte` – Utilisation du store réactif au lieu d'une fonction non-réactive
+- `frontend-business/src/lib/offline/config.ts` – Mise à jour pour utiliser le store réactif
+- `frontend-business/src/lib/offline/mockData.ts` – Refonte complète de la génération des données de démo avec dates cohérentes
+- `docs/decision-log.md` – Documentation de la décision d'utiliser un store réactif
+
+**Implémentation** :
+1. Création d'un store réactif `offlineState` avec Svelte 5 Runes
+2. Fonction `handleDemoMode()` qui :
+   - Active le mode offline via `setOfflineModeReactive(true)`
+   - Configure le `DEMO_TENANT_ID` (`'demo-tenant-fake-001'`)
+   - Configure un token de démo
+   - Authentifie l'utilisateur avec des données de démo
+   - Redirige vers le dashboard
+3. Modification du bouton pour appeler `handleDemoMode()` au lieu de faire un lien simple
+4. Mise à jour du `DemoBanner` pour être réactif aux changements de mode
+5. **Génération intelligente des données de démo** :
+   - Dates réparties entre J-7 et J+7 (7 jours avant/après aujourd'hui)
+   - Heures aléatoires entre 8h et 18h pour plus de réalisme
+   - Statuts cohérents avec les dates :
+     - **Passé (J-7 à J-1)** : "Delivered" pour commandes, "Completed" pour livraisons
+     - **Aujourd'hui (J)** : "InDelivery" pour commandes, "InProgress" pour livraisons
+     - **Futur (J+1 à J+7)** : "Pending" pour commandes et livraisons
+   - Tournées générées dynamiquement selon les dates avec statuts cohérents
+   - Dates de complétion des livraisons (2 à 8 heures après création)
+
+**Résultat** : Le mode démo fonctionne maintenant correctement avec :
+- ✅ Activation automatique du mode offline
+- ✅ Configuration du `DEMO_TENANT_ID`
+- ✅ Affichage du banner de démo en temps réel
+- ✅ Données de démonstration réalistes et cohérentes temporellement
+- ✅ 8 commandes réparties sur 15 jours avec statuts logiques
+- ✅ Plusieurs tournées avec dates et statuts cohérents
+- ✅ Isolation complète des données réelles
+
+**Notes** : Le store réactif permet au `DemoBanner` de s'afficher immédiatement sans rechargement de page. Les données de démo sont regénérées à chaque initialisation en fonction de la date actuelle, garantissant toujours des données pertinentes.
+
+---
+
 ## 2026-02-04 | Suppression de la colonne ETA non fonctionnelle
 
 **Tâche** : Supprimer la colonne ETA (Estimated Time of Arrival) qui affichait une valeur hardcodée "11:40" sans fonctionnalité réelle.

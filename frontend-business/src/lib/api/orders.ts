@@ -8,6 +8,7 @@ export type ApiOrder = {
 	address: string;
 	orderDate: string | null;
 	status: string;
+	deliveryCount: number;
 };
 
 /** Filtres optionnels pour la liste des commandes (passés en query). */
@@ -63,7 +64,7 @@ export const getOrders = async (filters?: OrdersListFilters) => {
 export const getOrdersStats = async (filters?: OrderStatsListFilters) => {
 	if (browser && isOfflineMode()) {
 		const { mockOrdersApi } = await import('../offline/mockApi');
-		return await mockOrdersApi.getOrdersStats();
+		return await mockOrdersApi.getOrdersStats(filters);
 	}
 	const path = `/api/orders/stats${ordersQueryParams(filters)}`;
 	return await apiFetch<OrderStatsResponse>(path);

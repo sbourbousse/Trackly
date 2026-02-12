@@ -6,7 +6,7 @@
 	import type { ApiOrderDetail } from '$lib/api/orders';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import OrderDateIndicator from '$lib/components/OrderDateIndicator.svelte';
+	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -112,7 +112,7 @@
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Date et heure de la commande</p>
 							<p class="font-medium">
-								<OrderDateIndicator orderDate={order.orderDate} />
+								<RelativeTimeIndicator date={order.orderDate} showTime={true} />
 							</p>
 						</div>
 						<div class="space-y-1">

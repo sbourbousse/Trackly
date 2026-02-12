@@ -4,29 +4,18 @@
  * Pour activer le mode offline, définir la variable d'environnement:
  * PUBLIC_OFFLINE_MODE=true
  * 
- * Ou modifier directement la valeur par défaut ci-dessous pour le développement
+ * Ou utiliser setOfflineModeReactive() depuis le store offline.svelte.ts
  */
+
+import { offlineState } from '../stores/offline.svelte';
 
 export interface OfflineConfig {
   mockDelay: number; // Délai en ms pour simuler la latence réseau
 }
 
-// Track if we've already logged the offline mode status
-let hasLoggedOfflineStatus = false;
-
-/**
- * Log offline mode status (only once)
- */
-function logOfflineStatus(): void {
-  if (!hasLoggedOfflineStatus) {
-    console.log('[Offline] 🔌 Mode offline ACTIVÉ - Utilisation des données de démonstration');
-    hasLoggedOfflineStatus = true;
-  }
-}
-
 /**
  * Vérifie si le mode offline est activé
- * Cette fonction doit être appelée à chaque fois pour éviter les problèmes SSR
+ * Cette fonction lit l'état réactif du store
  */
 export function isOfflineMode(): boolean {
   // En SvelteKit, utiliser import.meta.env côté client
@@ -34,31 +23,17 @@ export function isOfflineMode(): boolean {
     return false; // Côté serveur, toujours désactiver
   }
 
-  // Vérifier d'abord la variable d'environnement
-  const envValue = import.meta.env.PUBLIC_OFFLINE_MODE;
-  if (envValue === 'true' || envValue === '1') {
-    logOfflineStatus();
-    return true;
-  }
-  
-  // Fallback: vérifier le localStorage pour permettre le toggle dynamique
-  if (window.localStorage) {
-    const stored = localStorage.getItem('trackly_offline_mode');
-    if (stored === 'true') {
-      logOfflineStatus();
-      return true;
-    }
-  }
-  
-  return false;
+  return offlineState.isOffline;
 }
 
 /**
  * Active ou désactive le mode offline dynamiquement
+ * @deprecated Utiliser setOfflineModeReactive() depuis offline.svelte.ts à la place
  */
 export function setOfflineMode(enabled: boolean): void {
   if (typeof window !== 'undefined' && window.localStorage) {
     localStorage.setItem('trackly_offline_mode', enabled ? 'true' : 'false');
+    offlineState.isOffline = enabled;
     console.log(`[Offline] Mode ${enabled ? 'activé' : 'désactivé'}`);
   }
 }

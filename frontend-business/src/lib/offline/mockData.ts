@@ -37,31 +37,135 @@ const DEMO_CUSTOMERS = [
   { name: 'Boulangerie Thêta', address: '12 Rue de l\'Aiguillerie, 34000 Montpellier', phone: '+33 6 88 88 88 88' }
 ];
 
-// Commandes fictives
-function generateMockOrders(): ApiOrder[] {
-  return DEMO_CUSTOMERS.map((customer, index) => ({
-    id: `demo-order-${String(index + 1).padStart(3, '0')}`,
-    customerName: customer.name,
-    address: customer.address,
-    orderDate: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000).toISOString(),
-    status: ['Pending', 'InDelivery', 'Delivered'][Math.floor(Math.random() * 3)]
-  }));
+/**
+ * Génère une date entre J-7 et J+7
+ * @param dayOffset Décalage en jours par rapport à aujourd'hui (négatif = passé, positif = futur)
+ */
+function getDateWithOffset(dayOffset: number): Date {
+  const date = new Date();
+  date.setDate(date.getDate() + dayOffset);
+  // Ajouter une heure aléatoire entre 8h et 18h pour plus de réalisme
+  date.setHours(8 + Math.floor(Math.random() * 10), Math.floor(Math.random() * 60), 0, 0);
+  return date;
 }
 
-// Livraisons fictives
-function generateMockDeliveries(): ApiDelivery[] {
-  return DEMO_CUSTOMERS.slice(0, 5).map((customer, index) => {
-    const driver = DEMO_DRIVERS[index % DEMO_DRIVERS.length];
+/**
+ * Détermine le statut d'une commande en fonction de la date
+ */
+function getOrderStatus(orderDate: Date): 'Pending' | 'InDelivery' | 'Delivered' {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const orderDay = new Date(orderDate);
+  orderDay.setHours(0, 0, 0, 0);
+  
+  if (orderDay < today) {
+    return 'Delivered'; // Commandes passées = livrées
+  } else if (orderDay.getTime() === today.getTime()) {
+    return 'InDelivery'; // Commandes d'aujourd'hui = en cours de livraison
+  } else {
+    return 'Pending'; // Commandes futures = en attente
+  }
+}
+
+// Commandes fictives réparties entre J-7 et J+7
+function generateMockOrders(): ApiOrder[] {
+  return DEMO_CUSTOMERS.map((customer, index) => {
+    // Répartir les commandes sur 15 jours (J-7 à J+7)
+    // index 0-1 : J-7 à J-5 (passé lointain)
+    // index 2-3 : J-3 à J-1 (passé récent)
+    // index 4-5 : J (aujourd'hui)
+    // index 6-7 : J+1 à J+3 (futur proche)
+    // index 8+ : J+5 à J+7 (futur lointain)
+    let dayOffset: number;
+    if (index < 2) {
+      dayOffset = -7 + Math.floor(Math.random() * 3); // J-7 à J-5
+    } else if (index < 4) {
+      dayOffset = -3 + Math.floor(Math.random() * 3); // J-3 à J-1
+    } else if (index < 6) {
+      dayOffset = 0; // J (aujourd'hui)
+    } else if (index < 8) {
+      dayOffset = 1 + Math.floor(Math.random() * 3); // J+1 à J+3
+    } else {
+      dayOffset = 5 + Math.floor(Math.random() * 3); // J+5 à J+7
+    }
+    
+    const orderDate = getDateWithOffset(dayOffset);
+    const status = getOrderStatus(orderDate);
+    
     return {
-      id: `demo-delivery-${String(index + 1).padStart(3, '0')}`,
-      orderId: `demo-order-${String(index + 1).padStart(3, '0')}`,
-      driverId: driver.id,
-      routeId: `demo-route-001`,
-      status: ['Pending', 'InProgress', 'Completed'][Math.floor(Math.random() * 3)],
-      createdAt: new Date(Date.now() - Math.random() * 5 * 24 * 60 * 60 * 1000).toISOString(),
-      completedAt: Math.random() > 0.5 ? new Date().toISOString() : null
+      id: `demo-order-${String(index + 1).padStart(3, '0')}`,
+      customerName: customer.name,
+      address: customer.address,
+      orderDate: orderDate.toISOString(),
+      status,
+      deliveryCount: 0 // Sera calculé après génération des livraisons
     };
   });
+}
+
+/**
+ * Génère un ID de tournée basé sur la date
+ */
+function getRouteIdForDate(date: Date): string {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const orderDay = new Date(date);
+  orderDay.setHours(0, 0, 0, 0);
+  
+  const diffDays = Math.floor((orderDay.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+  return String(diffDays).padStart(3, '0');
+}
+
+/**
+ * Détermine le statut d'une livraison en fonction de la date de commande
+ */
+function getDeliveryStatus(orderDate: Date): 'Pending' | 'InProgress' | 'Completed' {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const orderDay = new Date(orderDate);
+  orderDay.setHours(0, 0, 0, 0);
+  
+  if (orderDay < today) {
+    return 'Completed'; // Livraisons passées = terminées
+  } else if (orderDay.getTime() === today.getTime()) {
+    return 'InProgress'; // Livraisons d'aujourd'hui = en cours
+  } else {
+    return 'Pending'; // Livraisons futures = en attente
+  }
+}
+
+// Livraisons fictives avec dates et statuts cohérents
+function generateMockDeliveries(): ApiDelivery[] {
+  // Créer des livraisons pour toutes les commandes
+  return mockOrdersState
+    .filter(order => order.orderDate !== null) // Ignorer les commandes sans date
+    .map((order, index) => {
+      const driver = DEMO_DRIVERS[index % DEMO_DRIVERS.length];
+      const orderDate = new Date(order.orderDate!);
+      const status = getDeliveryStatus(orderDate);
+      
+      // Date de création de la livraison = même jour que la commande
+      const createdAt = new Date(orderDate);
+      
+      // Date de complétion pour les livraisons terminées
+      let completedAt: string | null = null;
+      if (status === 'Completed') {
+        const completedDate = new Date(orderDate);
+        // Ajouter quelques heures pour la complétion (entre 2h et 8h après création)
+        completedDate.setHours(completedDate.getHours() + 2 + Math.floor(Math.random() * 6));
+        completedAt = completedDate.toISOString();
+      }
+      
+      return {
+        id: `demo-delivery-${String(index + 1).padStart(3, '0')}`,
+        orderId: order.id,
+        driverId: driver.id,
+        routeId: getRouteIdForDate(orderDate),
+        status,
+        createdAt: createdAt.toISOString(),
+        completedAt
+      };
+    });
 }
 
 // État interne des données de démo
@@ -72,19 +176,82 @@ let mockDeliveriesState: ApiDelivery[] = [];
  * Initialise les données de démo (appelé au démarrage)
  */
 export function initMockData(): void {
+  // Réinitialiser complètement les états
+  mockOrdersState = [];
+  mockDeliveriesState = [];
+  
+  // Générer les nouvelles données
   mockOrdersState = generateMockOrders();
+  console.log('[Demo] 📦 Commandes générées:', mockOrdersState.length, mockOrdersState.map(o => o.id));
+  
   mockDeliveriesState = generateMockDeliveries();
+  console.log('[Demo] 🚚 Livraisons générées:', mockDeliveriesState.length, mockDeliveriesState.map(d => ({ id: d.id, orderId: d.orderId })));
+  
+  // Vérifier le deliveryCount
+  const ordersWithDeliveries = mockOrdersState.map(order => ({
+    id: order.id,
+    deliveryCount: mockDeliveriesState.filter(d => d.orderId === order.id).length
+  }));
+  console.log('[Demo] 📊 Comptage des livraisons par commande:', ordersWithDeliveries);
   console.log('[Demo] 🎭 Données de démo initialisées - AUCUNE donnée réelle');
 }
 
 /**
- * Récupère les commandes de démo
+ * Récupère les commandes de démo avec filtres optionnels
  */
-export function getMockOrders(): ApiOrder[] {
+export function getMockOrders(filters?: { 
+  dateFrom?: string; 
+  dateTo?: string; 
+  dateFilter?: 'CreatedAt' | 'OrderDate';
+  search?: string;
+}): ApiOrder[] {
   if (mockOrdersState.length === 0) {
     initMockData();
   }
-  return [...mockOrdersState];
+  
+  let orders = [...mockOrdersState];
+  
+  // Calculer le deliveryCount pour chaque commande
+  orders = orders.map(order => {
+    const deliveryCount = mockDeliveriesState.filter(d => d.orderId === order.id).length;
+    return { ...order, deliveryCount };
+  });
+  
+  // Filtre de recherche
+  if (filters?.search) {
+    const searchLower = filters.search.toLowerCase();
+    orders = orders.filter(o => 
+      o.customerName.toLowerCase().includes(searchLower) ||
+      o.address.toLowerCase().includes(searchLower)
+    );
+  }
+  
+  // Filtre par date (utilise orderDate pour les deux types de filtre)
+  if (filters?.dateFrom || filters?.dateTo) {
+    if (filters?.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      orders = orders.filter(order => {
+        if (!order.orderDate) return false;
+        const orderDate = new Date(order.orderDate);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate >= fromDate;
+      });
+    }
+    
+    if (filters?.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      orders = orders.filter(order => {
+        if (!order.orderDate) return false;
+        const orderDate = new Date(order.orderDate);
+        orderDate.setHours(0, 0, 0, 0);
+        return orderDate <= toDate;
+      });
+    }
+  }
+  
+  return orders;
 }
 
 /**
@@ -125,7 +292,8 @@ export function createMockOrder(data: {
     customerName: data.customerName,
     address: data.address,
     orderDate: data.orderDate || new Date().toISOString(),
-    status: 'Pending'
+    status: 'Pending',
+    deliveryCount: 0
   };
   mockOrdersState.unshift(newOrder);
   return newOrder;
@@ -134,10 +302,18 @@ export function createMockOrder(data: {
 /**
  * Supprime des commandes de démo
  */
-export function deleteMockOrders(ids: string[]): void {
+export function deleteMockOrders(ids: string[]): { deleted: number; deletedDeliveries: number } {
+  const initialOrders = mockOrdersState.length;
+  const initialDeliveries = mockDeliveriesState.length;
+  
   mockOrdersState = mockOrdersState.filter(o => !ids.includes(o.id));
   // Supprimer aussi les livraisons associées
   mockDeliveriesState = mockDeliveriesState.filter(d => !ids.includes(d.orderId));
+  
+  return {
+    deleted: initialOrders - mockOrdersState.length,
+    deletedDeliveries: initialDeliveries - mockDeliveriesState.length
+  };
 }
 
 /**
@@ -155,20 +331,79 @@ export function importMockOrders(orders: Array<{
     customerName: o.customerName,
     address: o.address,
     orderDate: o.orderDate || new Date().toISOString(),
-    status: 'Pending' as const
+    status: 'Pending' as const,
+    deliveryCount: 0
   }));
   mockOrdersState.unshift(...newOrders);
   return newOrders;
 }
 
 /**
- * Récupère les livraisons de démo
+ * Récupère les livraisons de démo avec filtres optionnels
  */
-export function getMockDeliveries(): ApiDelivery[] {
+export function getMockDeliveries(filters?: { 
+  dateFrom?: string; 
+  dateTo?: string; 
+  dateFilter?: 'CreatedAt' | 'OrderDate';
+  routeId?: string;
+}): ApiDelivery[] {
   if (mockDeliveriesState.length === 0) {
     initMockData();
   }
-  return [...mockDeliveriesState];
+  
+  let deliveries = [...mockDeliveriesState];
+  
+  // Filtre par tournée
+  if (filters?.routeId) {
+    deliveries = deliveries.filter(d => d.routeId === filters.routeId);
+  }
+  
+  // Filtre par date
+  if (filters?.dateFrom || filters?.dateTo) {
+    if (filters?.dateFrom) {
+      const fromDate = new Date(filters.dateFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      deliveries = deliveries.filter(delivery => {
+        if (!delivery.createdAt) return false;
+        
+        // Si dateFilter est OrderDate, chercher la commande associée
+        let dateToCheck: Date;
+        if (filters?.dateFilter === 'OrderDate') {
+          const order = mockOrdersState.find(o => o.id === delivery.orderId);
+          if (!order?.orderDate) return false;
+          dateToCheck = new Date(order.orderDate);
+        } else {
+          dateToCheck = new Date(delivery.createdAt);
+        }
+        
+        dateToCheck.setHours(0, 0, 0, 0);
+        return dateToCheck >= fromDate;
+      });
+    }
+    
+    if (filters?.dateTo) {
+      const toDate = new Date(filters.dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      deliveries = deliveries.filter(delivery => {
+        if (!delivery.createdAt) return false;
+        
+        // Si dateFilter est OrderDate, chercher la commande associée
+        let dateToCheck: Date;
+        if (filters?.dateFilter === 'OrderDate') {
+          const order = mockOrdersState.find(o => o.id === delivery.orderId);
+          if (!order?.orderDate) return false;
+          dateToCheck = new Date(order.orderDate);
+        } else {
+          dateToCheck = new Date(delivery.createdAt);
+        }
+        
+        dateToCheck.setHours(0, 0, 0, 0);
+        return dateToCheck <= toDate;
+      });
+    }
+  }
+  
+  return deliveries;
 }
 
 /**
@@ -227,41 +462,149 @@ export function getMockDrivers(): ApiDriver[] {
 }
 
 /**
- * Récupère les tournées de démo
+ * Récupère les tournées de démo avec filtres optionnels
  */
-export function getMockRoutes(): ApiRoute[] {
-  return [{
-    id: 'demo-route-001',
-    name: 'Tournée Centre-Ville',
-    driverId: 'demo-driver-001',
-    date: new Date().toISOString().split('T')[0],
-    status: 'Active'
-  }];
+export function getMockRoutes(filters?: { dateFrom?: string; dateTo?: string; driverId?: string }): ApiRoute[] {
+  if (mockDeliveriesState.length === 0) {
+    initMockData();
+  }
+  
+  // Grouper les livraisons par date (routeId)
+  const routesByDate = new Map<string, ApiDelivery[]>();
+  mockDeliveriesState.forEach(delivery => {
+    if (!routesByDate.has(delivery.routeId)) {
+      routesByDate.set(delivery.routeId, []);
+    }
+    routesByDate.get(delivery.routeId)!.push(delivery);
+  });
+  
+  // Créer une tournée pour chaque date
+  const routes: ApiRoute[] = [];
+  routesByDate.forEach((deliveries, routeId) => {
+    if (deliveries.length === 0) return;
+    
+    // Utiliser la date de la première livraison
+    const firstDelivery = deliveries[0];
+    const deliveryDate = new Date(firstDelivery.createdAt);
+    const dateStr = deliveryDate.toISOString().split('T')[0];
+    
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const routeDay = new Date(deliveryDate);
+    routeDay.setHours(0, 0, 0, 0);
+    
+    // Déterminer le statut de la tournée
+    let status: 'Pending' | 'Active' | 'Completed';
+    if (routeDay < today) {
+      status = 'Completed';
+    } else if (routeDay.getTime() === today.getTime()) {
+      status = 'Active';
+    } else {
+      status = 'Pending';
+    }
+    
+    // Alterner les livreurs pour les différentes tournées
+    const driverIndex = routes.length % DEMO_DRIVERS.length;
+    const driver = DEMO_DRIVERS[driverIndex];
+    
+    // Noms de tournées variés
+    const routeNames = [
+      'Tournée Centre-Ville',
+      'Tournée Quartier Est',
+      'Tournée Zone Commerciale',
+      'Tournée Périphérie Nord',
+      'Tournée Sud Montpellier'
+    ];
+    const routeName = routeNames[routes.length % routeNames.length];
+    
+    // Calculer le résumé des statuts
+    const statusSummary = {
+      pending: deliveries.filter(d => d.status === 'Pending').length,
+      inProgress: deliveries.filter(d => d.status === 'InProgress').length,
+      completed: deliveries.filter(d => d.status === 'Completed').length,
+      failed: deliveries.filter(d => d.status === 'Failed').length
+    };
+    
+    routes.push({
+      id: `demo-route-${routeId}`,
+      name: routeName,
+      driverId: driver.id,
+      createdAt: firstDelivery.createdAt,
+      deliveryCount: deliveries.length,
+      driverName: driver.name,
+      statusSummary
+    });
+  });
+  
+  // Trier les tournées par date (plus récente en premier)
+  routes.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  
+  // Appliquer les filtres
+  let filteredRoutes = routes;
+  
+  // Filtre par date de début
+  if (filters?.dateFrom) {
+    const fromDate = new Date(filters.dateFrom);
+    fromDate.setHours(0, 0, 0, 0);
+    filteredRoutes = filteredRoutes.filter(route => {
+      const routeDate = new Date(route.createdAt);
+      routeDate.setHours(0, 0, 0, 0);
+      return routeDate >= fromDate;
+    });
+  }
+  
+  // Filtre par date de fin
+  if (filters?.dateTo) {
+    const toDate = new Date(filters.dateTo);
+    toDate.setHours(23, 59, 59, 999);
+    filteredRoutes = filteredRoutes.filter(route => {
+      const routeDate = new Date(route.createdAt);
+      routeDate.setHours(0, 0, 0, 0);
+      return routeDate <= toDate;
+    });
+  }
+  
+  // Filtre par livreur
+  if (filters?.driverId) {
+    filteredRoutes = filteredRoutes.filter(route => route.driverId === filters.driverId);
+  }
+  
+  return filteredRoutes;
 }
 
 /**
  * Récupère le détail d'une tournée de démo
  */
 export function getMockRouteById(id: string): ApiRouteDetail | null {
-  if (id !== 'demo-route-001') return null;
+  // Trouver la tournée dans la liste
+  const routes = getMockRoutes();
+  const route = routes.find(r => r.id === id);
+  if (!route) return null;
   
-  const deliveries = mockDeliveriesState.filter(d => d.routeId === id);
+  // Extraire le routeId interne (sans le préfixe "demo-route-")
+  const routeIdPart = id.replace('demo-route-', '');
+  const deliveries = mockDeliveriesState.filter(d => d.routeId === routeIdPart);
   
   return {
-    id: 'demo-route-001',
-    name: 'Tournée Centre-Ville',
-    driverId: 'demo-driver-001',
-    driverName: 'Alice Martin',
-    date: new Date().toISOString().split('T')[0],
-    status: 'Active',
-    deliveries: deliveries.map((d, index) => ({
-      id: d.id,
-      orderId: d.orderId,
-      status: d.status,
-      sequence: index,
-      customerName: DEMO_CUSTOMERS[index]?.name || 'Client',
-      address: DEMO_CUSTOMERS[index]?.address || 'Adresse'
-    }))
+    id: route.id,
+    name: route.name,
+    driverId: route.driverId,
+    driverName: route.driverName,
+    createdAt: route.createdAt,
+    deliveries: deliveries.map((d, index) => {
+      // Trouver la commande correspondante pour avoir les infos client
+      const order = mockOrdersState.find(o => o.id === d.orderId);
+      return {
+        id: d.id,
+        orderId: d.orderId,
+        status: d.status,
+        sequence: index,
+        createdAt: d.createdAt,
+        completedAt: d.completedAt,
+        customerName: order?.customerName || 'Client inconnu',
+        address: order?.address || 'Adresse inconnue'
+      };
+    })
   };
 }
 
@@ -269,10 +612,11 @@ export function getMockRouteById(id: string): ApiRouteDetail | null {
  * Réordonne les livraisons d'une tournée de démo
  */
 export function reorderMockDeliveries(routeId: string, deliveryIds: string[]): void {
-  if (routeId !== 'demo-route-001') return;
+  // Extraire le routeId interne
+  const routeIdPart = routeId.replace('demo-route-', '');
   
   deliveryIds.forEach((id, index) => {
-    const delivery = mockDeliveriesState.find(d => d.id === id);
+    const delivery = mockDeliveriesState.find(d => d.id === id && d.routeId === routeIdPart);
     if (delivery) {
       delivery.sequence = index;
     }
@@ -287,13 +631,16 @@ export const getMockDeliveryDetail = getMockDeliveryById;
  * Crée des livraisons de démo
  */
 export function createMockDeliveries(driverId: string, orderIds: string[]): { created: number; deliveries: typeof mockDeliveriesState } {
+  const now = new Date();
+  const routeId = getRouteIdForDate(now);
+  
   const newDeliveries = orderIds.map((orderId, index) => ({
     id: `demo-delivery-${Date.now()}-${index}`,
     orderId,
     driverId,
-    routeId: 'demo-route-001',
+    routeId,
     status: 'Pending' as const,
-    createdAt: new Date().toISOString(),
+    createdAt: now.toISOString(),
     completedAt: null as string | null
   }));
   

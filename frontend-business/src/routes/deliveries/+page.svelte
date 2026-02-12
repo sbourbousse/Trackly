@@ -11,6 +11,7 @@
 	import { ordersActions } from '$lib/stores/orders.svelte';
 	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
+	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 
 	async function onDateFilterChange() {
 		await deliveriesActions.loadDeliveries();
@@ -341,6 +342,7 @@
 									/>
 								</TableHead>
 								<TableHead>Statut</TableHead>
+								<TableHead>Date</TableHead>
 								<TableHead>Ref</TableHead>
 								<TableHead>Chauffeur</TableHead>
 							</TableRow>
@@ -362,6 +364,9 @@
 									</TableCell>
 									<TableCell>
 										<StatusBadge type="delivery" status={delivery.status} />
+									</TableCell>
+									<TableCell>
+										<RelativeTimeIndicator date={delivery.createdAt} />
 									</TableCell>
 									<TableCell onclick={(e) => e.stopPropagation()}>
 										<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">

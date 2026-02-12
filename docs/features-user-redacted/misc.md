@@ -1,0 +1,1 @@
+Ajouter un bouton supprimer dans l'interface commande    

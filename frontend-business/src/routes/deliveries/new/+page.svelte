@@ -22,6 +22,7 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
+	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 
 	let orders = $state<ApiOrder[]>([]);
 	let drivers = $state<ApiDriver[]>([]);
@@ -208,6 +209,7 @@
 												/>
 											</TableHead>
 											<TableHead>Statut</TableHead>
+											<TableHead>Date</TableHead>
 											<TableHead>Client</TableHead>
 											<TableHead>Adresse</TableHead>
 										</TableRow>
@@ -229,6 +231,9 @@
 												</TableCell>
 												<TableCell>
 													<StatusBadge type="order" status={order.status} />
+												</TableCell>
+												<TableCell>
+													<RelativeTimeIndicator date={order.orderDate} showTime={true} />
 												</TableCell>
 												<TableCell>{order.customerName}</TableCell>
 												<TableCell>{order.address}</TableCell>

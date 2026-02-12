@@ -190,10 +190,22 @@ public static class OrderEndpoints
                 query = query.Where(o => o.CreatedAt <= dateTo.Value);
         }
 
-        var orders = await query
+        var ordersList = await query
             .OrderByDescending(order => order.CreatedAt)
-            .Select(order => ToResponse(order))
             .ToListAsync(cancellationToken);
+
+        // Récupérer le nombre de livraisons par commande
+        var orderIds = ordersList.Select(o => o.Id).ToList();
+        var deliveryCounts = await dbContext.Deliveries
+            .AsNoTracking()
+            .Where(d => orderIds.Contains(d.OrderId) && d.DeletedAt == null)
+            .GroupBy(d => d.OrderId)
+            .Select(g => new { OrderId = g.Key, Count = g.Count() })
+            .ToDictionaryAsync(x => x.OrderId, x => x.Count, cancellationToken);
+
+        var orders = ordersList
+            .Select(order => ToResponse(order, deliveryCounts.TryGetValue(order.Id, out var count) ? count : 0))
+            .ToList();
 
         return Results.Ok(orders);
     }
@@ -482,8 +494,8 @@ public static class OrderEndpoints
         });
     }
 
-    private static OrderResponse ToResponse(Order order) =>
-        new(order.Id, order.CustomerName, order.Address, order.PhoneNumber, order.InternalComment, order.OrderDate, order.Status, order.CreatedAt);
+    private static OrderResponse ToResponse(Order order, int deliveryCount = 0) =>
+        new(order.Id, order.CustomerName, order.Address, order.PhoneNumber, order.InternalComment, order.OrderDate, order.Status, order.CreatedAt, deliveryCount);
 
     /// <summary>
     /// Parse la date/heure et retourne toujours un DateTimeOffset en UTC (requis par Npgsql).

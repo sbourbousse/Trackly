@@ -1,8 +1,8 @@
 <script lang="ts">
-  import { isOfflineMode } from '../offline/config';
+  import { offlineState } from '../stores/offline.svelte';
   import { DEMO_BANNER } from '../offline/mockData';
   
-  let showBanner = $derived(isOfflineMode());
+  let showBanner = $derived(offlineState.isOffline);
 </script>
 
 {#if showBanner}

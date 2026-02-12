@@ -1,7 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import OrderDateIndicator from '$lib/components/OrderDateIndicator.svelte';
+	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -102,7 +102,7 @@
 													<StatusBadge type="order" status={order.status} />
 												</TableCell>
 												<TableCell>
-													<OrderDateIndicator orderDate={order.orderDate} />
+													<RelativeTimeIndicator date={order.orderDate} showTime={true} />
 												</TableCell>
 												<TableCell>
 													<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">

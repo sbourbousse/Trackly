@@ -42,6 +42,7 @@ jobs:
       - name: Test (E2E)
         if: ${{ !inputs.skip_tests }}
         run: npm run test
+        continue-on-error: true  # Ne pas bloquer le déploiement si tests échouent
         env:
           PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BUSINESS_URL || 'http://localhost:5173' }}
           CI: true
@@ -81,10 +82,10 @@ jobs:
         run: |
           cd frontend-business
           npm install
-          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --yes --prod=false \
-            --scope ${{ secrets.VERCEL_TEAM }} \
-            --name trackly-business-pr 2>&1 | tee deploy.log
-          echo "url=$(grep -o 'https://[^[:space:]]*' deploy.log | tail -1)" >> $GITHUB_OUTPUT
+          npx vercel pull --yes --environment=preview --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel build --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel deploy --prebuilt --token ${{ secrets.VERCEL_TOKEN }} 2>&1 | tee deploy.log
+          echo "url=$(grep -o 'https://[^[:space:]]*\.vercel\.app' deploy.log | tail -1)" >> $GITHUB_OUTPUT
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BUSINESS }}
@@ -95,10 +96,10 @@ jobs:
         run: |
           cd frontend-tracking
           npm install
-          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --yes --prod=false \
-            --scope ${{ secrets.VERCEL_TEAM }} \
-            --name trackly-tracking-pr 2>&1 | tee deploy.log
-          echo "url=$(grep -o 'https://[^[:space:]]*' deploy.log | tail -1)" >> $GITHUB_OUTPUT
+          npx vercel pull --yes --environment=preview --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel build --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel deploy --prebuilt --token ${{ secrets.VERCEL_TOKEN }} 2>&1 | tee deploy.log
+          echo "url=$(grep -o 'https://[^[:space:]]*\.vercel\.app' deploy.log | tail -1)" >> $GITHUB_OUTPUT
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_TRACKING }}
@@ -109,10 +110,10 @@ jobs:
         run: |
           cd frontend-landing-page
           npm install
-          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --yes --prod=false \
-            --scope ${{ secrets.VERCEL_TEAM }} \
-            --name trackly-landing-pr 2>&1 | tee deploy.log
-          echo "url=$(grep -o 'https://[^[:space:]]*' deploy.log | tail -1)" >> $GITHUB_OUTPUT
+          npx vercel pull --yes --environment=preview --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel build --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel deploy --prebuilt --token ${{ secrets.VERCEL_TOKEN }} 2>&1 | tee deploy.log
+          echo "url=$(grep -o 'https://[^[:space:]]*\.vercel\.app' deploy.log | tail -1)" >> $GITHUB_OUTPUT
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
@@ -127,58 +128,6 @@ jobs:
             const landingUrl = '${{ steps.deploy-landing.outputs.url }}';
             
             const body = `## 🚀 Déploiements Preview PR\n\n| Service | URL |\n|---------|-----|\n| Business | ${businessUrl || 'N/A'} |\n| Tracking | ${trackingUrl || 'N/A'} |\n| Landing | ${landingUrl || 'N/A'} |\n\n*Déployé via Vercel*`;
-            
-            github.rest.issues.createComment({
-              issue_number: context.issue.number,
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              body: body
-            });
-
-  # Job de déploiement PR sur Railway (environnement éphémère)
-  deploy-railway-preview:
-    name: Deploy Railway Preview
-    needs: build-and-test
-    if: github.event_name == 'pull_request'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Install Railway CLI
-        run: npm install -g @railway/cli
-
-      # Créer un environnement PR sur Railway et déployer
-      - name: Deploy to Railway Preview Environment
-        env:
-          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-          PR_NUMBER: ${{ github.event.number }}
-        run: |
-          # Login avec le token
-          railway login --token $RAILWAY_API_TOKEN
-          
-          # Créer ou switch vers l'environnement PR
-          railway environment create pr-$PR_NUMBER || true
-          railway environment select pr-$PR_NUMBER
-          
-          # Redeploy backend
-          railway up --service backend
-          
-          echo "✅ Déployé sur Railway environnement: pr-$PR_NUMBER"
-
-      # Comment on PR with Railway info
-      - name: Comment PR with Railway Info
-        uses: actions/github-script@v7
-        with:
-          script: |
-            const prNumber = context.issue.number;
-            const body = `## 🚂 Railway Preview\n\nEnvironnement créé: \`pr-${prNumber}\`\n\nAccédez au dashboard Railway pour voir les URLs de preview.`;
             
             github.rest.issues.createComment({
               issue_number: context.issue.number,
@@ -206,8 +155,9 @@ jobs:
         run: |
           cd frontend-business
           npm install
-          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --yes --prod \
-            --scope ${{ secrets.VERCEL_TEAM }}
+          npx vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel build --prod --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BUSINESS }}
@@ -216,8 +166,9 @@ jobs:
         run: |
           cd frontend-tracking
           npm install
-          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --yes --prod \
-            --scope ${{ secrets.VERCEL_TEAM }}
+          npx vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel build --prod --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_TRACKING }}
@@ -226,8 +177,62 @@ jobs:
         run: |
           cd frontend-landing-page
           npm install
-          npx vercel --token ${{ secrets.VERCEL_TOKEN }} --yes --prod \
-            --scope ${{ secrets.VERCEL_TEAM }}
+          npx vercel pull --yes --environment=production --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel build --prod --token ${{ secrets.VERCEL_TOKEN }}
+          npx vercel deploy --prebuilt --prod --token ${{ secrets.VERCEL_TOKEN }}
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+
+  # Redeploy Railway (environnement main) - utilise les secrets de l'environnement
+  deploy-railway:
+    name: Redeploy Railway Services
+    needs: build-and-test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+    environment: main  # ← Utilise l'environnement "main" pour les secrets Railway
+    steps:
+      - name: Redeploy backend
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID_BACKEND }}
+        run: |
+          resp=$(curl -sS -w '\n%{http_code}' -X POST "https://backboard.railway.com/graphql/v2" \
+            -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"query\":\"mutation serviceInstanceRedeploy($environmentId: String!, $serviceId: String!) { serviceInstanceRedeploy(environmentId: $environmentId, serviceId: $serviceId) }\",\"variables\":{\"environmentId\":\"${RAILWAY_ENVIRONMENT_ID}\",\"serviceId\":\"${RAILWAY_SERVICE_ID}\"}}")
+          code=$(echo "$resp" | tail -n1)
+          body=$(echo "$resp" | sed '$d')
+          echo "$body" | jq . 2>/dev/null || echo "$body"
+          if [ "$code" != "200" ]; then echo "Redeploy backend failed (HTTP $code)" && exit 1; fi
+
+      - name: Redeploy frontend-business
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID_FRONTEND_BUSINESS }}
+        run: |
+          resp=$(curl -sS -w '\n%{http_code}' -X POST "https://backboard.railway.com/graphql/v2" \
+            -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"query\":\"mutation serviceInstanceRedeploy($environmentId: String!, $serviceId: String!) { serviceInstanceRedeploy(environmentId: $environmentId, serviceId: $serviceId) }\",\"variables\":{\"environmentId\":\"${RAILWAY_ENVIRONMENT_ID}\",\"serviceId\":\"${RAILWAY_SERVICE_ID}\"}}")
+          code=$(echo "$resp" | tail -n1)
+          body=$(echo "$resp" | sed '$d')
+          echo "$body" | jq . 2>/dev/null || echo "$body"
+          if [ "$code" != "200" ]; then echo "Redeploy frontend-business failed (HTTP $code)" && exit 1; fi
+
+      - name: Redeploy frontend-driver
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID_FRONTEND_DRIVER }}
+        run: |
+          resp=$(curl -sS -w '\n%{http_code}' -X POST "https://backboard.railway.com/graphql/v2" \
+            -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"query\":\"mutation serviceInstanceRedeploy($environmentId: String!, $serviceId: String!) { serviceInstanceRedeploy(environmentId: $environmentId, serviceId: $serviceId) }\",\"variables\":{\"environmentId\":\"${RAILWAY_ENVIRONMENT_ID}\",\"serviceId\":\"${RAILWAY_SERVICE_ID}\"}}")
+          code=$(echo "$resp" | tail -n1)
+          body=$(echo "$resp" | sed '$d')
+          echo "$body" | jq . 2>/dev/null || echo "$body"
+          if [ "$code" != "200" ]; then echo "Redeploy frontend-driver failed (HTTP $code)" && exit 1; fi

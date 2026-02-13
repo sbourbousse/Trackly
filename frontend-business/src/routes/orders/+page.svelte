@@ -4,6 +4,7 @@
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import XIcon from '@lucide/svelte/icons/x';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
 	import { dateRangeState } from '$lib/stores/dateRange.svelte';
 	import { getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
@@ -12,7 +13,8 @@
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import OrderDateIndicator from '$lib/components/OrderDateIndicator.svelte';
+	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
+	import DeliveryCountBadge from '$lib/components/DeliveryCountBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -189,7 +191,7 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." />
+	<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." icon={ClipboardListIcon} />
 
 	<DateFilterCard
 		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
@@ -217,7 +219,10 @@
 			<CardHeader class="space-y-1">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<CardTitle>Commandes récentes</CardTitle>
+						<CardTitle class="flex items-center gap-2">
+							<ClipboardListIcon class="size-4 text-muted-foreground" />
+							Commandes récentes
+						</CardTitle>
 						<p class="text-sm text-muted-foreground">Dernière synchro: {ordersState.lastSyncAt}</p>
 					</div>
 					<div class="flex flex-wrap items-center gap-2">
@@ -352,7 +357,7 @@
 										<StatusBadge type="order" status={order.status} />
 									</TableCell>
 									<TableCell>
-										<OrderDateIndicator orderDate={order.orderDate} />
+										<RelativeTimeIndicator date={order.orderDate} showTime={true} />
 									</TableCell>
 									<TableCell class="tabular-nums font-medium" onclick={(e) => e.stopPropagation()}>
 										<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
@@ -362,7 +367,9 @@
 									<TableCell>{order.client}</TableCell>
 									<TableCell class="text-muted-foreground whitespace-nowrap">{order.phoneNumber ?? '—'}</TableCell>
 									<TableCell>{order.address}</TableCell>
-									<TableCell class="tabular-nums">{order.deliveries}</TableCell>
+									<TableCell>
+										<DeliveryCountBadge count={order.deliveryCount ?? 0} />
+									</TableCell>
 								</TableRow>
 							{/each}
 						</TableBody>

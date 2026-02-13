@@ -1,10 +1,12 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import UserIcon from '@lucide/svelte/icons/user';
 	import { createDriver } from '$lib/api/drivers';
 	import type { CreateDriverRequest } from '$lib/api/drivers';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
+	import UserCircleIcon from '@lucide/svelte/icons/user-circle';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
@@ -56,7 +58,7 @@
 </script>
 
 <div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
-	<PageHeader title="Nouveau livreur" subtitle="Ajouter un livreur à votre équipe" />
+	<PageHeader title="Nouveau livreur" subtitle="Ajouter un livreur à votre équipe" icon={UserIcon} />
 
 	{#if success}
 		<Alert class="border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
@@ -75,7 +77,10 @@
 	<form onsubmit={handleSubmit} class="space-y-6">
 		<Card>
 			<CardHeader>
-				<CardTitle>Informations du livreur</CardTitle>
+				<CardTitle class="flex items-center gap-2">
+					<UserCircleIcon class="size-4 text-muted-foreground" />
+					Informations du livreur
+				</CardTitle>
 			</CardHeader>
 			<CardContent class="grid gap-4 sm:grid-cols-2">
 				<div class="space-y-2">

@@ -1,0 +1,1 @@
+La suppression est logique (soft delete). La commande associée ne sera pas affectée. => A supprimer

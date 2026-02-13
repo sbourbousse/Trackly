@@ -1,6 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import RouteIcon from '@lucide/svelte/icons/route';
+	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
+	import MapPinIcon from '@lucide/svelte/icons/map-pin';
 	import { getOrders } from '$lib/api/orders';
 	import { getDrivers } from '$lib/api/drivers';
 	import { createDeliveriesBatch } from '$lib/api/deliveries';
@@ -22,6 +25,7 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
+	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 
 	let orders = $state<ApiOrder[]>([]);
 	let drivers = $state<ApiDriver[]>([]);
@@ -99,7 +103,7 @@
 </script>
 
 <div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
-	<PageHeader title="Nouvelle tournée" subtitle="Sélectionnez les commandes et assignez un livreur" />
+	<PageHeader title="Nouvelle tournée" subtitle="Sélectionnez les commandes et assignez un livreur" icon={RouteIcon} />
 
 		{#if success}
 			<Alert class="border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">
@@ -123,7 +127,10 @@
 			<form onsubmit={handleSubmit} class="space-y-6">
 				<Card>
 					<CardHeader>
-						<CardTitle>Informations de la tournée</CardTitle>
+						<CardTitle class="flex items-center gap-2">
+							<MapPinIcon class="size-4 text-muted-foreground" />
+							Informations de la tournée
+						</CardTitle>
 					</CardHeader>
 					<CardContent class="grid gap-4 sm:grid-cols-2">
 						<div class="space-y-2">
@@ -157,7 +164,10 @@
 				<Card>
 					<CardHeader class="flex flex-row flex-wrap items-center justify-between gap-4">
 						<div>
-							<CardTitle>Commandes à livrer</CardTitle>
+							<CardTitle class="flex items-center gap-2">
+								<ClipboardListIcon class="size-4 text-muted-foreground" />
+								Commandes à livrer
+							</CardTitle>
 							<p class="mt-1 text-sm text-muted-foreground">
 								{selectedOrderIds.size} commande{selectedOrderIds.size > 1 ? 's' : ''} sélectionnée{selectedOrderIds.size > 1 ? 's' : ''}
 								{#if orders.length > 0}
@@ -208,6 +218,7 @@
 												/>
 											</TableHead>
 											<TableHead>Statut</TableHead>
+											<TableHead>Date</TableHead>
 											<TableHead>Client</TableHead>
 											<TableHead>Adresse</TableHead>
 										</TableRow>
@@ -229,6 +240,9 @@
 												</TableCell>
 												<TableCell>
 													<StatusBadge type="order" status={order.status} />
+												</TableCell>
+												<TableCell>
+													<RelativeTimeIndicator date={order.orderDate} showTime={true} />
 												</TableCell>
 												<TableCell>{order.customerName}</TableCell>
 												<TableCell>{order.address}</TableCell>

@@ -53,7 +53,7 @@ export const ordersActions = {
 				internalComment: order.internalComment ?? null,
 				orderDate: order.orderDate ?? null,
 				status: order.status as OrderStatus,
-				deliveries: 1
+				deliveries: order.deliveryCount ?? 0
 			}));
 			ordersState.lastSyncAt = new Date().toLocaleTimeString('fr-FR', {
 				hour: '2-digit',

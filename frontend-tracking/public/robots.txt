@@ -1,0 +1,13 @@
+# Trackly - Frontend Tracking
+# Robots.txt pour le suivi des livraisons
+
+# Autoriser les robots pour les pages publiques
+User-agent: *
+Allow: /
+
+# Bloquer l'indexation des pages de suivi individuelles
+# (informations privées des clients)
+Disallow: /track/
+
+# Sitemap (optionnel, à ajouter si nécessaire)
+# Sitemap: https://tracking.trackly.app/sitemap.xml

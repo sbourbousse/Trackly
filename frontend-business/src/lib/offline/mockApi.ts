@@ -74,18 +74,8 @@ export const mockOrdersApi = {
     console.log('[Mock API] GET /api/orders', filters);
     await delay();
     
-    let orders = getMockOrders();
-    
-    // Filtrage simple par recherche
-    if (filters?.search) {
-      const searchLower = filters.search.toLowerCase();
-      orders = orders.filter(o => 
-        o.customerName.toLowerCase().includes(searchLower) ||
-        o.address.toLowerCase().includes(searchLower)
-      );
-    }
-    
-    return orders;
+    // Passer les filtres directement à getMockOrders
+    return getMockOrders(filters);
   },
 
   async getOrder(id: string): Promise<ApiOrderDetail> {
@@ -132,21 +122,36 @@ export const mockOrdersApi = {
     };
   },
 
-  async getOrdersStats(): Promise<{ byDay: { date: string; count: number }[]; byHour: { hour: string; count: number }[] }> {
-    console.log('[Mock API] GET /api/orders/stats');
+  async getOrdersStats(filters?: OrdersListFilters): Promise<{ byDay: { date: string; count: number }[]; byHour: { hour: string; count: number }[] }> {
+    console.log('[Mock API] GET /api/orders/stats', filters);
     await delay();
     
-    // Générer des stats factices
-    const orders = getMockOrders();
-    const byDay = [
-      { date: new Date().toISOString().split('T')[0], count: 3 },
-      { date: new Date(Date.now() - 86400000).toISOString().split('T')[0], count: 2 },
-      { date: new Date(Date.now() - 172800000).toISOString().split('T')[0], count: 1 },
-    ];
+    // Récupérer les commandes filtrées
+    const orders = getMockOrders(filters);
+    
+    // Générer les stats par jour
+    const ordersByDay = new Map<string, number>();
+    orders.forEach(order => {
+      if (!order.orderDate) return;
+      const dateStr = new Date(order.orderDate).toISOString().split('T')[0];
+      ordersByDay.set(dateStr, (ordersByDay.get(dateStr) || 0) + 1);
+    });
+    
+    const byDay = Array.from(ordersByDay.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    
+    // Générer les stats par heure
+    const ordersByHour = new Map<number, number>();
+    orders.forEach(order => {
+      if (!order.orderDate) return;
+      const hour = new Date(order.orderDate).getHours();
+      ordersByHour.set(hour, (ordersByHour.get(hour) || 0) + 1);
+    });
     
     const byHour = Array.from({ length: 24 }, (_, i) => ({
       hour: `${i.toString().padStart(2, '0')}:00`,
-      count: Math.floor(Math.random() * 5)
+      count: ordersByHour.get(i) || 0
     }));
     
     return { byDay, byHour };
@@ -161,7 +166,8 @@ export const mockDeliveriesApi = {
     console.log('[Mock API] GET /api/deliveries', filters);
     await delay();
     
-    return getMockDeliveries();
+    // Passer les filtres directement à getMockDeliveries
+    return getMockDeliveries(filters);
   },
 
   async getDelivery(id: string): Promise<ApiDeliveryDetail> {

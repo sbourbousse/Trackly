@@ -59,6 +59,21 @@ public static class RouteEndpoints
             .Select(g => new { RouteId = g.Key, Count = g.Count() })
             .ToDictionaryAsync(x => x.RouteId, x => x.Count, cancellationToken);
 
+        // Récupérer les statuts des livraisons par tournée
+        var deliveriesByRoute = await dbContext.Deliveries
+            .AsNoTracking()
+            .Where(d => d.RouteId != null && routeIds.Contains(d.RouteId.Value) && d.DeletedAt == null)
+            .GroupBy(d => d.RouteId!.Value)
+            .Select(g => new
+            {
+                RouteId = g.Key,
+                Pending = g.Count(d => d.Status == DeliveryStatus.Pending),
+                InProgress = g.Count(d => d.Status == DeliveryStatus.InProgress),
+                Completed = g.Count(d => d.Status == DeliveryStatus.Completed),
+                Failed = g.Count(d => d.Status == DeliveryStatus.Failed)
+            })
+            .ToDictionaryAsync(x => x.RouteId, cancellationToken);
+
         var driverIds = routes.Select(r => r.DriverId).Distinct().ToList();
         var drivers = await dbContext.Drivers
             .AsNoTracking()
@@ -66,13 +81,21 @@ public static class RouteEndpoints
             .ToDictionaryAsync(d => d.Id, d => d.Name, cancellationToken);
 
         var responses = routes
-            .Select(r => new RouteResponse(
-                r.Id,
-                r.DriverId,
-                r.Name,
-                r.CreatedAt,
-                counts.TryGetValue(r.Id, out var c) ? c : 0,
-                drivers.TryGetValue(r.DriverId, out var name) ? name : "Non assigné"))
+            .Select(r =>
+            {
+                var summary = deliveriesByRoute.TryGetValue(r.Id, out var statusCounts)
+                    ? new DeliveryStatusSummary(statusCounts.Pending, statusCounts.InProgress, statusCounts.Completed, statusCounts.Failed)
+                    : new DeliveryStatusSummary(0, 0, 0, 0);
+                
+                return new RouteResponse(
+                    r.Id,
+                    r.DriverId,
+                    r.Name,
+                    r.CreatedAt,
+                    counts.TryGetValue(r.Id, out var c) ? c : 0,
+                    drivers.TryGetValue(r.DriverId, out var name) ? name : "Non assigné",
+                    summary);
+            })
             .ToList();
 
         return Results.Ok(new RouteListResponse { Routes = responses });

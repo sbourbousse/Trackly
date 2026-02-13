@@ -36,7 +36,8 @@ public sealed record OrderResponse(
     string? InternalComment,
     DateTimeOffset? OrderDate,
     OrderStatus Status,
-    DateTimeOffset CreatedAt);
+    DateTimeOffset CreatedAt,
+    int DeliveryCount);
 
 public sealed record OrderDeliveryInfo(
     Guid Id,

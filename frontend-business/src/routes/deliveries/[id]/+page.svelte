@@ -12,6 +12,8 @@
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import PackageIcon from '@lucide/svelte/icons/package';
+	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
 	import { Separator } from '$lib/components/ui/separator';
 
 	let delivery = $state<ApiDeliveryDetail | null>(null);
@@ -118,7 +120,10 @@
 			<Card>
 				<CardHeader class="flex flex-row flex-wrap items-start justify-between gap-4">
 					<div>
-						<CardTitle>Informations de livraison</CardTitle>
+						<CardTitle class="flex items-center gap-2">
+							<PackageIcon class="size-4 text-muted-foreground" />
+							Informations de livraison
+						</CardTitle>
 						<p class="mt-1 text-sm text-muted-foreground">
 							Crée le {getFormattedDate(delivery.createdAt)}
 							{#if delivery.completedAt}
@@ -221,7 +226,10 @@
 
 			<Card>
 				<CardHeader class="flex flex-row items-center justify-between space-y-0">
-					<CardTitle>Commande associée</CardTitle>
+					<CardTitle class="flex items-center gap-2">
+						<ClipboardListIcon class="size-4 text-muted-foreground" />
+						Commande associée
+					</CardTitle>
 					<Button variant="link" href="/orders/{delivery.orderId}" class="h-auto p-0">Voir la commande →</Button>
 				</CardHeader>
 				<CardContent class="space-y-1 text-sm">

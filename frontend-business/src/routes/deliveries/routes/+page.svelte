@@ -1,5 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import RouteIcon from '@lucide/svelte/icons/route';
+	import MapPinIcon from '@lucide/svelte/icons/map-pin';
 	import { dateRangeState, getListFilters } from '$lib/stores/dateRange.svelte';
 	import { getRoutes, type ApiRoute } from '$lib/api/routes';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -14,6 +16,7 @@
 		TableRow
 	} from '$lib/components/ui/table';
 	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
+	import RouteProgressIndicator from '$lib/components/RouteProgressIndicator.svelte';
 
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
@@ -28,6 +31,34 @@
 	function routeDisplayName(route: ApiRoute): string {
 		if (route.name?.trim()) return route.name.trim();
 		return `Tournée du ${formatRouteDate(route.createdAt)}`;
+	}
+
+	// Générer des livraisons fictives pour l'indicateur de progression
+	function getDeliveriesForProgress(route: ApiRoute): Array<{ status: string; sequence: number | null }> {
+		const deliveries: Array<{ status: string; sequence: number | null }> = [];
+		let sequence = 0;
+
+		// Ajouter les livraisons complétées en premier
+		for (let i = 0; i < route.statusSummary.completed; i++) {
+			deliveries.push({ status: 'Completed', sequence: sequence++ });
+		}
+
+		// Ajouter les livraisons en cours
+		for (let i = 0; i < route.statusSummary.inProgress; i++) {
+			deliveries.push({ status: 'InProgress', sequence: sequence++ });
+		}
+
+		// Ajouter les livraisons échouées
+		for (let i = 0; i < route.statusSummary.failed; i++) {
+			deliveries.push({ status: 'Failed', sequence: sequence++ });
+		}
+
+		// Ajouter les livraisons prévues en dernier
+		for (let i = 0; i < route.statusSummary.pending; i++) {
+			deliveries.push({ status: 'Pending', sequence: sequence++ });
+		}
+
+		return deliveries;
 	}
 
 	let loading = $state(true);
@@ -63,7 +94,7 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Tournées" subtitle="Liste des tournées créées (une par batch de livraisons)." />
+	<PageHeader title="Tournées" subtitle="Liste des tournées créées (une par batch de livraisons)." icon={RouteIcon} />
 
 	<DateFilterCard
 		chartTitle="Tournées"
@@ -82,7 +113,10 @@
 		<CardHeader class="space-y-1">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div>
-					<CardTitle>Liste des tournées</CardTitle>
+					<CardTitle class="flex items-center gap-2">
+						<MapPinIcon class="size-4 text-muted-foreground" />
+						Liste des tournées
+					</CardTitle>
 					<p class="text-sm text-muted-foreground">
 						{routeList.length} tournée{routeList.length !== 1 ? 's' : ''}
 					</p>
@@ -116,8 +150,7 @@
 							<TableRow>
 								<TableHead>Tournée</TableHead>
 								<TableHead>Chauffeur</TableHead>
-								<TableHead>Date</TableHead>
-								<TableHead class="tabular-nums">Arrêts</TableHead>
+								<TableHead>Progression</TableHead>
 								<TableHead class="w-[140px]"></TableHead>
 							</TableRow>
 						</TableHeader>
@@ -134,8 +167,9 @@
 										</Button>
 									</TableCell>
 									<TableCell>{route.driverName}</TableCell>
-									<TableCell class="tabular-nums">{formatRouteDate(route.createdAt)}</TableCell>
-									<TableCell class="tabular-nums">{route.deliveryCount}</TableCell>
+									<TableCell class="min-w-[200px]">
+										<RouteProgressIndicator deliveries={getDeliveriesForProgress(route)} />
+									</TableCell>
 									<TableCell class="space-x-2">
 										<Button
 											variant="link"

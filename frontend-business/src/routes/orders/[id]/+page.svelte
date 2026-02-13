@@ -2,11 +2,14 @@
 	import { page } from '$app/state';
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
+	import ClipboardEditIcon from '@lucide/svelte/icons/clipboard-edit';
+	import PackageIcon from '@lucide/svelte/icons/package';
 	import { getOrder } from '$lib/api/orders';
 	import type { ApiOrderDetail } from '$lib/api/orders';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import OrderDateIndicator from '$lib/components/OrderDateIndicator.svelte';
+	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -57,7 +60,7 @@
 </script>
 
 <div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
-	<PageHeader title="Détail de la commande" subtitle="Informations complètes et livraisons associées" />
+	<PageHeader title="Détail de la commande" subtitle="Informations complètes et livraisons associées" icon={ClipboardListIcon} />
 
 		{#if loading}
 			<Card>
@@ -112,7 +115,7 @@
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Date et heure de la commande</p>
 							<p class="font-medium">
-								<OrderDateIndicator orderDate={order.orderDate} />
+								<RelativeTimeIndicator date={order.orderDate} showTime={true} />
 							</p>
 						</div>
 						<div class="space-y-1">
@@ -125,7 +128,10 @@
 
 			<Card>
 				<CardHeader class="flex flex-row items-center justify-between space-y-0 pb-2">
-					<CardTitle>Livraisons associées</CardTitle>
+					<CardTitle class="flex items-center gap-2">
+						<PackageIcon class="size-4 text-muted-foreground" />
+						Livraisons associées
+					</CardTitle>
 					<Badge variant="secondary">{order.deliveries.length} livraison{order.deliveries.length > 1 ? 's' : ''}</Badge>
 				</CardHeader>
 				<CardContent>

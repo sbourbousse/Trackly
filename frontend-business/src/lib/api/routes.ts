@@ -2,6 +2,13 @@ import { apiFetch } from './client';
 import { browser } from '$app/environment';
 import { isOfflineMode } from '../offline/config';
 
+export type DeliveryStatusSummary = {
+	pending: number;
+	inProgress: number;
+	completed: number;
+	failed: number;
+};
+
 export type ApiRoute = {
 	id: string;
 	driverId: string;
@@ -9,6 +16,7 @@ export type ApiRoute = {
 	createdAt: string;
 	deliveryCount: number;
 	driverName: string;
+	statusSummary: DeliveryStatusSummary;
 };
 
 /** Livraison dans le contexte d'une tournée (GET /api/routes/{id}). */

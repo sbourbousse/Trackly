@@ -1,9 +1,11 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
+	import UserIcon from '@lucide/svelte/icons/user';
 	import { getDrivers } from '$lib/api/drivers';
 	import type { ApiDriver } from '$lib/api/drivers';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
+	import UserCircleIcon from '@lucide/svelte/icons/user-circle';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import {
 		Table,
@@ -39,13 +41,16 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Livreurs" subtitle="Gérer vos livreurs" />
+	<PageHeader title="Livreurs" subtitle="Gérer vos livreurs" icon={UserIcon} />
 
 		<Card>
 			<CardHeader class="space-y-1">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<CardTitle>Liste des livreurs</CardTitle>
+						<CardTitle class="flex items-center gap-2">
+							<UserCircleIcon class="size-4 text-muted-foreground" />
+							Liste des livreurs
+						</CardTitle>
 						<p class="text-sm text-muted-foreground">
 							{drivers.length} livreur{drivers.length > 1 ? 's' : ''}
 						</p>

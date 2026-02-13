@@ -2,6 +2,8 @@
 	import { goto } from '$app/navigation';
 	import { authActions } from '$lib/stores/auth.svelte';
 	import { loginAccount, registerAccount } from '$lib/api/client';
+	import { setOfflineModeReactive } from '$lib/stores/offline.svelte';
+	import { DEMO_TENANT_ID } from '$lib/offline/mockData';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -68,6 +70,38 @@
 			await goto('/dashboard');
 		} catch (err) {
 			error = err instanceof Error ? err.message : "Erreur d'authentification";
+		} finally {
+			loading = false;
+		}
+	}
+
+	async function handleDemoMode() {
+		loading = true;
+		try {
+			// Activer le mode offline/démo
+			setOfflineModeReactive(true);
+
+			// Configurer les données de démo
+			const demoToken = 'demo-token-' + Date.now();
+			localStorage.setItem('trackly_auth_token', demoToken);
+			localStorage.setItem('trackly_tenant_id', DEMO_TENANT_ID);
+
+			// Authentifier avec les données de démo
+			authActions.setTenantId(DEMO_TENANT_ID);
+			authActions.setToken(demoToken);
+			authActions.login({
+				id: 'demo-user-001',
+				name: 'Utilisateur Démo',
+				email: 'demo@trackly.com',
+				plan: 'Starter'
+			});
+
+			console.log('[Demo] Mode démo activé avec tenantId:', DEMO_TENANT_ID);
+
+			// Rediriger vers le dashboard
+			await goto('/dashboard');
+		} catch (err) {
+			error = err instanceof Error ? err.message : "Erreur lors de l'activation du mode démo";
 		} finally {
 			loading = false;
 		}
@@ -146,7 +180,13 @@
 						<Checkbox id="remember" bind:checked={remember} />
 						<Label for="remember" class="cursor-pointer text-sm font-normal">Se souvenir de moi</Label>
 					</div>
-					<Button type="button" variant="link" href="/dashboard" class="h-auto p-0 text-sm">
+					<Button 
+						type="button" 
+						variant="link" 
+						onclick={handleDemoMode} 
+						class="h-auto p-0 text-sm"
+						disabled={loading}
+					>
 						Mode demo
 					</Button>
 				</div>

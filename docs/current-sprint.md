@@ -40,6 +40,7 @@ Demarrer le frontend Business et poser les premiers ecrans.
 - `frontend-business/src/routes/dashboard/+page.svelte`
 - `frontend-business/src/routes/login/+page.svelte`
 - `frontend-business/src/lib/components/TopNav.svelte`
+- `frontend-business/src/lib/components/DemoBanner.svelte`
 - `frontend-business/src/routes/orders/+page.svelte`
 - `frontend-business/src/routes/orders/import/+page.svelte`
 - `frontend-business/src/routes/deliveries/+page.svelte`
@@ -47,10 +48,16 @@ Demarrer le frontend Business et poser les premiers ecrans.
 - `frontend-business/src/lib/stores/auth.svelte.ts`
 - `frontend-business/src/lib/stores/orders.svelte.ts`
 - `frontend-business/src/lib/stores/deliveries.svelte.ts`
+- `frontend-business/src/lib/stores/offline.svelte.ts` (nouveau - 2026-02-12)
 - `frontend-business/src/lib/api/client.ts`
 - `frontend-business/src/lib/api/orders.ts`
 - `frontend-business/src/lib/api/deliveries.ts`
+- `frontend-business/src/lib/offline/config.ts`
 - `frontend-business/src/lib/realtime/tracking.svelte.ts`
+- `docs/decision-log.md`
+- `docs/project-log.md`
+- `docs/current-sprint.md`
+- `DEMO_MODE_FIX.md` (nouveau - 2026-02-12)
 
 ## Prochain Blocage Attendu
 Aucun blocage identifié.
@@ -82,3 +89,9 @@ Aucun blocage identifié.
 - Client HTTP ajoute et actions de refresh API.
 - Client SignalR ajoute pour suivi temps reel.
 - Chargement auto des donnees API sur listes.
+- (2026-02-12) Mode démo corrigé : bouton "Mode demo" active maintenant correctement le mode offline avec DEMO_TENANT_ID et affiche les données de démonstration. Store réactif `offline.svelte.ts` créé pour gérer l'état du mode offline.
+- (2026-02-12) Dates des données de démo rendues cohérentes : les commandes et livraisons sont maintenant réparties entre J-7 et J+7 avec des statuts logiques (Delivered/Completed pour le passé, InDelivery/InProgress pour aujourd'hui, Pending pour le futur). Plusieurs tournées générées dynamiquement selon les dates.
+- (2026-02-12) Filtres de calendrier en mode démo : les fonctions mock respectent maintenant les filtres `dateFrom`, `dateTo`, `driverId`, `routeId`, et `search`. Les stats sont générées dynamiquement selon les données filtrées.
+- (2026-02-12) Affichage de temps relatif unifié : création du composant `RelativeTimeIndicator.svelte` pour afficher le temps relatif (ex: "Dans 2h", "Il y a 3j") avec code couleur selon l'urgence (rouge/jaune/orange/gris). Date complète dans tooltip. Appliqué dans nouvelle tournée, liste des livraisons, dashboard et toutes les pages de commandes.
+- (2026-02-12) Nombre de livraisons et visualisation de progression : ajout du `deliveryCount` dans les commandes (backend + frontend) avec badge orange si = 0. Création de `RouteProgressIndicator` pour visualiser l'état des tournées avec icônes colorées (✓ vert, ◉ bleu, ✗ rouge, ○ gris avec opacité). Remplacement de la colonne "Date" des tournées par la colonne "Progression". Backend mis à jour pour inclure `DeliveryStatusSummary` dans `RouteResponse`.
+- (2026-02-12) Cohérence des icônes : ajout d'icônes dans `PageHeader` (prop `icon` optionnelle), `CardTitle` (inline avec flexbox), et `TopNav` (navigation). Convention : Commandes=ClipboardList/ClipboardEdit, Livraisons=Package, Tournées=Route/MapPin, Livreurs=User/UserCircle. ~18 pages et ~25 CardTitle mis à jour. Style uniforme : size-5/4, text-muted-foreground, gap-2. Améliore la reconnaissance visuelle et la navigation.

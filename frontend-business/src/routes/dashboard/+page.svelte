@@ -1,7 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import OrderDateIndicator from '$lib/components/OrderDateIndicator.svelte';
+	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -19,6 +19,9 @@
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
 	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
 	import PlusIcon from '@lucide/svelte/icons/plus';
+	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
+	import PackageIcon from '@lucide/svelte/icons/package';
+	import RouteIcon from '@lucide/svelte/icons/route';
 
 	let activeTab = $state('commandes-attente');
 
@@ -68,7 +71,10 @@
 			<TabsContent value="commandes-attente" class="mt-0 min-w-0">
 				<Card class="min-w-0">
 					<CardHeader class="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
-						<CardTitle>Commandes en attente</CardTitle>
+						<CardTitle class="flex items-center gap-2">
+							<ClipboardListIcon class="size-4 text-muted-foreground" />
+							Commandes en attente
+						</CardTitle>
 						<Button variant="outline" size="sm" href="/orders/new">Nouvelle commande</Button>
 					</CardHeader>
 					<CardContent class="min-w-0">
@@ -102,7 +108,7 @@
 													<StatusBadge type="order" status={order.status} />
 												</TableCell>
 												<TableCell>
-													<OrderDateIndicator orderDate={order.orderDate} />
+													<RelativeTimeIndicator date={order.orderDate} showTime={true} />
 												</TableCell>
 												<TableCell>
 													<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">
@@ -145,7 +151,10 @@
 					{:else}
 						<Card class="min-w-0">
 							<CardHeader class="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
-								<CardTitle>Tournées prévues</CardTitle>
+								<CardTitle class="flex items-center gap-2">
+									<RouteIcon class="size-4 text-muted-foreground" />
+									Tournées prévues
+								</CardTitle>
 								<Badge variant="secondary">{routesPrevues.length}</Badge>
 							</CardHeader>
 							<CardContent class="min-w-0">
@@ -191,7 +200,10 @@
 
 						<Card class="min-w-0">
 							<CardHeader class="flex flex-row flex-wrap items-center justify-between gap-2 space-y-0 pb-2">
-								<CardTitle>En cours</CardTitle>
+								<CardTitle class="flex items-center gap-2">
+									<RouteIcon class="size-4 text-muted-foreground" />
+									En cours
+								</CardTitle>
 								<Badge variant="secondary">{routesEnCours.length}</Badge>
 							</CardHeader>
 							<CardContent class="min-w-0">

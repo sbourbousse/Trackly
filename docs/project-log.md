@@ -3,6 +3,27 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-12 | Turborepo et CI
+
+**Tâche** : Mise en place d’un monorepo Turborepo pour build, lint et tests, et d’un workflow CI unique.
+
+**Fichiers créés** :
+- `package.json` (racine) – workspaces npm, scripts turbo, devDependency turbo
+- `turbo.json` – pipeline (build, dev, lint, test) et cache
+- `.github/workflows/ci.yml` – CI : install, build, lint, test via turbo
+- `TURBOREPO.md` – doc structure, commandes, déploiement Vercel/Railway
+
+**Fichiers modifiés** :
+- `frontend-business/package.json` – scripts `lint` (svelte-check), `test` (playwright)
+- `frontend-driver/package.json` – scripts `lint`, `test`, devDependency `@playwright/test`
+- `frontend-tracking/package.json` – script `test`, devDependency `@playwright/test`
+- `frontend-landing-page/package.json` – script `test` (no-op), format
+- `.gitignore` – entrée `.turbo`
+
+**Workflow** : À la racine, `npm install` puis `npm run build` / `npm run lint` / `npm run test`. Backend reste dans `backend/` (hors workspaces, déployé sur Railway). Fronts déployables sur Vercel avec Root Directory par projet.
+
+---
+
 ## 2026-02-12 | Cohérence des Icônes dans l'Application
 
 **Tâche** : Ajouter des icônes cohérentes dans toute l'application pour les concepts clés : Commandes, Livraisons, Tournées, Livreurs.

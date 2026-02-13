@@ -1,6 +1,7 @@
 node_modules
 frontend-business/node_modules
 **/node_modules
+.turbo
 
 # Output
 .output

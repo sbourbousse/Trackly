@@ -1,0 +1,28 @@
+{
+  "name": "trackly",
+  "private": true,
+  "version": "0.0.1",
+  "description": "Trackly monorepo - Turborepo",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "test:e2e": "turbo run test --filter=@trackly/e2e-tests",
+    "clean": "turbo run clean --force"
+  },
+  "devDependencies": {
+    "turbo": "^2.3.0"
+  },
+  "workspaces": [
+    "frontend-business",
+    "frontend-driver",
+    "frontend-tracking",
+    "frontend-landing-page",
+    "e2e"
+  ],
+  "packageManager": "npm@10.0.0",
+  "engines": {
+    "node": ">=20"
+  }
+}

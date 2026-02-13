@@ -1,0 +1,33 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "ui": "tui",
+  "tasks": {
+    "build": {
+      "dependsOn": ["^build"],
+      "outputs": [".svelte-kit/**", "build/**", "dist/**", ".next/**", "out/**"],
+      "env": ["PUBLIC_*", "VITE_*", "NODE_ENV"]
+    },
+    "dev": {
+      "cache": false,
+      "persistent": true
+    },
+    "lint": {
+      "dependsOn": ["^build"],
+      "outputs": []
+    },
+    "test": {
+      "dependsOn": [],
+      "outputs": ["playwright-report/**", "test-results/**"],
+      "env": ["PLAYWRIGHT_*", "CI"],
+      "cache": false
+    },
+    "prepare": {
+      "cache": false
+    },
+    "clean": {
+      "cache": false
+    }
+  },
+  "globalEnv": ["NODE_ENV", "CI"],
+  "globalPassThroughEnv": ["PUBLIC_*", "VITE_*", "PLAYWRIGHT_*"]
+}

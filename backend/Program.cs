@@ -112,17 +112,19 @@ builder.Services.AddCors(options =>
                 allowedPatterns.AddRange(patterns);
             }
             
-            // 4. Si aucune origine configurée, log un warning
+            // 4. Si aucune origine configurée, autorise tout (fallback de secours)
             if (allowedOrigins.Count == 0 && allowedPatterns.Count == 0)
             {
-                Console.WriteLine("[WARNING] Aucune origine CORS configurée. Les requêtes cross-origin seront bloquées.");
+                Console.WriteLine("[WARNING] Aucune origine CORS configurée. Autorisation de toutes les origines (mode dégradé).");
+                policy.AllowAnyOrigin()
+                    .AllowAnyMethod()
+                    .AllowAnyHeader();
+                return;
             }
-            else
-            {
-                Console.WriteLine($"[INFO] CORS configuré avec {allowedOrigins.Count} origine(s) exacte(s) et {allowedPatterns.Count} pattern(s)");
-                if (allowedOrigins.Count > 0) Console.WriteLine($"       Origines: {string.Join(", ", allowedOrigins)}");
-                if (allowedPatterns.Count > 0) Console.WriteLine($"       Patterns: {string.Join(", ", allowedPatterns)}");
-            }
+            
+            Console.WriteLine($"[INFO] CORS configuré avec {allowedOrigins.Count} origine(s) exacte(s) et {allowedPatterns.Count} pattern(s)");
+            if (allowedOrigins.Count > 0) Console.WriteLine($"       Origines: {string.Join(", ", allowedOrigins)}");
+            if (allowedPatterns.Count > 0) Console.WriteLine($"       Patterns: {string.Join(", ", allowedPatterns)}");
             
             // Fonction de validation des origines avec support wildcard
             policy.SetIsOriginAllowed(origin => 

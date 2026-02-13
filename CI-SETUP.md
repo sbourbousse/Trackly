@@ -34,9 +34,11 @@ Ces secrets sont dans l'environnement protégé `main` (Settings → Environment
 
 | Événement | Jobs exécutés |
 |-----------|---------------|
-| **PR sur develop/main** | Build + Tests (optionnels) + Déploiement Vercel Preview |
-| **Push sur main** | Build + Tests + Déploiement Vercel Prod + Redeploy Railway |
-| **Workflow dispatch** | Build + Skip tests optionnel |
+| **PR sur develop/main** | Build + Lint + Déploiement Vercel Preview |
+| **Push sur main** | Build + Lint + Déploiement Vercel Prod + Redeploy Railway |
+| **Workflow dispatch** | Build + Lint |
+
+**Note** : Les tests E2E ont été retirés car trop lourds. Ils peuvent être exécutés localement si nécessaire.
 
 ### Railway Redeploy (railway-redeploy.yml)
 
@@ -75,10 +77,6 @@ Vérifie que :
 Vérifie que :
 1. Le job a bien `environment: main` pour accéder aux secrets
 2. Les secrets sont bien dans l'environnement "main" et pas juste dans les secrets globaux
-
-### Les tests échouent mais je veux déployer quand même
-
-Utilise **Actions** → **CI (Turborepo)** → **Run workflow** → coche **Skip tests**.
 
 ### Les commentaires PR ne s'affichent pas
 

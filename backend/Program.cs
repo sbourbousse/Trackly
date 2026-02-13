@@ -75,13 +75,7 @@ builder.Services.AddCors(options =>
                 allowedOrigins.AddRange(envOrigins);
             }
             
-            // 3. Ajoute les origines Vercel et Railway par défaut
-            allowedOrigins.Add("https://frontend-business-production.up.railway.app");
-            allowedOrigins.Add("https://trackly-frontend-business-kgj6q1smi-sbourbousses-projects.vercel.app");
-            allowedOrigins.Add("https://trackly-frontend-driver-k6ogv930f-sbourbousses-projects.vercel.app");
-            allowedOrigins.Add("https://trackly-frontend-tracking-iu5b5wyt5-sbourbousses-projects.vercel.app");
-            
-            // 4. Si aucune origine configurée, log un warning
+            // 3. Si aucune origine configurée, log un warning
             if (allowedOrigins.Count == 0)
             {
                 Console.WriteLine("[WARNING] Aucune origine CORS configurée. Les requêtes cross-origin seront bloquées.");

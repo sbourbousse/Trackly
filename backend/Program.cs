@@ -16,6 +16,24 @@ using Trackly.Backend.Features.Tracking;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
 
+/// <summary>
+/// Vérifie si une origine correspond à un pattern avec wildcard (*)
+/// Ex: https://xxx.vercel.app match *.vercel.app
+/// </summary>
+static bool MatchWildcard(string origin, string pattern)
+{
+    if (string.IsNullOrEmpty(origin) || string.IsNullOrEmpty(pattern))
+        return false;
+    
+    // Convertit le pattern en regex
+    // *.vercel.app devient .*\.vercel\.app$
+    var regexPattern = "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
+        .Replace("\\*", ".*") + "$";
+    
+    return System.Text.RegularExpressions.Regex.IsMatch(origin, regexPattern, 
+        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+}
+
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<TenantContext>();
@@ -57,13 +75,18 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // En production, configurez les origines spécifiques
+            // En production, configurez les origines avec support wildcard
             var allowedOrigins = new List<string>();
+            var allowedPatterns = new List<string>();
             
             // 1. Récupère depuis la config Cors:AllowedOrigins (indexée)
             var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
                 ?? Array.Empty<string>();
-            allowedOrigins.AddRange(configOrigins);
+            foreach (var origin in configOrigins)
+            {
+                if (origin.Contains("*")) allowedPatterns.Add(origin);
+                else allowedOrigins.Add(origin);
+            }
             
             // 2. Récupère depuis CORS_ORIGINS (format: url1,url2,url3)
             var corsOriginsEnv = Environment.GetEnvironmentVariable("CORS_ORIGINS");
@@ -72,23 +95,52 @@ builder.Services.AddCors(options =>
                 var envOrigins = corsOriginsEnv.Split(',', StringSplitOptions.RemoveEmptyEntries)
                     .Select(o => o.Trim())
                     .Where(o => !string.IsNullOrWhiteSpace(o));
-                allowedOrigins.AddRange(envOrigins);
+                foreach (var origin in envOrigins)
+                {
+                    if (origin.Contains("*")) allowedPatterns.Add(origin);
+                    else allowedOrigins.Add(origin);
+                }
             }
             
-            // 3. Si aucune origine configurée, log un warning
-            if (allowedOrigins.Count == 0)
+            // 3. Récupère depuis CORS_PATTERNS (format: pattern1,pattern2)
+            var corsPatternsEnv = Environment.GetEnvironmentVariable("CORS_PATTERNS");
+            if (!string.IsNullOrWhiteSpace(corsPatternsEnv))
+            {
+                var patterns = corsPatternsEnv.Split(',', StringSplitOptions.RemoveEmptyEntries)
+                    .Select(p => p.Trim())
+                    .Where(p => !string.IsNullOrWhiteSpace(p));
+                allowedPatterns.AddRange(patterns);
+            }
+            
+            // 4. Si aucune origine configurée, log un warning
+            if (allowedOrigins.Count == 0 && allowedPatterns.Count == 0)
             {
                 Console.WriteLine("[WARNING] Aucune origine CORS configurée. Les requêtes cross-origin seront bloquées.");
             }
             else
             {
-                Console.WriteLine($"[INFO] CORS configuré avec {allowedOrigins.Count} origine(s): {string.Join(", ", allowedOrigins)}");
+                Console.WriteLine($"[INFO] CORS configuré avec {allowedOrigins.Count} origine(s) exacte(s) et {allowedPatterns.Count} pattern(s)");
+                if (allowedOrigins.Count > 0) Console.WriteLine($"       Origines: {string.Join(", ", allowedOrigins)}");
+                if (allowedPatterns.Count > 0) Console.WriteLine($"       Patterns: {string.Join(", ", allowedPatterns)}");
             }
             
-            policy.WithOrigins(allowedOrigins.ToArray())
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials();
+            // Fonction de validation des origines avec support wildcard
+            policy.SetIsOriginAllowed(origin => 
+            {
+                // Vérifie les origines exactes
+                if (allowedOrigins.Contains(origin)) return true;
+                
+                // Vérifie les patterns (ex: *.vercel.app, *.railway.app)
+                foreach (var pattern in allowedPatterns)
+                {
+                    if (MatchWildcard(origin, pattern)) return true;
+                }
+                
+                return false;
+            })
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
         }
     });
 });

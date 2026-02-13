@@ -24,20 +24,46 @@ Cors__AllowedOrigins__4=https://*.vercel.app
 
 **Note** : Le wildcard `*` fonctionne mais est moins sécurisé. À utiliser uniquement pour les previews.
 
-## ✅ RECOMMANDÉ : Variable CORS_ORIGINS (nouveau)
+## ✅ RECOMMANDÉ : Patterns Wildcards (meilleure solution)
 
-Le code supporte maintenant une variable unique avec des virgules (plus simple à gérer) :
+Au lieu de lister chaque URL, utilise des patterns avec `*` :
 
 ```
-CORS_ORIGINS=https://frontend-business-production.up.railway.app,https://trackly-frontend-business-kgj6q1smi-sbourbousses-projects.vercel.app,https://trackly-frontend-driver-k6ogv930f-sbourbousses-projects.vercel.app,https://trackly-frontend-tracking-iu5b5wyt5-sbourbousses-projects.vercel.app
+CORS_PATTERNS=*.vercel.app,*.railway.app
 ```
 
-Avantages :
-- Une seule variable à gérer
-- Plus facile à mettre à jour
-- Pas de limite d'index
+Cela autorise **tous** les sous-domaines Vercel et Railway automatiquement !
 
-Cette variable est lue **en plus** de Cors:AllowedOrigins__*, donc tu peux mixer les deux méthodes.
+### Exemples de patterns valides
+
+| Pattern | URLs autorisées |
+|---------|-----------------|
+| `*.vercel.app` | Tous les projets Vercel (preview + prod) |
+| `*.railway.app` | Tous les services Railway |
+| `*.sbourbousses-projects.vercel.app` | Tous tes projets Vercel uniquement |
+| `https://*.up.railway.app` | Tous les services Railway (format complet) |
+
+### Configuration recommandée pour Trackly
+
+```
+CORS_PATTERNS=*.sbourbousses-projects.vercel.app,*.up.railway.app
+```
+
+Ou si tu veux être plus permissif (tous les projets Vercel) :
+
+```
+CORS_PATTERNS=*.vercel.app,*.up.railway.app
+```
+
+### Variables existantes (optionnel)
+
+Tu peux aussi garder `Cors__AllowedOrigins__*` ou `CORS_ORIGINS` pour des URLs spécifiques non couvertes par les patterns.
+
+Exemple mixte :
+```
+CORS_PATTERNS=*.sbourbousses-projects.vercel.app
+Cors__AllowedOrigins__0=https://mon-domaine-custom.com
+```
 
 ## Vérification
 

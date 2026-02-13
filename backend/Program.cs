@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -27,11 +28,10 @@ static bool MatchWildcard(string origin, string pattern)
     
     // Convertit le pattern en regex
     // *.vercel.app devient .*\.vercel\.app$
-    var regexPattern = "^" + System.Text.RegularExpressions.Regex.Escape(pattern)
+    var regexPattern = "^" + Regex.Escape(pattern)
         .Replace("\\*", ".*") + "$";
     
-    return System.Text.RegularExpressions.Regex.IsMatch(origin, regexPattern, 
-        System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+    return Regex.IsMatch(origin, regexPattern, RegexOptions.IgnoreCase);
 }
 
 var builder = WebApplication.CreateBuilder(args);

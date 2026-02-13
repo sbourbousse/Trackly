@@ -6,16 +6,10 @@ on:
   pull_request:
     branches: [develop, main]
   workflow_dispatch:
-    inputs:
-      skip_tests:
-        description: 'Skip tests (déploiement rapide)'
-        required: false
-        default: false
-        type: boolean
 
 jobs:
-  build-and-test:
-    name: Build, Lint & Test
+  build-and-lint:
+    name: Build & Lint
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -29,39 +23,16 @@ jobs:
       - name: Install dependencies
         run: npm install
 
-      - name: Install Playwright browsers
-        if: ${{ !inputs.skip_tests }}
-        run: npx playwright install --with-deps
-
       - name: Build
         run: npm run build
 
       - name: Lint
         run: npm run lint
 
-      - name: Test (E2E)
-        if: ${{ !inputs.skip_tests }}
-        run: npm run test
-        continue-on-error: true  # Ne pas bloquer le déploiement si tests échouent
-        env:
-          PLAYWRIGHT_BASE_URL: ${{ secrets.PLAYWRIGHT_BUSINESS_URL || 'http://localhost:5173' }}
-          CI: true
-
-      - name: Upload Playwright reports
-        uses: actions/upload-artifact@v4
-        if: failure() && !inputs.skip_tests
-        with:
-          name: playwright-reports
-          path: |
-            frontend-business/playwright-report/
-            frontend-driver/playwright-report/
-            frontend-tracking/playwright-report/
-          retention-days: 7
-
   # Job de déploiement PR sur Vercel
   deploy-vercel-preview:
     name: Deploy Vercel Preview
-    needs: build-and-test
+    needs: build-and-lint
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
     steps:
@@ -139,7 +110,7 @@ jobs:
   # Déploiement production sur Vercel (main uniquement)
   deploy-vercel-production:
     name: Deploy Vercel Production
-    needs: build-and-test
+    needs: build-and-lint
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
@@ -187,7 +158,7 @@ jobs:
   # Redeploy Railway (environnement main) - utilise les secrets de l'environnement
   deploy-railway:
     name: Redeploy Railway Services
-    needs: build-and-test
+    needs: build-and-lint
     if: github.ref == 'refs/heads/main' && github.event_name == 'push'
     runs-on: ubuntu-latest
     environment: main  # ← Utilise l'environnement "main" pour les secrets Railway

@@ -76,10 +76,8 @@ En cas d’échec des tests, les rapports Playwright sont publiés en artefacts.
   - `frontend-driver`
   - `frontend-tracking`
   - `frontend-landing-page`
-- Build command : `npm run build` (exécuté dans le dossier du projet).
+- Chaque app a un **`vercel.json`** dans son dossier avec `installCommand: "npm install"` et `buildCommand: "npm run build"` pour forcer l’install dans le dossier de l’app. Sinon Vercel détecte Turbo et lance `npm install --prefix=..` (racine du monorepo), ce qui peut faire échouer le build (dépendances à la racine, build dans l’app).
 - Vercel détecte SvelteKit / Vite / Next selon le dossier.
-
-Pas de `vercel.json` à la racine nécessaire : chaque app garde le sien dans son dossier si besoin.
 
 ### Railway (backend)
 

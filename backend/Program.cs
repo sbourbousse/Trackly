@@ -1,4 +1,4 @@
-using System.Linq;
+using System.Collections.Generic;
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -57,34 +57,16 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // En production, configurez les origines spécifiques
-            var allowedOrigins = new List<string>();
-            
-            // 1. Récupère depuis la config Cors:AllowedOrigins (indexée)
-            var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
-                ?? Array.Empty<string>();
-            allowedOrigins.AddRange(configOrigins);
-            
-            // 2. Récupère depuis CORS_ORIGINS (format: url1,url2,url3)
-            var corsOriginsEnv = Environment.GetEnvironmentVariable("CORS_ORIGINS");
-            if (!string.IsNullOrWhiteSpace(corsOriginsEnv))
-            {
-                var envOrigins = corsOriginsEnv.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(o => o.Trim())
-                    .Where(o => !string.IsNullOrWhiteSpace(o));
-                allowedOrigins.AddRange(envOrigins);
-            }
-            
-            // 3. Si aucune origine configurée, log un warning
-            if (allowedOrigins.Count == 0)
-            {
-                Console.WriteLine("[WARNING] Aucune origine CORS configurée. Les requêtes cross-origin seront bloquées.");
-            }
-            else
-            {
-                Console.WriteLine($"[INFO] CORS configuré avec {allowedOrigins.Count} origine(s): {string.Join(", ", allowedOrigins)}");
-            }
-            
+            // En production, configurez les origines specifiques
+            var allowedOrigins = new List<string>(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                ?? Array.Empty<string>());
+
+            // Ajoute les origines Vercel et Railway par defaut
+            allowedOrigins.Add("https://frontend-business-production.up.railway.app");
+            allowedOrigins.Add("https://trackly-frontend-business-kgj6q1smi-sbourbousses-projects.vercel.app");
+            allowedOrigins.Add("https://trackly-frontend-driver-k6ogv930f-sbourbousses-projects.vercel.app");
+            allowedOrigins.Add("https://trackly-frontend-tracking-iu5b5wyt5-sbourbousses-projects.vercel.app");
+
             policy.WithOrigins(allowedOrigins.ToArray())
                 .AllowAnyMethod()
                 .AllowAnyHeader()

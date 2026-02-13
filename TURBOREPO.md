@@ -16,6 +16,19 @@ Le dépôt est configuré en **monorepo npm workspaces** avec **Turborepo** pour
 
 Le **backend** (.NET) reste dans `backend/` et n’est pas dans le workspace npm (build via Railway/dotnet).
 
+## Où va le build ? (dossier de sortie)
+
+Après `npm run build`, chaque app écrit dans **son propre dossier** (chemin relatif au dossier de l'app) :
+
+| App | Dossier de sortie | Remarque |
+|-----|-------------------|----------|
+| **frontend-business** | `.svelte-kit/output` (Vercel) ou `build/` (local) | SvelteKit + adapter-auto : sur Vercel la sortie est serverless (pas un dossier à pointer). En local, le serveur Node est dans `build/`. |
+| **frontend-driver** | **`dist/`** | Vite : sortie dans `frontend-driver/dist/`. Vercel utilise ce dossier (`vercel.json` → `outputDirectory: "dist"`). |
+| **frontend-tracking** | **`.next/`** | Next.js : sortie dans `frontend-tracking/.next/`. Vercel détecte Next et gère le déploiement. |
+| **frontend-landing-page** | **`.next/`** | Next.js : idem, `frontend-landing-page/.next/`. |
+
+En résumé : **frontend-driver** → `dist/` ; **frontend-tracking** et **frontend-landing-page** → `.next/` ; **frontend-business** → sur Vercel pas de dossier "output" classique (serverless), en local → `build/`.
+
 ## Commandes à la racine
 
 À exécuter depuis la **racine du repo** après `npm install` :

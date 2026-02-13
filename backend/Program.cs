@@ -17,23 +17,6 @@ using Trackly.Backend.Features.Tracking;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
 
-/// <summary>
-/// Vérifie si une origine correspond à un pattern avec wildcard (*)
-/// Ex: https://xxx.vercel.app match *.vercel.app
-/// </summary>
-static bool MatchWildcard(string origin, string pattern)
-{
-    if (string.IsNullOrEmpty(origin) || string.IsNullOrEmpty(pattern))
-        return false;
-    
-    // Convertit le pattern en regex
-    // *.vercel.app devient .*\.vercel\.app$
-    var regexPattern = "^" + Regex.Escape(pattern)
-        .Replace("\\*", ".*") + "$";
-    
-    return Regex.IsMatch(origin, regexPattern, RegexOptions.IgnoreCase);
-}
-
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddScoped<TenantContext>();
@@ -135,7 +118,9 @@ builder.Services.AddCors(options =>
                 // Vérifie les patterns (ex: *.vercel.app, *.railway.app)
                 foreach (var pattern in allowedPatterns)
                 {
-                    if (MatchWildcard(origin, pattern)) return true;
+                    // Convertit le pattern en regex et vérifie
+                    var regexPattern = "^" + Regex.Escape(pattern).Replace("\\*", ".*") + "$";
+                    if (Regex.IsMatch(origin, regexPattern, RegexOptions.IgnoreCase)) return true;
                 }
                 
                 return false;

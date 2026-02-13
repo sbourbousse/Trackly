@@ -18,9 +18,12 @@ export function getRuntimeConfig(): RuntimeConfig {
     }
   }
   
-  // Fallback pour le développement
+  // Détection environnement (prod vs dev)
+  const isDev = typeof window !== 'undefined' && window.location.hostname === 'localhost';
+  
+  // Fallback: Railway en prod, localhost en dev
   return {
-    API_URL: 'http://localhost:5257',
-    SIGNALR_URL: 'http://localhost:5257/hubs/tracking',
+    API_URL: isDev ? 'http://localhost:5257' : 'https://trackly-backend-production.up.railway.app',
+    SIGNALR_URL: isDev ? 'http://localhost:5257/hubs/tracking' : 'https://trackly-backend-production.up.railway.app/hubs/tracking',
   };
 }

@@ -3,7 +3,9 @@ import { browser, dev } from '$app/environment';
 import { isOfflineMode } from '../offline/config';
 import { mockTenantApi } from '../offline/mockApi';
 
-const baseUrl = env.PUBLIC_API_BASE_URL || 'http://localhost:5257';
+// URL par défaut: Railway en prod, localhost en dev
+const defaultBaseUrl = dev ? 'http://localhost:5257' : 'https://trackly-backend-production.up.railway.app';
+const baseUrl = env.PUBLIC_API_BASE_URL || defaultBaseUrl;
 
 // Récupère ou récupère le TenantId depuis le backend
 let cachedTenantId: string | null = null;

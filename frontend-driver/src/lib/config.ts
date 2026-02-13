@@ -34,12 +34,12 @@ export function getRuntimeConfig(): RuntimeConfig {
     return window.__RUNTIME_CONFIG__;
   }
 
-  // Fallback si la configuration n'est pas disponible (ne devrait pas arriver)
-  console.warn('[Config] Configuration runtime non disponible, utilisation des fallbacks');
+  // Fallback: URL Railway si aucune config n'est disponible
+  console.warn('[Config] Configuration runtime non disponible, utilisation de Railway');
   return {
-    API_BASE_URL: '',
-    SIGNALR_URL: '',
+    API_BASE_URL: 'https://trackly-backend-production.up.railway.app',
+    SIGNALR_URL: 'https://trackly-backend-production.up.railway.app/hubs/tracking',
     DEFAULT_TENANT_ID: '',
-    TENANT_BOOTSTRAP: ''
+    TENANT_BOOTSTRAP: 'true'
   };
 }

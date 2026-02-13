@@ -1,4 +1,3 @@
-using System.Linq;
 using System.Text;
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -38,12 +37,12 @@ builder.Services.AddCors(options =>
         {
             // En développement, autorise toutes les origines locales
             policy.WithOrigins(
-                "http://localhost:5173",
-                "http://localhost:5174",
-                "http://localhost:5175",
-                "http://localhost:5176",
-                "http://localhost:3000",
-                "http://localhost:3004",
+                "http://localhost:5173",  // Vite/SvelteKit par défaut (frontend-business)
+                "http://localhost:5174",   // Port alternatif Vite
+                "http://localhost:5175",   // Frontend Driver PWA
+                "http://localhost:5176",   // Frontend Driver PWA (port alternatif)
+                "http://localhost:3000",   // Frontend Landing (Next.js)
+                "http://localhost:3004",   // Frontend Tracking (Next.js)
                 "http://127.0.0.1:5173",
                 "http://127.0.0.1:5174",
                 "http://127.0.0.1:5175",
@@ -57,44 +56,17 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // En production, autorise les origines configurées
-            var origins = new List<string>();
-            
-            // Récupère depuis CORS_ORIGINS (format: url1,url2,url3)
-            var corsOrigins = Environment.GetEnvironmentVariable("CORS_ORIGINS");
-            if (!string.IsNullOrWhiteSpace(corsOrigins))
-            {
-                origins.AddRange(corsOrigins.Split(',', StringSplitOptions.RemoveEmptyEntries)
-                    .Select(o => o.Trim())
-                    .Where(o => !string.IsNullOrWhiteSpace(o)));
-            }
-            
-            // Récupère depuis Cors:AllowedOrigins (indexée)
-            var configOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>();
-            if (configOrigins != null)
-            {
-                origins.AddRange(configOrigins);
-            }
-            
-            // Origines par défaut pour Trackly
-            origins.Add("https://frontend-business-production.up.railway.app");
-            origins.Add("https://trackly-frontend-business-kgj6q1smi-sbourbousses-projects.vercel.app");
-            origins.Add("https://trackly-frontend-driver-k6ogv930f-sbourbousses-projects.vercel.app");
-            origins.Add("https://trackly-frontend-tracking-iu5b5wyt5-sbourbousses-projects.vercel.app");
-            
-            // Supprime les doublons
-            origins = origins.Distinct().ToList();
-            
-            if (origins.Count == 0)
-            {
-                Console.WriteLine("[WARNING] Aucune origine CORS configurée.");
-            }
-            else
-            {
-                Console.WriteLine($"[INFO] CORS: {origins.Count} origine(s)");
-            }
-            
-            policy.WithOrigins(origins.ToArray())
+            // En production, configurez les origines specifiques
+            var allowedOrigins = new List<string>(builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>()
+                ?? Array.Empty<string>());
+
+            // Ajoute les origines Vercel et Railway par defaut
+            allowedOrigins.Add("https://frontend-business-production.up.railway.app");
+            allowedOrigins.Add("https://trackly-frontend-business-kgj6q1smi-sbourbousses-projects.vercel.app");
+            allowedOrigins.Add("https://trackly-frontend-driver-k6ogv930f-sbourbousses-projects.vercel.app");
+            allowedOrigins.Add("https://trackly-frontend-tracking-iu5b5wyt5-sbourbousses-projects.vercel.app");
+
+            policy.WithOrigins(allowedOrigins.ToArray())
                 .AllowAnyMethod()
                 .AllowAnyHeader()
                 .AllowCredentials();
@@ -104,6 +76,7 @@ builder.Services.AddCors(options =>
 
 builder.Services.AddDbContext<TracklyDbContext>(options =>
 {
+    // Priorité à DATABASE_URL (Railway), fallback sur la config .NET
     var connectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
         ?? builder.Configuration.GetConnectionString("TracklyDb");
 
@@ -132,56 +105,286 @@ if (string.IsNullOrWhiteSpace(jwtSecret))
 }
 else if (jwtSecret.Length < 32)
 {
-    throw new InvalidOperationException("JWT_SECRET doit faire au moins 32 caractères.");
+    throw new InvalidOperationException("JWT_SECRET doit contenir au moins 32 caracteres (256 bits).");
 }
 
-builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+builder.Services
+    .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
         options.TokenValidationParameters = new TokenValidationParameters
         {
             ValidateIssuer = false,
             ValidateAudience = false,
-            ValidateLifetime = true,
             ValidateIssuerSigningKey = true,
-            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret))
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSecret)),
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.FromMinutes(1)
         };
     });
 
 builder.Services.AddAuthorization();
 
+// Client HTTP nommé pour le géocodage Nominatim (User-Agent requis par leur politique d'utilisation)
+builder.Services.AddHttpClient("Nominatim", client =>
+{
+    client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
+    client.DefaultRequestHeaders.Add("User-Agent", "Trackly/1.0 (contact@trackly.app)");
+});
+
+// Service de simulation GPS pour les démonstrations (TEMPORAIREMENT DÉSACTIVÉ)
+// builder.Services.AddSingleton<IGpsSimulationService, GpsSimulationService>();
+
 var app = builder.Build();
 
+var allowTenantBootstrap = builder.Configuration.GetValue<bool>("ALLOW_TENANT_BOOTSTRAP");
+
+// Active CORS avant les autres middlewares
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
-// Endpoints
-app.MapTenantEndpoints();
-app.MapAuthEndpoints();
+// Exécute les migrations en développement et production
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<TracklyDbContext>();
+    await dbContext.Database.MigrateAsync();
+    
+    // Seed uniquement en développement
+    if (app.Environment.IsDevelopment())
+    {
+        await SeedData.SeedAsync(scope.ServiceProvider);
+    }
+}
+
+// Endpoints publics (sans TenantMiddleware)
+app.MapGet("/", () => "Trackly API");
+app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+// Auth business (création de compte + login)
+app.MapPost("/api/auth/register", async (TracklyDbContext dbContext, AuthService authService, RegisterRequest request) =>
+{
+    var companyName = request.CompanyName?.Trim();
+    var name = request.Name?.Trim();
+    var email = request.Email?.Trim().ToLowerInvariant();
+    var password = request.Password;
+
+    if (string.IsNullOrWhiteSpace(companyName) ||
+        string.IsNullOrWhiteSpace(name) ||
+        string.IsNullOrWhiteSpace(email) ||
+        string.IsNullOrWhiteSpace(password))
+    {
+        return Results.BadRequest("CompanyName, Name, Email et Password sont requis.");
+    }
+
+    var existingUser = await dbContext.Users
+        .IgnoreQueryFilters()
+        .AnyAsync(u => u.Email == email);
+
+    if (existingUser)
+    {
+        return Results.Conflict("Un compte existe deja pour cet email.");
+    }
+
+    var tenant = new Tenant { Name = companyName };
+    dbContext.Tenants.Add(tenant);
+
+    var user = new TracklyUser
+    {
+        TenantId = tenant.Id,
+        Name = name,
+        Email = email
+    };
+    user.PasswordHash = authService.HashPassword(user, password);
+
+    dbContext.Users.Add(user);
+    await dbContext.SaveChangesAsync();
+
+    var token = authService.CreateToken(user, jwtSecret);
+    return Results.Ok(new AuthResponse(token, tenant.Id, user.Id, user.Name, user.Email));
+});
+
+app.MapPost("/api/auth/login", async (TracklyDbContext dbContext, AuthService authService, LoginRequest request) =>
+{
+    var email = request.Email?.Trim().ToLowerInvariant();
+    var password = request.Password;
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(password))
+    {
+        return Results.BadRequest("Email et Password sont requis.");
+    }
+
+    var user = await dbContext.Users
+        .IgnoreQueryFilters()
+        .FirstOrDefaultAsync(u => u.Email == email);
+
+    if (user == null || !authService.VerifyPassword(user, password))
+    {
+        return Results.Unauthorized();
+    }
+
+    var token = authService.CreateToken(user, jwtSecret);
+    return Results.Ok(new AuthResponse(token, user.TenantId, user.Id, user.Name, user.Email));
+});
+
+// Enregistrement public d'un tenant (création simple)
+app.MapPost("/api/tenants/register", async (TracklyDbContext dbContext, TenantRegistrationRequest request) =>
+{
+    var name = request.Name?.Trim();
+    if (string.IsNullOrWhiteSpace(name))
+    {
+        return Results.BadRequest("Le nom du tenant est requis.");
+    }
+
+    var tenant = new Tenant { Name = name };
+    dbContext.Tenants.Add(tenant);
+    await dbContext.SaveChangesAsync();
+
+    return Results.Created($"/api/tenants/{tenant.Id}", new { id = tenant.Id, name = tenant.Name });
+});
+
+// Endpoint pour récupérer le tenant par défaut (dev ou bootstrap explicite)
+if (app.Environment.IsDevelopment() || allowTenantBootstrap)
+{
+    app.MapGet("/api/tenants/default", async (TracklyDbContext dbContext) =>
+    {
+        var tenant = await dbContext.Tenants
+            .AsNoTracking()
+            .OrderBy(t => t.CreatedAt)
+            .FirstOrDefaultAsync();
+        
+        if (tenant == null)
+        {
+            tenant = new Tenant { Name = "Default" };
+            dbContext.Tenants.Add(tenant);
+            await dbContext.SaveChangesAsync();
+        }
+        
+        return Results.Ok(new { id = tenant.Id, name = tenant.Name });
+    });
+}
+
+// Endpoint de debug pour lister tous les drivers (dev uniquement)
+if (app.Environment.IsDevelopment())
+{
+    app.MapGet("/api/drivers/debug/all", async (TracklyDbContext dbContext) =>
+    {
+        // IgnoreQueryFilters() pour voir tous les drivers sans filtre de tenant
+        var drivers = await dbContext.Drivers
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Select(d => new { d.Id, d.Name, d.Phone, d.TenantId })
+            .ToListAsync();
+
+        return Results.Ok(drivers);
+    });
+}
+
+// Endpoint public pour récupérer le tenant ID d'un driver (utilisé par le frontend-driver)
+app.MapGet("/api/drivers/{driverId}/tenant", async (TracklyDbContext dbContext, string driverId) =>
+{
+    if (!Guid.TryParse(driverId, out var driverGuid))
+    {
+        return Results.BadRequest("ID driver invalide.");
+    }
+
+    // IgnoreQueryFilters() est nécessaire car cet endpoint est public (avant TenantMiddleware)
+    // et doit pouvoir trouver le driver sans filtre de tenant
+    var driver = await dbContext.Drivers
+        .IgnoreQueryFilters()
+        .AsNoTracking()
+        .FirstOrDefaultAsync(d => d.Id == driverGuid);
+
+    if (driver == null)
+    {
+        return Results.NotFound("Driver non trouvé.");
+    }
+
+    return Results.Ok(new { tenantId = driver.TenantId });
+});
+
+// Endpoint public pour le suivi client (frontend-tracking) - AVANT TenantMiddleware
+app.MapGet("/api/public/deliveries/{id:guid}/tracking", 
+    async (Guid id, TracklyDbContext dbContext, CancellationToken cancellationToken) =>
+        await Trackly.Backend.Features.Deliveries.DeliveryEndpoints.GetPublicTracking(id, dbContext, cancellationToken));
+
+app.UseMiddleware<TenantMiddleware>();
+
 app.MapOrderEndpoints();
 app.MapDeliveryEndpoints();
 app.MapRouteEndpoints();
 app.MapDriverEndpoints();
-app.MapTrackingEndpoints();
 app.MapGeocodeEndpoints();
 
-// Hub SignalR
+// SignalR Hub pour le tracking temps réel
 app.MapHub<TrackingHub>("/hubs/tracking");
+
+// ============================================================================
+// ENDPOINTS DE DÉMO GPS (développement uniquement) - TEMPORAIREMENT DÉSACTIVÉS
+// ============================================================================
+// if (app.Environment.IsDevelopment())
+// {
+//     // Démarrer une simulation GPS entre deux points
+//     app.MapPost("/api/demo/gps/simulate", async (
+//         IGpsSimulationService gpsService,
+//         SimulationRequest request) =>
+//     {
+//         var simulationId = await gpsService.StartSimulationAsync(request);
+//         return Results.Ok(new 
+//         { 
+//             simulationId, 
+//             message = "Simulation GPS démarrée",
+//             from = new { lat = request.StartLatitude, lon = request.StartLongitude },
+//             to = new { lat = request.EndLatitude, lon = request.EndLongitude }
+//         });
+//     });
+// 
+//     // ... autres endpoints de démo
+// }
+
+// Requête pour simulation de tournée (désactivé)
+// public record RouteSimulationRequest(
+//     List<Waypoint> Waypoints,
+//     double AverageSpeedKmh = 25
+// );
+// 
+// public record Waypoint(double Lat, double Lon);
+
+// Configuration du port pour Railway et autres plateformes cloud
+var port = Environment.GetEnvironmentVariable("PORT");
+if (!string.IsNullOrEmpty(port))
+{
+    app.Urls.Add($"http://0.0.0.0:{port}");
+}
 
 app.Run();
 
 static string NormalizeConnectionString(string connectionString)
 {
-    if (connectionString.StartsWith("postgres://"))
+    if (connectionString.Contains("${{", StringComparison.Ordinal))
+    {
+        throw new InvalidOperationException(
+            "DATABASE_URL semble être une variable Railway non résolue. " +
+            "Assurez-vous qu'elle pointe vers une vraie valeur ou une référence Railway valide.");
+    }
+
+    if (connectionString.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase) ||
+        connectionString.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase))
     {
         var uri = new Uri(connectionString);
-        var userInfo = uri.UserInfo.Split(':');
-        var username = userInfo[0];
-        var password = userInfo.Length > 1 ? userInfo[1] : "";
-        var database = uri.AbsolutePath.TrimStart('/');
-        
-        return $"Host={uri.Host};Port={uri.Port};Database={database};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+        var userInfo = uri.UserInfo.Split(':', 2);
+        var builder = new NpgsqlConnectionStringBuilder
+        {
+            Host = uri.Host,
+            Port = uri.IsDefaultPort ? 5432 : uri.Port,
+            Database = uri.AbsolutePath.TrimStart('/'),
+            Username = userInfo.Length > 0 ? Uri.UnescapeDataString(userInfo[0]) : string.Empty,
+            Password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty,
+            SslMode = SslMode.Require
+        };
+
+        return builder.ConnectionString;
     }
+
     return connectionString;
 }

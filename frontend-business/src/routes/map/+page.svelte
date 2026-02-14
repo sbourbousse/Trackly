@@ -20,6 +20,8 @@
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import type { TypedMapMarker } from '$lib/components/Map.svelte';
+	import MapFilters from '$lib/components/map/MapFilters.svelte';
+	import { mapFiltersState, isOrderStatusVisible, isDeliveryStatusVisible } from '$lib/stores/mapFilters.svelte';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
@@ -101,28 +103,34 @@
 		const list: TypedMapMarker[] = [];
 		if (showOrders) {
 			for (const m of orderMarkersData) {
-				list.push({
-					lat: m.lat,
-					lng: m.lng,
-					label: m.label,
-					type: 'order',
-					status: m.status
-				});
+				// Filtrer par statut
+				if (isOrderStatusVisible(m.status)) {
+					list.push({
+						lat: m.lat,
+						lng: m.lng,
+						label: m.label,
+						type: 'order',
+						status: m.status
+					});
+				}
 			}
 		}
 		if (showDeliveries) {
 			for (const m of deliveryMarkersData) {
-				list.push({
-					lat: m.lat,
-					lng: m.lng,
-					label: m.label,
-					type: 'delivery',
-					status: m.status,
-					id: m.id
-				});
+				// Filtrer par statut
+				if (isDeliveryStatusVisible(m.status)) {
+					list.push({
+						lat: m.lat,
+						lng: m.lng,
+						label: m.label,
+						type: 'delivery',
+						status: m.status,
+						id: m.id
+					});
+				}
 			}
 		}
-		if (showDrivers) {
+		if (showDrivers && mapFiltersState.filters.showDrivers) {
 			for (const p of driverPoints) {
 				list.push({
 					lat: p.lat,
@@ -401,5 +409,9 @@
 			height="100%"
 			markers={markersList}
 		/>
+		<!-- Filtres de la carte -->
+		<div class="absolute top-4 right-4 z-[400]">
+			<MapFilters />
+		</div>
 	</div>
 </div>

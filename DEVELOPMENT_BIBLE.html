@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Trackly Development Bible - Visualizer</title>
+    <script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #0d1117;
+            color: #c9d1d9;
+            line-height: 1.6;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #1f6feb 0%, #388bfd 100%);
+            padding: 2rem;
+            text-align: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(31, 111, 235, 0.3);
+        }
+        
+        .header h1 {
+            font-size: 2rem;
+            margin-bottom: 0.5rem;
+            color: white;
+        }
+        
+        .header p {
+            opacity: 0.9;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+        
+        .nav {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        
+        .nav button {
+            background: #21262d;
+            border: 1px solid #30363d;
+            color: #c9d1d9;
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 0.9rem;
+        }
+        
+        .nav button:hover, .nav button.active {
+            background: #1f6feb;
+            border-color: #1f6feb;
+            color: white;
+        }
+        
+        .section {
+            background: #161b22;
+            border: 1px solid #30363d;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            display: none;
+        }
+        
+        .section.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .section h2 {
+            color: #58a6ff;
+            margin-bottom: 1.5rem;
+            font-size: 1.5rem;
+            border-bottom: 2px solid #30363d;
+            padding-bottom: 0.75rem;
+        }
+        
+        .section h3 {
+            color: #7ee787;
+            margin: 1.5rem 0 1rem;
+            font-size: 1.2rem;
+        }
+        
+        .mermaid {
+            background: #0d1117;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin: 1.5rem 0;
+            overflow-x: auto;
+        }
+        
+        .info-box {
+            background: #1f6feb20;
+            border-left: 4px solid #1f6feb;
+            padding: 1rem 1.5rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+        }
+        
+        .warning-box {
+            background: #d2992220;
+            border-left: 4px solid #d29922;
+            padding: 1rem 1.5rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+        }
+        
+        .success-box {
+            background: #3fb95020;
+            border-left: 4px solid #3fb950;
+            padding: 1rem 1.5rem;
+            border-radius: 0 8px 8px 0;
+            margin: 1rem 0;
+        }
+        
+        code {
+            background: #21262d;
+            padding: 0.2rem 0.4rem;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Consolas', monospace;
+            font-size: 0.9em;
+        }
+        
+        pre {
+            background: #21262d;
+            padding: 1rem;
+            border-radius: 8px;
+            overflow-x: auto;
+            margin: 1rem 0;
+        }
+        
+        ul, ol {
+            margin-left: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        li {
+            margin-bottom: 0.5rem;
+        }
+        
+        a {
+            color: #58a6ff;
+            text-decoration: none;
+        }
+        
+        a:hover {
+            text-decoration: underline;
+        }
+        
+        .quick-links {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1.5rem 0;
+        }
+        
+        .link-card {
+            background: #21262d;
+            border: 1px solid #30363d;
+            border-radius: 8px;
+            padding: 1rem;
+            transition: transform 0.2s;
+        }
+        
+        .link-card:hover {
+            transform: translateY(-2px);
+            border-color: #1f6feb;
+        }
+        
+        .link-card h4 {
+            color: #58a6ff;
+            margin-bottom: 0.5rem;
+        }
+        
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+            margin-left: 0.5rem;
+        }
+        
+        .status-done {
+            background: #3fb95030;
+            color: #7ee787;
+        }
+        
+        .status-wip {
+            background: #d2992230;
+            color: #e3b341;
+        }
+        
+        .status-todo {
+            background: #8b949e30;
+            color: #b1bac4;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📚 Trackly Development Bible</h1>
+        <p>Guide visuel du workflow de développement</p>
+    </div>
+    
+    <div class="container">
+        <div class="nav">
+            <button onclick="showSection('overview')" class="active">Vue d'ensemble</button>
+            <button onclick="showSection('workflow')">Workflow</button>
+            <button onclick="showSection('cicd')">CI/CD</button>
+            <button onclick="showSection('troubleshoot')">Résolution</button>
+            <button onclick="showSection('history')">Historique</button>
+        </div>
+        
+        <!-- Section Overview -->
+        <div id="overview" class="section active">
+            <h2>🎯 Vue d'ensemble du projet</h2>
+            
+            <div class="info-box">
+                <strong>Trackly</strong> est une application de gestion de livraisons avec :
+                <ul>
+                    <li>Frontend Business (SvelteKit) - Gestion des commandes et livraisons</li>
+                    <li>Frontend Driver (SvelteKit) - App pour les livreurs</li>
+                    <li>Frontend Tracking (Next.js) - Suivi public pour clients</li>
+                    <li>Backend (.NET) - API et SignalR pour temps réel</li>
+                </ul>
+            </div>
+            
+            <h3>Architecture déployée</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph "Frontends [Vercel Pro]"
+        B[trackly-frontend-business.vercel.app]
+        D[trackly-frontend-driver.vercel.app]
+        T[trackly-frontend-tracking.vercel.app]
+    end
+    
+    subgraph "Backend [Railway]"
+        API[backend-production-050e.up.railway.app]
+        DB[(PostgreSQL)]
+    end
+    
+    subgraph "Real-time"
+        WS[SignalR Hub /hubs/tracking]
+    end
+    
+    B -->|API Calls| API
+    D -->|API Calls| API
+    T -->|Public API| API
+    API --> DB
+    API --> WS
+    D -->|WebSocket| WS
+            </div>
+            
+            <h3>Liens rapides</h3>
+            <div class="quick-links">
+                <div class="link-card">
+                    <h4>🐙 GitHub</h4>
+                    <a href="https://github.com/sbourbousse/Trackly">github.com/sbourbousse/Trackly</a>
+                </div>
+                <div class="link-card">
+                    <h4>🚀 Vercel Dashboard</h4>
+                    <a href="https://vercel.com/sbourbousses-projects">vercel.com/sbourbousses-projects</a>
+                </div>
+                <div class="link-card">
+                    <h4>🚂 Railway Dashboard</h4>
+                    <a href="https://railway.app/dashboard">railway.app/dashboard</a>
+                </div>
+                <div class="link-card">
+                    <h4>🔧 Backend Health</h4>
+                    <a href="https://backend-production-050e.up.railway.app/health">Check status</a>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Section Workflow -->
+        <div id="workflow" class="section">
+            <h2>🔄 Workflow de Développement</h2>
+            
+            <h3>Cycle complet</h3>
+            <div class="mermaid">
+flowchart LR
+    subgraph "1. INPUT"
+        P[Prompt Utilisateur]
+    end
+    
+    subgraph "2. ANALYSE"
+        A[Lire contexte]
+        B[Identifier fichiers]
+        C[Planifier changements]
+    end
+    
+    subgraph "3. DÉVELOPPEMENT"
+        D[Créer branche feature/]
+        E[Implémenter]
+        F[Test local]
+    end
+    
+    subgraph "4. LIVRAISON"
+        G[Commit conventionnel]
+        H[Push origin]
+        I[Créer PR]
+    end
+    
+    subgraph "5. ATTENTE"
+        J{CI passe ?}
+        K[Build OK]
+        L[Build FAIL]
+    end
+    
+    subgraph "6. VALIDATION"
+        M[Review utilisateur]
+        N[Tester preview]
+    end
+    
+    subgraph "7. MERGE"
+        O[Merge vers develop]
+        Q[Supprimer branche]
+    end
+    
+    P --> A --> B --> C --> D --> E --> F --> G --> H --> I --> J
+    J -->|Oui| K --> M --> N --> O --> Q
+    J -->|Non| L --> E
+    N -->|Corrections| E
+            </div>
+            
+            <h3>Workflow Git</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph "Branches"
+        MAIN[main<br/>Production]
+        DEV[develop<br/>Intégration]
+        F1[feature/X<br/>Développement]
+        F2[feature/Y<br/>Développement]
+    end
+    
+    DEV -->|checkout| F1
+    DEV -->|checkout| F2
+    
+    F1 -->|push + PR| DEV
+    F2 -->|push + PR| DEV
+    
+    DEV -->|PR + review| MAIN
+            </div>
+            
+            <div class="success-box">
+                <strong>Règles d'or :</strong>
+                <ol>
+                    <li>Toujours partir de <code>develop</code></li>
+                    <li>Une branche = une feature</li>
+                    <li>PR obligatoire vers develop</li>
+                    <li>Jamais de push direct sur main</li>
+                    <li>Attendre CI avant de merger</li>
+                </ol>
+            </div>
+        </div>
+        
+        <!-- Section CI/CD -->
+        <div id="cicd" class="section">
+            <h2>🚀 CI/CD Workflows</h2>
+            
+            <h3>Vue d'ensemble</h3>
+            <div class="mermaid">
+flowchart TB
+    subgraph "Triggers"
+        T1[Push develop/main]
+        T2[PR vers develop]
+        T3[Manual dispatch]
+    end
+    
+    subgraph "Workflows"
+        W1[CI - Build & Lint]
+        W2[Vercel Preview]
+        W3[Vercel Production]
+        W4[Railway Deploy]
+        W5[E2E Tests<br/>MANUEL UNIQUEMENT]
+    end
+    
+    T1 -->|develop| W1
+    T1 -->|main| W1
+    T1 -->|main + backend| W4
+    
+    T2 --> W1
+    T2 --> W2
+    
+    T3 --> W5
+    
+    W1 -->|success + PR| W2
+    W1 -->|success + main| W3
+            </div>
+            
+            <h3>Séquence de déploiement</h3>
+            <div class="mermaid">
+sequenceDiagram
+    participant Dev as Développeur
+    participant Git as GitHub
+    participant Act as GitHub Actions
+    participant Ver as Vercel
+    participant Rail as Railway
+    
+    Dev->>Git: Push feature/X
+    Dev->>Git: Créer PR → develop
+    
+    Git->>Act: Trigger CI
+    Act->>Act: Build & Lint
+    Act->>Ver: Deploy Preview
+    Ver-->>Dev: URL Preview
+    
+    Dev->>Git: Merge PR
+    Git->>Act: Push develop
+    Act->>Ver: Deploy Preview develop
+    
+    Dev->>Git: PR develop → main
+    Git->>Act: CI + Deploy Prod
+    Act->>Ver: Deploy Production
+    Act->>Rail: Redeploy Backend
+            </div>
+            
+            <div class="warning-box">
+                <strong>E2E Tests :</strong> Déclenchement manuel uniquement via
+                <code>workflow_dispatch</code> pour éviter les builds inutiles.
+            </div>
+        </div>
+        
+        <!-- Section Troubleshoot -->
+        <div id="troubleshoot" class="section">
+            <h2>🛠️ Résolution de Problèmes</h2>
+            
+            <h3>CI Failed</h3>
+            <div class="mermaid">
+flowchart TD
+    A[CI Failed] --> B[Voir logs]
+    
+    B -->|Build error| C[TypeScript/Syntaxe]
+    B -->|Test fail| D[Tests E2E]
+    B -->|Deploy fail| E[Secrets/Env]
+    
+    C --> F[Corriger code]
+    D --> G[Update selectors]
+    E --> H[Vérifier Railway/Vercel]
+    
+    F --> I[git commit --amend]
+    G --> I
+    H --> I
+    
+    I --> J[git push --force-with-lease]
+    J --> K[Attendre CI]
+            </div>
+            
+            <h3>Problèmes CORS</h3>
+            <div class="mermaid">
+flowchart TD
+    A[CORS Error] --> B{Vérifier}
+    
+    B -->|Backend URL| C[URL correcte ?]
+    B -->|Headers| D[Access-Control-Allow-Origin ?]
+    
+    C -->|Non| F[Mettre à jour URLs]
+    D -->|Non| G[Config CORS backend]
+    
+    F --> H[Redéployer frontend]
+    G --> I[Redéployer backend]
+    
+    H --> J[Test fetch]
+    I --> J
+            </div>
+            
+            <h3>Erreurs communes et solutions</h3>
+            <table style="width:100%; border-collapse: collapse; margin-top: 1rem;">
+                <tr style="background: #21262d;">
+                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #30363d;">Erreur</th>
+                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #30363d;">Cause</th>
+                    <th style="padding: 0.75rem; text-align: left; border: 1px solid #30363d;">Solution</th>
+                </tr>
+                <tr>
+                    <td style="padding: 0.75rem; border: 1px solid #30363d;">404 Application not found</td>
+                    <td style="padding: 0.75rem; border: 1px solid #30363d;">URL Railway changée</td>
+                    <td style="padding: 0.75rem; border: 1px solid #30363d;">Mettre à jour URLs frontend</td>
+                </tr>
+                <tr style="background: #161b22;">
+                    <td style="padding: 0.75rem; border: 1px solid #30363d;">CORS policy error</td>
+                    <td style="padding: 0.75rem; border: 1px solid #30363d;">Origine non autorisée</td>
+                    <td style="padding: 0.75rem; border: 1px solid #30363d;">Ajouter pattern CORS backend</td>
+                </tr>
+                <tr>
+                    <td style="padding: 0.75rem; border: 1px solid #30363d;">Build failed (Vercel)</td>
+                    <td style="padding: 0.75rem; border: 1px solid #30363d;">Rate limit / erreur config</td>
+                    <td style="padding: 0.75rem; border: 1px solid #30363d;">Attendre ou vérifier output:standalone</td>
+                </tr>
+            </table>
+        </div>
+        
+        <!-- Section History -->
+        <div id="history" class="section">
+            <h2>📅 Historique des Actions</h2>
+            
+            <h3>Chronologie du 14 Février 2026</h3>
+            <div class="mermaid">
+timeline
+    title Actions réalisées - Session développement
+    section Matinée
+        Diagnostic : Analyse workflows CI/CD existants
+        Optimisation : Retrait étape lint
+        : Limitation E2E aux PR main
+        : Suppression déploiements Railway frontend
+        Vercel : Correction configuration secrets
+        : Simplification workflow deploy
+    section Après-midi
+        CORS : URLs Railway changées
+        : Mise à jour 7 fichiers frontend
+        Feature Settings : Ajout lien sidebar
+        : Navigation paramètres accessible
+        Features : Map filters
+        : Delete button commande
+        Documentation : Nettoyage fichiers MD
+        : Création Development Bible
+            </div>
+            
+            <h3>Branches créées</h3>
+            <ul>
+                <li><code>feature/map-filters</code> <span class="status-badge status-done">Créée</span> - Filtres carte par statut</li>
+                <li><code>feature/order-delete-button</code> <span class="status-badge status-done">Créée</span> - Bouton suppression commande</li>
+                <li><code>feature/settings-profile-page</code> <span class="status-badge status-done">MERGED</span> - Page paramètres utilisateur</li>
+            </ul>
+            
+            <h3>Fichiers nettoyés</h3>
+            <div style="columns: 2; margin-top: 1rem;">
+                <ul>
+                    <li>ICONS_CONSISTENCY.md</li>
+                    <li>SIDEBAR_ICONS_UPDATE.md</li>
+                    <li>FEATURE_SETTINGS_PROFILE.md</li>
+                    <li>PULL_REQUEST_MAP_FILTER.md</li>
+                    <li>CORS-CONFIG.md</li>
+                    <li>CI-SETUP.md</li>
+                    <li>DEMO_MODE_FIX.md</li>
+                    <li>DEMO_DATA_GENERATION.md</li>
+                    <li>DEMO_FILTERS_FIX.md</li>
+                    <li>SOLUTION-DEPLOYMENT-DRIVER.md</li>
+                    <li>DELIVERY_COUNT_AND_PROGRESS.md</li>
+                    <li>TURBOREPO.md</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        mermaid.initialize({ 
+            startOnLoad: true,
+            theme: 'dark',
+            themeVariables: {
+                primaryColor: '#1f6feb',
+                primaryTextColor: '#c9d1d9',
+                primaryBorderColor: '#30363d',
+                lineColor: '#8b949e',
+                secondaryColor: '#161b22',
+                tertiaryColor: '#21262d',
+                fontFamily: '-apple-system, BlinkMacSystemFont, sans-serif'
+            }
+        });
+        
+        function showSection(sectionId) {
+            // Hide all sections
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+            // Show selected section
+            document.getElementById(sectionId).classList.add('active');
+            // Update buttons
+            document.querySelectorAll('.nav button').forEach(b => b.classList.remove('active'));
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

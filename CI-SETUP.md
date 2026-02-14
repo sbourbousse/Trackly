@@ -1,5 +1,7 @@
 # Configuration Déploiement CI/CD - Trackly
 
+> Test CI deploy - $(date +%Y-%m-%d)
+
 ## Secrets GitHub Requis
 
 ### 1. Secrets Globaux (Repository Settings → Secrets)

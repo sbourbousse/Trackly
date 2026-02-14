@@ -157,22 +157,43 @@ main (production)
 │
 ├── develop (intégration)
 │   │
-│   ├── feature/map-filters ──────── PR ──────┐
-│   │                                          │
-│   ├── feature/settings-page ───── PR ───────┼─── MERGE ───┐
-│   │                                          │             │
-│   └── fix/cors-config ─────────── PR ───────┘             │
-│                                                            ▼
-└─────────────────────────────────────────────────────── develop
-                                                                   │
-                                                                   ▼
-                                                               main
+│   ├── feature/map-filters ───┐
+│   │                          │
+│   ├── feature/settings-page ─┼─── MERGE ───┐
+│   │                          │             │
+│   └── fix/cors-config ───────┘             │
+│                                            ▼
+│   ◄────────────────────────────────── develop
+│                                            │
+│   ◄────────────────────────────────── testing (staging)
+│                                            │
+└────────────────────────────────────────────┴──────────────────► main
 ```
 
-**Règles :**
+**Branches :**
 - `main` : production stable
-- `develop` : intégration, features en cours
+- `develop` : intégration, features validées
+- `testing` : environnement de test isolé (backend instable)
 - `feature/*` : une branche par feature
+
+---
+
+## 🧪 Environnement de Testing
+
+Pour tester une feature qui nécessite des changements backend **sans impacter develop** :
+
+```bash
+# Merger la feature dans testing (PAS develop)
+git checkout testing
+git pull origin testing
+git merge feature/ma-feature --no-edit
+git push origin testing
+
+# Attendre le déploiement auto (2-3 min)
+# Backend testing : backend-testing-xxx.up.railway.app
+```
+
+**Configuration complète** : voir [TESTING_ENVIRONMENT.md](./TESTING_ENVIRONMENT.md)
 
 ---
 

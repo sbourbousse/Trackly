@@ -16,6 +16,8 @@
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { trackingActions, trackingState } from '$lib/realtime/tracking.svelte';
+	import { mapFilters, isMarkerVisible } from '$lib/stores/mapFilters.svelte';
+	import MapFilters from '$lib/components/map/MapFilters.svelte';
 	import { getDelivery } from '$lib/api/deliveries';
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -99,8 +101,9 @@
 
 	const markersList = $derived.by(() => {
 		const list: TypedMapMarker[] = [];
-		if (showOrders) {
-			for (const m of orderMarkersData) {
+		// Apply filters to orders
+		for (const m of orderMarkersData) {
+			if (isMarkerVisible('order', m.status, mapFilters.filters)) {
 				list.push({
 					lat: m.lat,
 					lng: m.lng,
@@ -110,8 +113,9 @@
 				});
 			}
 		}
-		if (showDeliveries) {
-			for (const m of deliveryMarkersData) {
+		// Apply filters to deliveries
+		for (const m of deliveryMarkersData) {
+			if (isMarkerVisible('delivery', m.status, mapFilters.filters)) {
 				list.push({
 					lat: m.lat,
 					lng: m.lng,
@@ -122,7 +126,8 @@
 				});
 			}
 		}
-		if (showDrivers) {
+		// Apply drivers filter
+		if (mapFilters.filters.showDrivers) {
 			for (const p of driverPoints) {
 				list.push({
 					lat: p.lat,
@@ -401,5 +406,10 @@
 			height="100%"
 			markers={markersList}
 		/>
+		
+		<!-- Filtres de statut -->
+		<div class="absolute bottom-4 left-4 z-[35] max-w-[calc(100%-2rem)]">
+			<MapFilters />
+		</div>
 	</div>
 </div>

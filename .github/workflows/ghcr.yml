@@ -5,17 +5,9 @@ on:
     branches: ["main", "develop"]
     paths:
       - "backend/**"
-      - "frontend-business/**"
-      - "frontend-driver/**"
-      - "frontend-tracking/**"
       - ".github/workflows/ghcr.yml"
-  pull_request:
-    paths:
-      - "backend/**"
-      - "frontend-business/**"
-      - "frontend-driver/**"
-      - "frontend-tracking/**"
-      - ".github/workflows/ghcr.yml"
+  # Pas de build sur les PR pour éviter les exécutions inutiles
+  # Les images sont construites uniquement sur push vers main/develop
   workflow_dispatch:
 
 permissions:
@@ -37,18 +29,19 @@ jobs:
             context: ./backend
             dockerfile: ./backend/Dockerfile
             image: trackly-backend
-          - service: frontend-business
-            context: ./frontend-business
-            dockerfile: ./frontend-business/Dockerfile
-            image: trackly-frontend-business
-          - service: frontend-driver
-            context: ./frontend-driver
-            dockerfile: ./frontend-driver/Dockerfile
-            image: trackly-frontend-driver
-          - service: frontend-tracking
-            context: ./frontend-tracking
-            dockerfile: ./frontend-tracking/Dockerfile
-            image: trackly-frontend-tracking
+          # Les frontends sont maintenant déployés sur Vercel
+          # - service: frontend-business
+          #   context: ./frontend-business
+          #   dockerfile: ./frontend-business/Dockerfile
+          #   image: trackly-frontend-business
+          # - service: frontend-driver
+          #   context: ./frontend-driver
+          #   dockerfile: ./frontend-driver/Dockerfile
+          #   image: trackly-frontend-driver
+          # - service: frontend-tracking
+          #   context: ./frontend-tracking
+          #   dockerfile: ./frontend-tracking/Dockerfile
+          #   image: trackly-frontend-tracking
     steps:
       - name: Checkout
         uses: actions/checkout@v4

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
@@ -56,13 +57,33 @@ builder.Services.AddCors(options =>
         }
         else
         {
-            // En production, configurez les origines spécifiques
+            // En production, autorise les origines configurées + pattern matching pour les previews
             var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() 
                 ?? Array.Empty<string>();
-            policy.WithOrigins(allowedOrigins)
-                .AllowAnyMethod()
-                .AllowAnyHeader()
-                .AllowCredentials();
+            var allowedPatterns = builder.Configuration.GetSection("Cors:AllowedPatterns").Get<string[]>() 
+                ?? Array.Empty<string>();
+            
+            // Combine origines exactes et patterns pour la vérification
+            var allOrigins = allowedOrigins.ToList();
+            
+            policy.SetIsOriginAllowed(origin =>
+            {
+                // Autorise les origines exactes
+                if (allowedOrigins.Contains(origin))
+                    return true;
+                
+                // Autorise les origines qui matchent les patterns (ex: *.vercel.app)
+                foreach (var pattern in allowedPatterns)
+                {
+                    if (MatchesOriginPattern(origin, pattern))
+                        return true;
+                }
+                
+                return false;
+            })
+            .AllowAnyMethod()
+            .AllowAnyHeader()
+            .AllowCredentials();
         }
     });
 });
@@ -351,6 +372,15 @@ if (!string.IsNullOrEmpty(port))
 }
 
 app.Run();
+
+// Vérifie si une origine correspond à un pattern (supporte * comme wildcard)
+static bool MatchesOriginPattern(string origin, string pattern)
+{
+    // Convertit le pattern en regex
+    // *.vercel.app -> ^https://[^.]+\.vercel\.app$
+    var regexPattern = "^" + Regex.Escape(pattern).Replace("\\*", "[^/]+") + "$";
+    return Regex.IsMatch(origin, regexPattern, RegexOptions.IgnoreCase);
+}
 
 static string NormalizeConnectionString(string connectionString)
 {

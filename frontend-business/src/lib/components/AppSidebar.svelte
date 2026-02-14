@@ -17,6 +17,7 @@
 	} from '$lib/components/ui/sidebar';
 	import { Switch } from '$lib/components/ui/switch';
 	import { themeState, setTheme } from '$lib/stores/theme.svelte';
+	import { userState } from '$lib/stores/user.svelte';
 	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
 	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
 	import ClipboardEditIcon from '@lucide/svelte/icons/clipboard-edit';
@@ -29,6 +30,7 @@
 	import MapPinIcon from '@lucide/svelte/icons/map-pin';
 	import RouteIcon from '@lucide/svelte/icons/route';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
+	import LogOutIcon from '@lucide/svelte/icons/log-out';
 
 	let pathname = $derived(page.url.pathname);
 	let isDark = $derived(themeState.value === 'dark');
@@ -42,6 +44,12 @@
 			</span>
 			<span class="font-semibold truncate group-data-[collapsible=icon]:hidden">Trackly Business</span>
 		</a>
+		{#if userState.user}
+			<div class="px-2 py-2 border-t border-sidebar-border mt-2 group-data-[collapsible=icon]:hidden">
+				<p class="text-sm font-medium truncate">{userState.user.name}</p>
+				<p class="text-xs text-muted-foreground truncate">{userState.user.email}</p>
+			</div>
+		{/if}
 	</SidebarHeader>
 	<SidebarContent>
 		<SidebarGroup>
@@ -186,6 +194,15 @@
 							<span>Paramètres</span>
 						</a>
 					{/snippet}
+				</SidebarMenuButton>
+			</SidebarMenuItem>
+			<SidebarMenuItem>
+				<SidebarMenuButton
+					tooltipContent="Déconnexion"
+					onclick={() => userState.logout()}
+				>
+					<LogOutIcon class="size-4 shrink-0" aria-hidden="true" />
+					<span>Déconnexion</span>
 				</SidebarMenuButton>
 			</SidebarMenuItem>
 		</SidebarMenu>

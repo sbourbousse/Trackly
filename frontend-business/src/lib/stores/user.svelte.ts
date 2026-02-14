@@ -1,4 +1,5 @@
 import { browser } from '$app/environment';
+import { goto } from '$app/navigation';
 
 interface User {
 	id: string;
@@ -11,21 +12,39 @@ interface Tenant {
 	name: string;
 }
 
-// Mock user data for demo
-const mockUser: User = {
-	id: 'user-001',
-	name: 'Sylvain Bourbousse',
-	email: 'sbourbousse@gmail.com'
-};
+// Load from localStorage if available
+function loadFromStorage(): { user: User | null; tenant: Tenant | null } {
+	if (!browser) return { user: null, tenant: null };
+	try {
+		const userStr = localStorage.getItem('trackly_user');
+		const tenantStr = localStorage.getItem('trackly_tenant');
+		return {
+			user: userStr ? JSON.parse(userStr) : null,
+			tenant: tenantStr ? JSON.parse(tenantStr) : null
+		};
+	} catch {
+		return { user: null, tenant: null };
+	}
+}
 
-const mockTenant: Tenant = {
-	id: 'tenant-550e8400-e29b-41d4-a716-446655440000',
-	name: 'Trackly Demo'
-};
+const stored = loadFromStorage();
+let user = $state<User | null>(stored.user);
+let tenant = $state<Tenant | null>(stored.tenant);
 
-// Simple store
-let user = $state<User | null>(mockUser);
-let tenant = $state<Tenant | null>(mockTenant);
+// Save to localStorage when changed
+function saveToStorage() {
+	if (!browser) return;
+	if (user) {
+		localStorage.setItem('trackly_user', JSON.stringify(user));
+	} else {
+		localStorage.removeItem('trackly_user');
+	}
+	if (tenant) {
+		localStorage.setItem('trackly_tenant', JSON.stringify(tenant));
+	} else {
+		localStorage.removeItem('trackly_tenant');
+	}
+}
 
 export const userState = {
 	get user() {
@@ -34,10 +53,24 @@ export const userState = {
 	get tenant() {
 		return tenant;
 	},
+	get isAuthenticated() {
+		return !!user && !!localStorage.getItem('trackly_auth_token');
+	},
 	setUser(u: User | null) {
 		user = u;
+		saveToStorage();
 	},
 	setTenant(t: Tenant | null) {
 		tenant = t;
+		saveToStorage();
+	},
+	logout() {
+		user = null;
+		tenant = null;
+		localStorage.removeItem('trackly_auth_token');
+		localStorage.removeItem('trackly_user');
+		localStorage.removeItem('trackly_tenant');
+		localStorage.removeItem('trackly_tenant_id');
+		goto('/login');
 	}
 };

@@ -1,0 +1,36 @@
+# Site settings
+title: Trackly Development Bible
+description: Guide complet du workflow de développement Trackly
+baseurl: "/Trackly"
+url: "https://sbourbousse.github.io"
+
+# Build settings
+markdown: kramdown
+highlighter: rouge
+theme: minima
+
+# Plugins
+plugins:
+  - jekyll-feed
+  - jekyll-sitemap
+  - jekyll-seo-tag
+
+# Navigation
+header_pages:
+  - getting-started.md
+  - workflow.md
+  - architecture.md
+  - troubleshooting.md
+
+# Exclude
+exclude:
+  - Gemfile
+  - Gemfile.lock
+  - node_modules
+  - vendor
+  - .git
+  - .github
+  - backend
+  - frontend-*
+  - "*.spec.ts"
+  - "*.test.ts"

@@ -1,10 +1,10 @@
 name: E2E Tests
 
 on:
-  push:
-    branches: [develop, main]
+  # Tests E2E uniquement sur les PR de develop vers main
   pull_request:
-    branches: [develop, main]
+    branches: [main]
+    types: [opened, synchronize, reopened]
   workflow_dispatch:
 
 jobs:

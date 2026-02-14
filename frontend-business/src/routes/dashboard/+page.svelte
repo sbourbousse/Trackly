@@ -22,6 +22,7 @@
 	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
 	import PackageIcon from '@lucide/svelte/icons/package';
 	import RouteIcon from '@lucide/svelte/icons/route';
+	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
 
 	let activeTab = $state('commandes-attente');
 
@@ -49,7 +50,7 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Trackly Business" subtitle="Vue rapide des tournées et livraisons." />
+	<PageHeader title="Trackly Business" subtitle="Vue rapide des tournées et livraisons." icon={LayoutDashboardIcon} />
 	<Badge variant="secondary" class="w-fit">Plan Starter · 7 livraisons restantes</Badge>
 
 	<DateFilterCard onDateFilterChange={onDateFilterChange} />

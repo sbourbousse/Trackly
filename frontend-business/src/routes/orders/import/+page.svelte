@@ -1,6 +1,6 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
+	import PackageIcon from '@lucide/svelte/icons/package';
 	import { importOrders, type ImportOrderRequest } from '$lib/api/orders';
 	import { parseCsv, type ParsedCsvRow, type CsvColumnMapping, detectColumnMapping } from '$lib/utils/csvParser';
 	import { ordersActions } from '$lib/stores/orders.svelte';
@@ -155,7 +155,7 @@
 </script>
 
 <div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
-	<PageHeader title="Import commandes" subtitle="Ajoute des commandes depuis un fichier ou un plugin." icon={ClipboardListIcon} />
+	<PageHeader title="Import commandes" subtitle="Ajoute des commandes depuis un fichier ou un plugin." icon={PackageIcon} />
 
 		<Card>
 			<CardHeader class="flex flex-row flex-wrap items-center justify-between gap-4">

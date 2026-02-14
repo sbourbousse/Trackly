@@ -1,6 +1,7 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import UserIcon from '@lucide/svelte/icons/user';
+	import UsersIcon from '@lucide/svelte/icons/users';
 	import { getDrivers } from '$lib/api/drivers';
 	import type { ApiDriver } from '$lib/api/drivers';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -41,7 +42,7 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Livreurs" subtitle="Gérer vos livreurs" icon={UserIcon} />
+	<PageHeader title="Livreurs" subtitle="Gérer vos livreurs" icon={UsersIcon} />
 
 		<Card>
 			<CardHeader class="space-y-1">

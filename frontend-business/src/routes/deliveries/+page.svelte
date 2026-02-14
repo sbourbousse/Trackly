@@ -6,6 +6,7 @@
 	import XIcon from '@lucide/svelte/icons/x';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import PackageIcon from '@lucide/svelte/icons/package';
+	import TruckIcon from '@lucide/svelte/icons/truck';
 	import { dateRangeState, getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { deleteDeliveriesBatch, getDeliveriesStats, type DeliveryStatsResponse } from '$lib/api/deliveries';
@@ -194,7 +195,7 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Livraisons" subtitle="Liste des livraisons et suivi temps réel chauffeur." icon={PackageIcon} />
+	<PageHeader title="Livraisons" subtitle="Liste des livraisons et suivi temps réel chauffeur." icon={TruckIcon} />
 
 	<DateFilterCard
 		chartTitle={chartData.byHour ? 'Livraisons par heure' : chartData.byMonth ? 'Livraisons par mois' : 'Livraisons par jour'}

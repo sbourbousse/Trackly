@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import UserIcon from '@lucide/svelte/icons/user';
+	import UsersIcon from '@lucide/svelte/icons/users';
 	import { createDriver } from '$lib/api/drivers';
 	import type { CreateDriverRequest } from '$lib/api/drivers';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -58,7 +58,7 @@
 </script>
 
 <div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
-	<PageHeader title="Nouveau livreur" subtitle="Ajouter un livreur à votre équipe" icon={UserIcon} />
+	<PageHeader title="Nouveau livreur" subtitle="Ajouter un livreur à votre équipe" icon={UsersIcon} />
 
 	{#if success}
 		<Alert class="border-green-200 bg-green-50 text-green-800 dark:border-green-900 dark:bg-green-950 dark:text-green-200">

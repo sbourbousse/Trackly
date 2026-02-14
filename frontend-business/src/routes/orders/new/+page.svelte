@@ -1,6 +1,6 @@
 <script lang="ts">
 	import PageHeader from '$lib/components/PageHeader.svelte';
-	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
+	import PackageIcon from '@lucide/svelte/icons/package';
 	import { goto } from '$app/navigation';
 	import { createOrder } from '$lib/api/orders';
 	import { geocodeAddress } from '$lib/api/geocode';
@@ -125,7 +125,7 @@
 </script>
 
 <div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
-	<PageHeader title="Nouvelle commande" subtitle="Créer une nouvelle commande à livrer." icon={ClipboardListIcon} />
+	<PageHeader title="Nouvelle commande" subtitle="Créer une nouvelle commande à livrer." icon={PackageIcon} />
 
 		<Card>
 			<CardHeader>

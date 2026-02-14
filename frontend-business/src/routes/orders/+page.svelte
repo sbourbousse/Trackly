@@ -5,6 +5,7 @@
 	import XIcon from '@lucide/svelte/icons/x';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
+	import PackageIcon from '@lucide/svelte/icons/package';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
 	import { dateRangeState } from '$lib/stores/dateRange.svelte';
 	import { getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
@@ -191,7 +192,7 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." icon={ClipboardListIcon} />
+	<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." icon={PackageIcon} />
 
 	<DateFilterCard
 		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}

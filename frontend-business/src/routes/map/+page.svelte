@@ -26,6 +26,8 @@
 	import PackageIcon from '@lucide/svelte/icons/package';
 	import TruckIcon from '@lucide/svelte/icons/truck';
 	import UsersIcon from '@lucide/svelte/icons/users';
+	import MapPinIcon from '@lucide/svelte/icons/map-pin';
+	import PageHeader from '$lib/components/PageHeader.svelte';
 	import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 	import type { DateRange } from 'bits-ui';
 
@@ -265,6 +267,7 @@
 </script>
 
 <div class="relative flex h-full min-h-0 flex-col">
+	<PageHeader title="Carte" subtitle="Vue cartographique des commandes, livraisons et livreurs." icon={MapPinIcon} />
 	<!-- Barre d'actions en overlay : repliable, flex-wrap pour mobile -->
 	<div
 		class="map-actions-bar absolute left-2 right-2 top-4 z-[40] flex min-w-0 max-w-[calc(100%-1rem)] flex-wrap items-center gap-2 rounded-lg border bg-background/95 px-3 py-2 shadow-md backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:left-4 sm:right-4 sm:gap-3 sm:px-4 sm:py-3"

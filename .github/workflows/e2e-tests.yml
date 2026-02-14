@@ -1,11 +1,18 @@
 name: E2E Tests
 
 on:
-  # Tests E2E uniquement sur les PR de develop vers main
-  pull_request:
-    branches: [main]
-    types: [opened, synchronize, reopened]
+  # Tests E2E uniquement sur déclenchement manuel
+  # Plus de run automatique sur les PR pour éviter les déploiements inutiles
   workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environnement à tester'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
 
 jobs:
   test-business:

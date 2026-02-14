@@ -63,8 +63,8 @@ builder.Services.AddCors(options =>
             var allowedPatterns = builder.Configuration.GetSection("Cors:AllowedPatterns").Get<string[]>() 
                 ?? Array.Empty<string>();
             
-            // Combine origines exactes et patterns pour la vérification
-            var allOrigins = allowedOrigins.ToList();
+            Console.WriteLine($"[CORS] Config - Origins: {string.Join(", ", allowedOrigins)}");
+            Console.WriteLine($"[CORS] Config - Patterns: {string.Join(", ", allowedPatterns)}");
             
             policy.SetIsOriginAllowed(origin =>
             {
@@ -174,6 +174,22 @@ using (var scope = app.Services.CreateScope())
 // Endpoints publics (sans TenantMiddleware)
 app.MapGet("/", () => "Trackly API");
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+// Endpoint de diagnostic CORS
+app.MapGet("/debug/cors", () =>
+{
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+    var allowedPatterns = builder.Configuration.GetSection("Cors:AllowedPatterns").Get<string[]>() ?? Array.Empty<string>();
+    
+    return Results.Ok(new
+    {
+        environment = builder.Environment.EnvironmentName,
+        isDevelopment = builder.Environment.IsDevelopment(),
+        corsOrigins = allowedOrigins,
+        corsPatterns = allowedPatterns,
+        message = "CORS configuration diagnostic"
+    });
+});
 
 // Auth business (création de compte + login)
 app.MapPost("/api/auth/register", async (TracklyDbContext dbContext, AuthService authService, RegisterRequest request) =>

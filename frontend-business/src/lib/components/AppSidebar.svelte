@@ -28,6 +28,7 @@
 	import UploadIcon from '@lucide/svelte/icons/upload';
 	import MapPinIcon from '@lucide/svelte/icons/map-pin';
 	import RouteIcon from '@lucide/svelte/icons/route';
+	import SettingsIcon from '@lucide/svelte/icons/settings';
 
 	let pathname = $derived(page.url.pathname);
 	let isDark = $derived(themeState.value === 'dark');
@@ -173,6 +174,21 @@
 		</SidebarGroup>
 	</SidebarContent>
 	<SidebarFooter class="border-t border-sidebar-border">
+		<SidebarMenu>
+			<SidebarMenuItem>
+				<SidebarMenuButton
+					tooltipContent="Paramètres"
+					isActive={pathname === '/settings'}
+				>
+					{#snippet child({ props })}
+						<a href="/settings" {...props}>
+							<SettingsIcon class="size-4 shrink-0" aria-hidden="true" />
+							<span>Paramètres</span>
+						</a>
+					{/snippet}
+				</SidebarMenuButton>
+			</SidebarMenuItem>
+		</SidebarMenu>
 		{#if themeState.initialized}
 			<div class="flex items-center justify-center gap-2 px-2 py-2 group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0">
 				<SunIcon class="size-4 shrink-0 text-muted-foreground group-data-[collapsible=icon]:hidden {isDark ? 'opacity-50' : ''}" aria-hidden="true" />

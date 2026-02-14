@@ -5,7 +5,7 @@
 	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
 	import ClipboardEditIcon from '@lucide/svelte/icons/clipboard-edit';
 	import PackageIcon from '@lucide/svelte/icons/package';
-	import { getOrder } from '$lib/api/orders';
+	import { getOrder, deleteOrdersBatch } from '$lib/api/orders';
 	import type { ApiOrderDetail } from '$lib/api/orders';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
@@ -22,9 +22,45 @@
 		TableRow
 	} from '$lib/components/ui/table';
 
+	import Trash2Icon from '@lucide/svelte/icons/trash-2';
+	import {
+		Dialog,
+		DialogContent,
+		DialogDescription,
+		DialogFooter,
+		DialogHeader,
+		DialogTitle,
+		DialogTrigger
+	} from '$lib/components/ui/dialog';
+
 	let order = $state<ApiOrderDetail | null>(null);
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+	let deleteDialogOpen = $state(false);
+	let deleting = $state(false);
+	let deleteError = $state<string | null>(null);
+	let showCascadeWarning = $state(false);
+
+	async function handleDelete() {
+		if (!order) return;
+		deleting = true;
+		deleteError = null;
+		try {
+			const result = await deleteOrdersBatch({
+				ids: [order.id],
+				forceDeleteDeliveries: showCascadeWarning
+			});
+			if (result.deleted > 0) {
+				goto('/orders');
+			} else {
+				deleteError = result.message || 'La suppression a échoué';
+			}
+		} catch (err) {
+			deleteError = err instanceof Error ? err.message : 'Erreur lors de la suppression';
+		} finally {
+			deleting = false;
+		}
+	}
 
 	$effect(() => {
 		const orderId = page.params.id;
@@ -84,6 +120,64 @@
 					<div class="flex gap-2">
 						<Button variant="outline" size="sm" onclick={() => goto('/orders')}>Retour</Button>
 						<Button size="sm" href="/deliveries/new">Créer une livraison</Button>
+						<Dialog bind:open={deleteDialogOpen}>
+							<DialogTrigger asChild let:builder>
+								<Button
+									variant="destructive"
+									size="sm"
+									builders={[builder]}
+									disabled={order.deliveries.length > 0 && !showCascadeWarning}
+								>
+									<Trash2Icon class="size-4 mr-1" />
+									Supprimer
+								</Button>
+							</DialogTrigger>
+							<DialogContent>
+								<DialogHeader>
+									<DialogTitle>Supprimer la commande</DialogTitle>
+									<DialogDescription>
+										Êtes-vous sûr de vouloir supprimer cette commande ? Cette action est irréversible.
+									</DialogDescription>
+								</DialogHeader>
+								
+								{#if order.deliveries.length > 0}
+									<Alert variant="warning" class="mt-4">
+										<AlertTitle>Attention</AlertTitle>
+										<AlertDescription>
+											Cette commande a {order.deliveries.length} livraison(s) associée(s).
+											La suppression de la commande supprimera également ces livraisons.
+										</AlertDescription>
+									</Alert>
+									<div class="flex items-center gap-2 mt-4">
+										<input
+											type="checkbox"
+											id="forceDelete"
+											checked={showCascadeWarning}
+											onchange={() => showCascadeWarning = !showCascadeWarning}
+										/>
+										<label for="forceDelete">Forcer la suppression des livraisons associées</label>
+									</div>
+								{/if}
+								
+								{#if deleteError}
+									<Alert variant="destructive" class="mt-4">
+										<AlertTitle>Erreur</AlertTitle>
+										<AlertDescription>{deleteError}</AlertDescription>
+									</Alert>
+								{/if}
+								
+								<DialogFooter class="mt-4">
+									<Button variant="outline" onclick={() => deleteDialogOpen = false}>Annuler</Button>
+									<Button
+										variant="destructive"
+										onclick={handleDelete}
+										disabled={deleting || (order.deliveries.length > 0 && !showCascadeWarning)}
+									>
+										{deleting ? 'Suppression...' : 'Supprimer définitivement'}
+									</Button>
+								</DialogFooter>
+							</DialogContent>
+						</Dialog>
 					</div>
 				</CardHeader>
 				<CardContent>

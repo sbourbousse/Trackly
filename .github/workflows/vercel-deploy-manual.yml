@@ -1,0 +1,87 @@
+name: Deploy Vercel (Manuel)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environnement de déploiement'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+      branch:
+        description: 'Branche à déployer (pour preview)'
+        required: false
+        default: 'develop'
+        type: string
+
+jobs:
+  deploy-vercel:
+    name: Deploy to Vercel
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies (root)
+        run: npm install
+
+      # Deploy frontend-business
+      - name: Deploy frontend-business
+        run: |
+          cd frontend-business
+          npm install
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }} 2>&1 | tee deploy.log
+            echo "URL: $(grep -o 'https://[^[:space:]]*\.vercel\.app' deploy.log | tail -1)"
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BUSINESS }}
+
+      # Deploy frontend-tracking
+      - name: Deploy frontend-tracking
+        run: |
+          cd frontend-tracking
+          npm install
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }} 2>&1 | tee deploy.log
+            echo "URL: $(grep -o 'https://[^[:space:]]*\.vercel\.app' deploy.log | tail -1)"
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_TRACKING }}
+
+      # Deploy frontend-landing-page
+      - name: Deploy frontend-landing-page
+        run: |
+          cd frontend-landing-page
+          npm install
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }} 2>&1 | tee deploy.log
+            echo "URL: $(grep -o 'https://[^[:space:]]*\.vercel\.app' deploy.log | tail -1)"
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+
+      - name: Notify Deployment
+        run: |
+          echo "✅ Déploiement Vercel terminé"
+          echo "Environnement: ${{ github.event.inputs.environment }}"
+          echo "Branche: ${{ github.event.inputs.branch }}"

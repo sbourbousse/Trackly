@@ -1,37 +1,44 @@
 import { browser } from '$app/environment';
 
-// Types de statuts pour les filtres
-type OrderStatus = 'pending' | 'planned' | 'inTransit' | 'delivered' | 'cancelled';
-type DeliveryStatus = 'pending' | 'inProgress' | 'completed' | 'failed';
+export type MarkerType = 'order' | 'delivery' | 'driver';
+export type OrderStatus = 'pending' | 'planned' | 'inTransit' | 'delivered' | 'cancelled';
+export type DeliveryStatus = 'pending' | 'inProgress' | 'completed' | 'failed';
 
-interface MapFilters {
-	orders: Record<OrderStatus, boolean>;
-	deliveries: Record<DeliveryStatus, boolean>;
+export interface MapFilters {
+	orders: {
+		pending: boolean;
+		planned: boolean;
+		inTransit: boolean;
+		delivered: boolean;
+		cancelled: boolean;
+	};
+	deliveries: {
+		pending: boolean;
+		inProgress: boolean;
+		completed: boolean;
+		failed: boolean;
+	};
 	showDrivers: boolean;
 }
 
 const STORAGE_KEY = 'trackly_map_filters';
 
-// Valeurs par défaut
 const defaultFilters: MapFilters = {
 	orders: {
 		pending: true,
 		planned: true,
 		inTransit: true,
-		delivered: true,
-		cancelled: true
+		delivered: false,
+		cancelled: false
 	},
 	deliveries: {
 		pending: true,
 		inProgress: true,
-		completed: true,
-		failed: true
+		completed: false,
+		failed: false
 	},
 	showDrivers: true
 };
-
-// État réactif
-let filters = $state<MapFilters>(loadFilters());
 
 function loadFilters(): MapFilters {
 	if (!browser) return defaultFilters;
@@ -41,118 +48,111 @@ function loadFilters(): MapFilters {
 			return { ...defaultFilters, ...JSON.parse(stored) };
 		}
 	} catch {
-		// Ignorer les erreurs de parsing
+		// Fallback to defaults
 	}
 	return defaultFilters;
 }
 
-function saveFilters() {
+function saveFilters(filters: MapFilters) {
 	if (!browser) return;
-	localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+	try {
+		localStorage.setItem(STORAGE_KEY, JSON.stringify(filters));
+	} catch {
+		// Ignore storage errors
+	}
 }
 
-// Actions
-export const mapFiltersActions = {
-	toggleOrderStatus(status: OrderStatus) {
-		filters.orders[status] = !filters.orders[status];
-		saveFilters();
-	},
-	
-	toggleDeliveryStatus(status: DeliveryStatus) {
-		filters.deliveries[status] = !filters.deliveries[status];
-		saveFilters();
-	},
-	
-	toggleDrivers() {
-		filters.showDrivers = !filters.showDrivers;
-		saveFilters();
-	},
-	
-	showAll() {
-		Object.keys(filters.orders).forEach((key) => {
-			filters.orders[key as OrderStatus] = true;
-		});
-		Object.keys(filters.deliveries).forEach((key) => {
-			filters.deliveries[key as DeliveryStatus] = true;
-		});
-		filters.showDrivers = true;
-		saveFilters();
-	},
-	
-	hideAll() {
-		Object.keys(filters.orders).forEach((key) => {
-			filters.orders[key as OrderStatus] = false;
-		});
-		Object.keys(filters.deliveries).forEach((key) => {
-			filters.deliveries[key as DeliveryStatus] = false;
-		});
-		filters.showDrivers = false;
-		saveFilters();
-	},
-	
-	reset() {
-		filters = { ...defaultFilters };
-		saveFilters();
-	}
-};
+// Create reactive store
+let filters = $state<MapFilters>(loadFilters());
 
-// État dérivé pour les compteurs
-export const mapFiltersState = {
+export const mapFilters = {
 	get filters() {
 		return filters;
 	},
 	
-	get activeOrderCount() {
-		return Object.values(filters.orders).filter(Boolean).length;
+	toggleOrderStatus(status: OrderStatus) {
+		filters.orders[status] = !filters.orders[status];
+		saveFilters(filters);
 	},
 	
-	get activeDeliveryCount() {
-		return Object.values(filters.deliveries).filter(Boolean).length;
+	toggleDeliveryStatus(status: DeliveryStatus) {
+		filters.deliveries[status] = !filters.deliveries[status];
+		saveFilters(filters);
 	},
 	
-	get totalActive() {
-		return this.activeOrderCount + this.activeDeliveryCount + (filters.showDrivers ? 1 : 0);
+	toggleDrivers() {
+		filters.showDrivers = !filters.showDrivers;
+		saveFilters(filters);
 	},
 	
-	get isDefault() {
-		return JSON.stringify(filters) === JSON.stringify(defaultFilters);
+	showAll() {
+		filters = {
+			orders: { pending: true, planned: true, inTransit: true, delivered: true, cancelled: true },
+			deliveries: { pending: true, inProgress: true, completed: true, failed: true },
+			showDrivers: true
+		};
+		saveFilters(filters);
+	},
+	
+	hideAll() {
+		filters = {
+			orders: { pending: false, planned: false, inTransit: false, delivered: false, cancelled: false },
+			deliveries: { pending: false, inProgress: false, completed: false, failed: false },
+			showDrivers: false
+		};
+		saveFilters(filters);
+	},
+	
+	reset() {
+		filters = defaultFilters;
+		saveFilters(filters);
 	}
 };
 
-// Helper pour vérifier si un statut est visible
-export function isOrderStatusVisible(status: string): boolean {
-	const normalized = status.toLowerCase();
-	if (normalized.includes('en attente') || normalized.includes('pending')) {
-		return filters.orders.pending;
+// Helper to check if a marker should be visible
+export function isMarkerVisible(
+	type: MarkerType,
+	status?: string,
+	markerFilters = filters
+): boolean {
+	if (type === 'driver') {
+		return markerFilters.showDrivers;
 	}
-	if (normalized.includes('prévue') || normalized.includes('planned')) {
-		return filters.orders.planned;
+	
+	const normalizedStatus = status?.toLowerCase().replace(/\s+/g, '');
+	
+	if (type === 'order') {
+		if (normalizedStatus === 'enattente' || normalizedStatus === 'pending') {
+			return markerFilters.orders.pending;
+		}
+		if (normalizedStatus === 'prevue' || normalizedStatus === 'planned') {
+			return markerFilters.orders.planned;
+		}
+		if (normalizedStatus === 'encours' || normalizedStatus === 'intransit' || normalizedStatus === 'inprogress') {
+			return markerFilters.orders.inTransit;
+		}
+		if (normalizedStatus === 'livree' || normalizedStatus === 'delivered' || normalizedStatus === 'completed') {
+			return markerFilters.orders.delivered;
+		}
+		if (normalizedStatus === 'annulee' || normalizedStatus === 'cancelled' || normalizedStatus === 'failed' || normalizedStatus === 'echouee') {
+			return markerFilters.orders.cancelled;
+		}
 	}
-	if (normalized.includes('en cours') || normalized.includes('intransit') || normalized.includes('in transit')) {
-		return filters.orders.inTransit;
+	
+	if (type === 'delivery') {
+		if (normalizedStatus === 'enattente' || normalizedStatus === 'pending' || normalizedStatus === 'prevue') {
+			return markerFilters.deliveries.pending;
+		}
+		if (normalizedStatus === 'encours' || normalizedStatus === 'inprogress' || normalizedStatus === 'intransit') {
+			return markerFilters.deliveries.inProgress;
+		}
+		if (normalizedStatus === 'livree' || normalizedStatus === 'completed' || normalizedStatus === 'delivered') {
+			return markerFilters.deliveries.completed;
+		}
+		if (normalizedStatus === 'echouee' || normalizedStatus === 'failed' || normalizedStatus === 'annulee' || normalizedStatus === 'cancelled') {
+			return markerFilters.deliveries.failed;
+		}
 	}
-	if (normalized.includes('livrée') || normalized.includes('delivered')) {
-		return filters.orders.delivered;
-	}
-	if (normalized.includes('annulée') || normalized.includes('cancelled')) {
-		return filters.orders.cancelled;
-	}
-	return true;
-}
-
-export function isDeliveryStatusVisible(status: string): boolean {
-	const normalized = status.toLowerCase();
-	if (normalized.includes('en attente') || normalized.includes('pending') || normalized.includes('prévue')) {
-		return filters.deliveries.pending;
-	}
-	if (normalized.includes('en cours') || normalized.includes('inprogress') || normalized.includes('in progress')) {
-		return filters.deliveries.inProgress;
-	}
-	if (normalized.includes('livrée') || normalized.includes('completed') || normalized.includes('terminée')) {
-		return filters.deliveries.completed;
-	}
-	if (normalized.includes('échouée') || normalized.includes('failed') || normalized.includes('annulée')) {
-		return filters.deliveries.failed;
-	}
-	return true;
+	
+	return true; // Show by default if status unknown
 }

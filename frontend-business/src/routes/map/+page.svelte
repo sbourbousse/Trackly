@@ -16,12 +16,12 @@
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { trackingActions, trackingState } from '$lib/realtime/tracking.svelte';
+	import { mapFilters, isMarkerVisible } from '$lib/stores/mapFilters.svelte';
+	import MapFilters from '$lib/components/map/MapFilters.svelte';
 	import { getDelivery } from '$lib/api/deliveries';
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import type { TypedMapMarker } from '$lib/components/Map.svelte';
-	import MapFilters from '$lib/components/map/MapFilters.svelte';
-	import { mapFiltersState, isOrderStatusVisible, isDeliveryStatusVisible } from '$lib/stores/mapFilters.svelte';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
@@ -101,36 +101,33 @@
 
 	const markersList = $derived.by(() => {
 		const list: TypedMapMarker[] = [];
-		if (showOrders) {
-			for (const m of orderMarkersData) {
-				// Filtrer par statut
-				if (isOrderStatusVisible(m.status)) {
-					list.push({
-						lat: m.lat,
-						lng: m.lng,
-						label: m.label,
-						type: 'order',
-						status: m.status
-					});
-				}
+		// Apply filters to orders
+		for (const m of orderMarkersData) {
+			if (isMarkerVisible('order', m.status, mapFilters.filters)) {
+				list.push({
+					lat: m.lat,
+					lng: m.lng,
+					label: m.label,
+					type: 'order',
+					status: m.status
+				});
 			}
 		}
-		if (showDeliveries) {
-			for (const m of deliveryMarkersData) {
-				// Filtrer par statut
-				if (isDeliveryStatusVisible(m.status)) {
-					list.push({
-						lat: m.lat,
-						lng: m.lng,
-						label: m.label,
-						type: 'delivery',
-						status: m.status,
-						id: m.id
-					});
-				}
+		// Apply filters to deliveries
+		for (const m of deliveryMarkersData) {
+			if (isMarkerVisible('delivery', m.status, mapFilters.filters)) {
+				list.push({
+					lat: m.lat,
+					lng: m.lng,
+					label: m.label,
+					type: 'delivery',
+					status: m.status,
+					id: m.id
+				});
 			}
 		}
-		if (showDrivers && mapFiltersState.filters.showDrivers) {
+		// Apply drivers filter
+		if (mapFilters.filters.showDrivers) {
 			for (const p of driverPoints) {
 				list.push({
 					lat: p.lat,
@@ -409,8 +406,9 @@
 			height="100%"
 			markers={markersList}
 		/>
-		<!-- Filtres de la carte -->
-		<div class="absolute top-4 right-4 z-[400]">
+		
+		<!-- Filtres de statut -->
+		<div class="absolute bottom-4 left-4 z-[35] max-w-[calc(100%-2rem)]">
 			<MapFilters />
 		</div>
 	</div>

@@ -67,8 +67,25 @@ jobs:
           echo "$body" | jq . 2>/dev/null || echo "$body"
           if [ "$code" != "200" ]; then echo "Redeploy testing failed (HTTP $code)" && exit 1; fi
 
+      - name: Wait for deployment
+        run: sleep 30
+
+      - name: Verify deployment
+        run: |
+          for i in {1..5}; do
+            if curl -f ${{ secrets.RAILWAY_TESTING_URL }}/health; then
+              echo "✅ Backend testing déployé et healthy"
+              exit 0
+            fi
+            echo "⏳ Attente... ($i/5)"
+            sleep 10
+          done
+          echo "❌ Le backend n'est pas healthy - Vérifier les migrations"
+          exit 1
+
       - name: Notify Deployment
         run: |
           echo "✅ Backend testing déployé"
           echo "URL: ${{ secrets.RAILWAY_TESTING_URL }}"
+          echo "Health: ${{ secrets.RAILWAY_TESTING_URL }}/health"
           echo "Image: ghcr.io/${{ env.IMAGE_OWNER }}/trackly-backend:testing"

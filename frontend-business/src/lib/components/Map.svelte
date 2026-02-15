@@ -12,6 +12,7 @@
 	let mapContainer: HTMLDivElement;
 	let map = $state<any>(null);
 	let markers: any[] = [];
+	let headquartersMarker: any = null;
 	let trackingMarker: any = null;
 	let trackingCircle: any = null;
 	let L: any = null;
@@ -44,6 +45,8 @@
 		deliveryMarkers?: LegacyMapMarker[];
 		trackPosition?: { lat: number; lng: number; accuracy?: number } | null;
 		followTracking?: boolean;
+		/** Siège social : marqueur distinct sur la carte (paramètres). */
+		headquarters?: { lat: number; lng: number } | null;
 	}
 
 	let {
@@ -53,7 +56,8 @@
 		markers: typedMarkers = [],
 		deliveryMarkers = [],
 		trackPosition = null,
-		followTracking = true
+		followTracking = true,
+		headquarters = null
 	}: Props = $props();
 
 	let DefaultIcon: any = null;
@@ -120,6 +124,7 @@
 		}).addTo(map);
 
 		updateMarkers();
+		updateHeadquartersMarker();
 		updateTrackingMarker();
 	});
 
@@ -133,6 +138,39 @@
 		if (m.type === 'order') return getOrderStatusColorHex(m.status ?? '');
 		if (m.type === 'delivery') return getDeliveryStatusColorHex(m.status ?? '');
 		return getDriverColorHex();
+	}
+
+	/** Marqueur siège social : icône bâtiment, couleur indigo. */
+	function updateHeadquartersMarker() {
+		if (!L || !map || !createTrackingIcon) return;
+		if (headquartersMarker) {
+			headquartersMarker.remove();
+			headquartersMarker = null;
+		}
+		if (headquarters) {
+			const icon = L.divIcon({
+				className: 'headquarters-marker-wrap',
+				html: `<div style="
+					width: 28px; height: 28px;
+					background-color: #6366f1;
+					border: 2px solid white;
+					border-radius: 6px;
+					box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+					display: flex; align-items: center; justify-content: center;
+				">
+					<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+						<path d="M6 22V4a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2v18Z"/>
+						<path d="M6 12H4a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2h2"/>
+						<path d="M18 12h2a2 2 0 0 1 2 2v6a2 2 0 0 1-2 2h-2"/>
+						<path d="M10 12h4"/>
+					</svg>
+				</div>`,
+				iconSize: [28, 28],
+				iconAnchor: [14, 14]
+			});
+			headquartersMarker = L.marker([headquarters.lat, headquarters.lng], { icon, zIndexOffset: 500 }).addTo(map);
+			headquartersMarker.bindPopup('<b>Siège social</b>');
+		}
 	}
 
 	function updateMarkers() {
@@ -220,6 +258,12 @@
 	});
 
 	$effect(() => {
+		if (map && L && createTrackingIcon && headquarters !== undefined) {
+			updateHeadquartersMarker();
+		}
+	});
+
+	$effect(() => {
 		if (map && L && createTrackingIcon && trackPosition) {
 			updateTrackingMarker();
 		}
@@ -231,6 +275,7 @@
 			map = null;
 		}
 		markers = [];
+		headquartersMarker = null;
 		trackingMarker = null;
 		trackingCircle = null;
 	});
@@ -245,7 +290,8 @@
 		z-index: 0;
 	}
 	:global(.tracking-marker),
-	:global(.map-typed-marker-wrap) {
+	:global(.map-typed-marker-wrap),
+	:global(.headquarters-marker-wrap) {
 		background: transparent !important;
 		border: none !important;
 	}

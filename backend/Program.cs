@@ -340,6 +340,44 @@ app.MapGet("/api/public/deliveries/{id:guid}/tracking",
 
 app.UseMiddleware<TenantMiddleware>();
 
+// Siège social du tenant (paramètres entreprise) — requiert X-Tenant-Id
+app.MapGet("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, TenantContext tenantContext, CancellationToken cancellationToken) =>
+{
+    if (tenantContext.TenantId == Guid.Empty)
+        return Results.BadRequest("Tenant manquant.");
+    var tenant = await dbContext.Tenants
+        .AsNoTracking()
+        .FirstOrDefaultAsync(t => t.Id == tenantContext.TenantId, cancellationToken);
+    if (tenant == null)
+        return Results.NotFound("Tenant non trouvé.");
+    return Results.Ok(new
+    {
+        address = tenant.HeadquartersAddress ?? (string?)null,
+        lat = tenant.HeadquartersLat,
+        lng = tenant.HeadquartersLng
+    });
+});
+
+app.MapPut("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, TenantContext tenantContext, HeadquartersRequest request, CancellationToken cancellationToken) =>
+{
+    if (tenantContext.TenantId == Guid.Empty)
+        return Results.BadRequest("Tenant manquant.");
+    var tenant = await dbContext.Tenants
+        .FirstOrDefaultAsync(t => t.Id == tenantContext.TenantId, cancellationToken);
+    if (tenant == null)
+        return Results.NotFound("Tenant non trouvé.");
+    tenant.HeadquartersAddress = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
+    tenant.HeadquartersLat = request.Lat;
+    tenant.HeadquartersLng = request.Lng;
+    await dbContext.SaveChangesAsync(cancellationToken);
+    return Results.Ok(new
+    {
+        address = tenant.HeadquartersAddress,
+        lat = tenant.HeadquartersLat,
+        lng = tenant.HeadquartersLng
+    });
+});
+
 app.MapOrderEndpoints();
 app.MapDeliveryEndpoints();
 app.MapRouteEndpoints();

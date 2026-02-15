@@ -11,6 +11,7 @@
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { trackingActions, trackingState } from '$lib/realtime/tracking.svelte';
 	import { mapFilters, isMarkerVisible } from '$lib/stores/mapFilters.svelte';
+	import { settingsState } from '$lib/stores/settings.svelte';
 	import MapFilters from '$lib/components/map/MapFilters.svelte';
 	import { getDelivery } from '$lib/api/deliveries';
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
@@ -268,6 +269,7 @@
 		<Map
 			height="100%"
 			markers={markersList}
+			headquarters={settingsState.headquarters}
 		/>
 		<div class="absolute bottom-4 left-4 z-[1100] max-w-[calc(100%-2rem)]">
 			<MapFilters />

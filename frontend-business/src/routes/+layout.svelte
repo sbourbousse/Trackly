@@ -13,6 +13,7 @@
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte';
 	import { initTheme } from '$lib/stores/theme.svelte';
 	import { dateRangeState, dateRangeActions } from '$lib/stores/dateRange.svelte';
+	import { settingsActions } from '$lib/stores/settings.svelte';
 	import { userState } from '$lib/stores/user.svelte';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import '../app.css';
@@ -68,6 +69,7 @@
 			if (browser && !dateRangeRestored) {
 				dateRangeRestored = true;
 				dateRangeActions.restoreFromStorage();
+				settingsActions.restoreFromStorage();
 			}
 		}
 	});

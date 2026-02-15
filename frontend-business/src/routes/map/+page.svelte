@@ -20,6 +20,7 @@
 	import MapFilters from '$lib/components/map/MapFilters.svelte';
 	import { getDelivery } from '$lib/api/deliveries';
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
+	import { isOfflineMode } from '$lib/offline/config';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import type { TypedMapMarker } from '$lib/components/Map.svelte';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
@@ -270,6 +271,16 @@
 </script>
 
 <div class="relative flex h-full min-h-0 flex-col">
+	{#if isOfflineMode()}
+		<div class="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+			<Alert class="max-w-md">
+				<AlertTitle>Mode démo</AlertTitle>
+				<AlertDescription>
+					La carte n'est pas disponible en mode démo. Connectez-vous avec un compte pour voir la carte et le suivi en temps réel.
+				</AlertDescription>
+			</Alert>
+		</div>
+	{:else}
 	<!-- Barre d'actions en overlay : repliable, flex-wrap pour mobile -->
 	<div
 		class="map-actions-bar absolute left-2 right-2 top-4 z-[40] flex min-w-0 max-w-[calc(100%-1rem)] flex-wrap items-center gap-2 rounded-lg border bg-background/95 px-3 py-2 shadow-md backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:left-4 sm:right-4 sm:gap-3 sm:px-4 sm:py-3"
@@ -412,4 +423,5 @@
 			<MapFilters />
 		</div>
 	</div>
+	{/if}
 </div>

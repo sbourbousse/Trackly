@@ -42,7 +42,7 @@
 				Tout
 			</Button>
 			<Button variant="ghost" size="sm" class="h-7 px-2 text-xs" onclick={() => mapFilters.hideAll()}>
-				<Aucun>Aucun</Aucun>
+				Aucun
 			</Button>
 			<Button variant="ghost" size="sm" class="h-7 w-7 p-0" onclick={() => mapFilters.reset()} title="Réinitialiser">
 				<RotateCcwIcon class="size-3.5" />

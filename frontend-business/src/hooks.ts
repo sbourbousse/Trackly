@@ -14,16 +14,16 @@ export const handle: Handle = async ({ event, resolve }) => {
 	const authToken = event.cookies.get('trackly_auth_token') || 
 		event.request.headers.get('authorization')?.replace('Bearer ', '');
 
-	// Si pas authentifié et route privée, rediriger vers login
-	if (!isPublicRoute && !authToken && path !== '/') {
+	// Si pas authentifié et route privée (y compris /), rediriger vers login
+	if (!isPublicRoute && !authToken) {
 		return new Response(null, {
 			status: 302,
 			headers: { location: '/login' }
 		});
 	}
 
-	// Si authentifié et sur login, rediriger vers dashboard
-	if (authToken && path === '/login') {
+	// Si authentifié et sur login ou racine, rediriger vers dashboard
+	if (authToken && (path === '/login' || path === '/')) {
 		return new Response(null, {
 			status: 302,
 			headers: { location: '/dashboard' }

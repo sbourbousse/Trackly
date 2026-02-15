@@ -3,6 +3,7 @@
 	import { authActions } from '$lib/stores/auth.svelte';
 	import { userState } from '$lib/stores/user.svelte';
 	import { loginAccount, registerAccount } from '$lib/api/client';
+	import { setAuthCookie } from '$lib/auth-cookie';
 	import { setOfflineModeReactive } from '$lib/stores/offline.svelte';
 	import { DEMO_TENANT_ID } from '$lib/offline/mockData';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -57,6 +58,7 @@
 				sessionStorage.setItem('trackly_auth_token', response.token);
 				sessionStorage.setItem('trackly_tenant_id', response.tenantId);
 			}
+			setAuthCookie(response.token, remember);
 
 			authActions.setTenantId(response.tenantId);
 			authActions.setToken(response.token);
@@ -97,6 +99,7 @@
 			const demoToken = 'demo-token-' + Date.now();
 			localStorage.setItem('trackly_auth_token', demoToken);
 			localStorage.setItem('trackly_tenant_id', DEMO_TENANT_ID);
+			setAuthCookie(demoToken, true);
 
 			// Authentifier avec les données de démo
 			authActions.setTenantId(DEMO_TENANT_ID);

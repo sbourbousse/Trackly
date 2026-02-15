@@ -1,5 +1,8 @@
 import { browser } from '$app/environment';
 import { goto } from '$app/navigation';
+import { clearAuthCache } from '$lib/api/client';
+import { clearAuthCookie } from '$lib/auth-cookie';
+import { authActions } from '$lib/stores/auth.svelte';
 
 interface User {
 	id: string;
@@ -67,10 +70,17 @@ export const userState = {
 	logout() {
 		user = null;
 		tenant = null;
-		localStorage.removeItem('trackly_auth_token');
-		localStorage.removeItem('trackly_user');
-		localStorage.removeItem('trackly_tenant');
-		localStorage.removeItem('trackly_tenant_id');
+		if (browser) {
+			localStorage.removeItem('trackly_auth_token');
+			localStorage.removeItem('trackly_user');
+			localStorage.removeItem('trackly_tenant');
+			localStorage.removeItem('trackly_tenant_id');
+			sessionStorage.removeItem('trackly_auth_token');
+			sessionStorage.removeItem('trackly_tenant_id');
+			clearAuthCookie();
+			clearAuthCache();
+		}
+		authActions.logout();
 		goto('/login');
 	}
 };

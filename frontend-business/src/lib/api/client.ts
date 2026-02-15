@@ -11,6 +11,12 @@ const baseUrl = env.PUBLIC_API_BASE_URL || defaultBaseUrl;
 let cachedTenantId: string | null = null;
 let cachedAuthToken: string | null = null;
 
+/** À appeler au logout pour ne plus réutiliser token/tenant en mémoire */
+export function clearAuthCache(): void {
+	cachedTenantId = null;
+	cachedAuthToken = null;
+}
+
 export const getTenantId = async (): Promise<string | null> => {
 	if (!browser) return null;
 	

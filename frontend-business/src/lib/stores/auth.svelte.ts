@@ -31,9 +31,13 @@ export const authActions = {
 		authState.token = null;
 		if (typeof localStorage !== 'undefined') {
 			localStorage.removeItem('trackly_auth_token');
+			localStorage.removeItem('trackly_tenant_id');
+			localStorage.removeItem('trackly_user');
+			localStorage.removeItem('trackly_tenant');
 		}
 		if (typeof sessionStorage !== 'undefined') {
 			sessionStorage.removeItem('trackly_auth_token');
+			sessionStorage.removeItem('trackly_tenant_id');
 		}
 	},
 	switchPlan(plan: AuthUser['plan']) {

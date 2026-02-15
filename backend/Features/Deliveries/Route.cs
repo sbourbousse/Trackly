@@ -13,6 +13,8 @@ public sealed class Route : ITenantIsolated
     public Guid DriverId { get; set; }
     /// <summary>Nom optionnel (ex. "Est - Matin", "Nuit 22h-6h").</summary>
     public string? Name { get; set; }
+    /// <summary>Heure de début prévue de la tournée (pour calcul des ETA par livraison).</summary>
+    public DateTimeOffset? PlannedStartAt { get; set; }
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? DeletedAt { get; set; }
 }

@@ -14,6 +14,7 @@ Liste des migrations dans l’ordre d’application. À comparer avec la table `
 | 8 | 20260204004623_AddRouteAndRouteIdToDelivery | Route, RouteId sur Delivery |
 | 9 | 20260204201825_AddSequenceToDelivery | Sequence sur Delivery |
 | 10 | 20260215000000_AddHeadquartersToTenant | HeadquartersAddress, Lat, Lng sur Tenants |
+| 11 | 20260215190346_AddLatLngToOrder | Lat, Lng sur Order (géocodage / Mapbox) |
 
 **Comment EF gère les versions**
 

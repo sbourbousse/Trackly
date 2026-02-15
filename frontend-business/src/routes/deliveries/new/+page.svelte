@@ -32,6 +32,7 @@
 	let selectedOrderIds = $state<Set<string>>(new Set());
 	let selectedDriverId = $state('');
 	let routeName = $state('');
+	let plannedStartAt = $state('');
 	let loading = $state(false);
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
@@ -90,7 +91,10 @@
 			await createDeliveriesBatch({
 				driverId: selectedDriverId,
 				orderIds: Array.from(selectedOrderIds),
-				name: routeName.trim() || undefined
+				name: routeName.trim() || undefined,
+				plannedStartAt: plannedStartAt.trim()
+					? new Date(plannedStartAt.trim()).toISOString()
+					: undefined
 			});
 			success = true;
 			setTimeout(() => goto('/deliveries'), 1500);
@@ -144,6 +148,17 @@
 							/>
 						</div>
 						<div class="space-y-2">
+							<Label for="plannedStart">Heure de début prévue (optionnel)</Label>
+							<Input
+								id="plannedStart"
+								type="datetime-local"
+								value={plannedStartAt}
+								oninput={(e) => (plannedStartAt = e.currentTarget.value)}
+								disabled={submitting}
+							/>
+							<p class="text-xs text-muted-foreground">Permet d'afficher l'heure d'arrivée estimée par livraison.</p>
+						</div>
+						<div class="space-y-2 sm:col-span-2">
 							<Label for="driver">Livreur *</Label>
 							<select
 								id="driver"

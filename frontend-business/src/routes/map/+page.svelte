@@ -14,6 +14,7 @@
 	import { settingsState } from '$lib/stores/settings.svelte';
 	import MapFilters from '$lib/components/map/MapFilters.svelte';
 	import { getDelivery } from '$lib/api/deliveries';
+	import { getRoutes, getRouteGeometry, getIsochrones } from '$lib/api/routes';
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
 	import { isOfflineMode } from '$lib/offline/config';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -21,6 +22,7 @@
 
 	const MAX_ORDER_MARKERS = 30;
 	const MAX_DELIVERY_MARKERS = 20;
+	const MAX_ROUTE_POLYLINES = 5;
 
 	const layerParam = $derived(page.url.searchParams.get('layer'));
 	const hasPeriod = $derived(!!getListFilters().dateFrom && !!getListFilters().dateTo);
@@ -60,6 +62,12 @@
 	let geocodingDeliveries = $state(false);
 	let lastOrdersKey = $state('');
 	let lastDeliveriesKey = $state('');
+	let routePolylines = $state<{ coordinates: [number, number][]; color?: string }[]>([]);
+	let isochronePolygons = $state<{ coordinates: [number, number][]; minutes?: number }[]>([]);
+	let showRoutePolylines = $state(true);
+	let showIsochrones = $state(false);
+	let isochronesLoading = $state(false);
+	let isochronesMessage = $state<string | null>(null);
 
 	const isInProgress = (s: string) => s === 'InProgress' || s === 'En cours';
 	const inProgressIds = $derived(
@@ -214,6 +222,61 @@
 		}
 	});
 
+	$effect(() => {
+		if (!showRoutePolylines || !hasPeriod || !showDeliveries) {
+			routePolylines = [];
+			return;
+		}
+		dateRangeState.dateRange;
+		dateRangeState.dateFilter;
+		const filters = getListFilters();
+		if (!filters.dateFrom || !filters.dateTo) return;
+		getRoutes({ dateFrom: filters.dateFrom, dateTo: filters.dateTo })
+			.then((routes) => {
+				const ids = routes.slice(0, MAX_ROUTE_POLYLINES).map((r) => r.id);
+				return Promise.all(ids.map((id) => getRouteGeometry(id)));
+			})
+			.then((results) => {
+				const colors = ['#0d9488', '#7c3aed', '#ea580c', '#2563eb', '#059669'];
+				routePolylines = results
+					.filter((r): r is NonNullable<typeof r> => r != null && r.coordinates?.length > 0)
+					.map((r, i) => ({ coordinates: r.coordinates, color: colors[i % colors.length] }));
+			})
+			.catch(() => {
+				routePolylines = [];
+			});
+	});
+
+	$effect(() => {
+		if (!showIsochrones) {
+			isochronePolygons = [];
+			isochronesMessage = null;
+			return;
+		}
+		isochronesLoading = true;
+		isochronesMessage = null;
+		getIsochrones('10,20,30')
+			.then((res) => {
+				if (res?.contours?.length) {
+					isochronePolygons = res.contours.map((c) => ({
+						coordinates: c.coordinates,
+						minutes: c.minutes
+					}));
+					isochronesMessage = null;
+				} else {
+					isochronePolygons = [];
+					isochronesMessage = res?.message ?? 'Aucun isochrone disponible. Vérifiez le siège social (paramètres).';
+				}
+			})
+			.catch(() => {
+				isochronePolygons = [];
+				isochronesMessage = 'Erreur lors du chargement des isochrones.';
+			})
+			.finally(() => {
+				isochronesLoading = false;
+			});
+	});
+
 	onDestroy(() => {
 		trackingActions.disconnect();
 	});
@@ -270,8 +333,26 @@
 			height="100%"
 			markers={markersList}
 			headquarters={settingsState.headquarters}
+			routePolylines={showRoutePolylines ? routePolylines : []}
+			isochronePolygons={showIsochrones ? isochronePolygons : []}
 		/>
-		<div class="absolute bottom-4 left-4 z-[1100] max-w-[calc(100%-2rem)]">
+		<div class="absolute bottom-4 left-4 z-[1100] flex flex-col gap-2 max-w-[calc(100%-2rem)]">
+			<div class="flex flex-wrap items-center gap-2">
+				<label class="flex items-center gap-2 rounded-md border bg-background/95 px-2 py-1.5 text-sm">
+					<input type="checkbox" bind:checked={showRoutePolylines} class="rounded" />
+					<span>Itinéraires</span>
+				</label>
+				<label class="flex items-center gap-2 rounded-md border bg-background/95 px-2 py-1.5 text-sm">
+					<input type="checkbox" bind:checked={showIsochrones} class="rounded" />
+					<span>Isochrones</span>
+					{#if isochronesLoading}
+						<span class="text-muted-foreground text-xs">…</span>
+					{/if}
+				</label>
+				{#if showIsochrones && isochronesMessage && !isochronesLoading}
+					<p class="text-xs text-muted-foreground max-w-[220px]">{isochronesMessage}</p>
+				{/if}
+			</div>
 			<MapFilters />
 		</div>
 	</div>

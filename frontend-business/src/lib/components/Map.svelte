@@ -15,6 +15,9 @@
 	let headquartersMarker: any = null;
 	let trackingMarker: any = null;
 	let trackingCircle: any = null;
+	let routePolylinesLayer: any[] = [];
+	let routeStepLabelsLayer: any[] = [];
+	let isochronePolygonsLayer: any[] = [];
 	let L: any = null;
 
 	/** Marqueur typé (commande / tournée / livreur) avec couleur de statut et icône. */
@@ -47,6 +50,12 @@
 		followTracking?: boolean;
 		/** Siège social : marqueur distinct sur la carte (paramètres). */
 		headquarters?: { lat: number; lng: number } | null;
+		/** Polylignes d'itinéraires (coordonnées [lng, lat] par point). */
+		routePolylines?: { coordinates: [number, number][]; color?: string }[];
+		/** Numéros d'étape à afficher sur le tracé (ordre du trajet : 1 = départ, 2, 3, …). */
+		routeStepLabels?: { lat: number; lng: number; step: number | string }[];
+		/** Polygones isochrones (coordonnées [lng, lat] par point, contour en minutes). */
+		isochronePolygons?: { coordinates: [number, number][]; minutes?: number }[];
 	}
 
 	let {
@@ -57,7 +66,10 @@
 		deliveryMarkers = [],
 		trackPosition = null,
 		followTracking = true,
-		headquarters = null
+		headquarters = null,
+		routePolylines = [],
+		routeStepLabels = [],
+		isochronePolygons = []
 	}: Props = $props();
 
 	let DefaultIcon: any = null;
@@ -126,6 +138,9 @@
 		updateMarkers();
 		updateHeadquartersMarker();
 		updateTrackingMarker();
+		updateRoutePolylines();
+		updateRouteStepLabels();
+		updateIsochronePolygons();
 	});
 
 	$effect(() => {
@@ -217,6 +232,77 @@
 		}
 	}
 
+	/** Convertit [lng, lat][] (API) en [[lat, lng], ...] pour Leaflet. */
+	function toLeafletLatLngs(coords: [number, number][]): [number, number][] {
+		return coords.map(([lng, lat]) => [lat, lng]);
+	}
+
+	function updateRoutePolylines() {
+		if (!L || !map) return;
+		routePolylinesLayer.forEach((layer) => layer.remove());
+		routePolylinesLayer = [];
+		for (const route of routePolylines) {
+			if (!route.coordinates?.length) continue;
+			const latLngs = toLeafletLatLngs(route.coordinates);
+			const color = route.color ?? '#0d9488';
+			const polyline = L.polyline(latLngs, {
+				color,
+				weight: 5,
+				opacity: 0.7
+			}).addTo(map);
+			routePolylinesLayer.push(polyline);
+		}
+	}
+
+	function updateRouteStepLabels() {
+		if (!L || !map) return;
+		routeStepLabelsLayer.forEach((layer) => layer.remove());
+		routeStepLabelsLayer = [];
+		const color = routePolylines[0]?.color ?? '#0d9488';
+		for (const point of routeStepLabels) {
+			const icon = L.divIcon({
+				className: 'route-step-label-wrap',
+				html: `<div style="
+					min-width: 24px; height: 24px;
+					background-color: ${color};
+					color: white;
+					border: 2px solid white;
+					border-radius: 50%;
+					box-shadow: 0 1px 4px rgba(0,0,0,0.3);
+					display: flex; align-items: center; justify-content: center;
+					font-size: 12px; font-weight: 700; line-height: 1;
+				">${point.step}</div>`,
+				iconSize: [24, 24],
+				iconAnchor: [12, 12]
+			});
+			const marker = L.marker([point.lat, point.lng], { icon, zIndexOffset: 300 }).addTo(map);
+			routeStepLabelsLayer.push(marker);
+		}
+	}
+
+	function updateIsochronePolygons() {
+		if (!L || !map) return;
+		isochronePolygonsLayer.forEach((layer) => layer.remove());
+		isochronePolygonsLayer = [];
+		const colors = ['#3b82f6', '#22c55e', '#eab308', '#ef4444'];
+		for (let i = 0; i < isochronePolygons.length; i++) {
+			const contour = isochronePolygons[i];
+			if (!contour.coordinates?.length) continue;
+			const latLngs = toLeafletLatLngs(contour.coordinates);
+			const color = colors[i % colors.length];
+			const polygon = L.polygon(latLngs, {
+				color,
+				fillColor: color,
+				fillOpacity: 0.2,
+				weight: 2
+			}).addTo(map);
+			if (contour.minutes != null) {
+				polygon.bindPopup(`${contour.minutes} min`);
+			}
+			isochronePolygonsLayer.push(polygon);
+		}
+	}
+
 	function updateTrackingMarker() {
 		if (!L || !map || !createTrackingIcon) return;
 
@@ -269,6 +355,27 @@
 		}
 	});
 
+	$effect(() => {
+		if (map && L) {
+			const _ = routePolylines;
+			updateRoutePolylines();
+		}
+	});
+
+	$effect(() => {
+		if (map && L) {
+			const _ = routeStepLabels;
+			updateRouteStepLabels();
+		}
+	});
+
+	$effect(() => {
+		if (map && L) {
+			const _ = isochronePolygons;
+			updateIsochronePolygons();
+		}
+	});
+
 	onDestroy(() => {
 		if (map) {
 			map.remove();
@@ -278,6 +385,12 @@
 		headquartersMarker = null;
 		trackingMarker = null;
 		trackingCircle = null;
+		routePolylinesLayer.forEach((l) => l.remove());
+		routePolylinesLayer = [];
+		routeStepLabelsLayer.forEach((l) => l.remove());
+		routeStepLabelsLayer = [];
+		isochronePolygonsLayer.forEach((l) => l.remove());
+		isochronePolygonsLayer = [];
 	});
 </script>
 
@@ -291,7 +404,8 @@
 	}
 	:global(.tracking-marker),
 	:global(.map-typed-marker-wrap),
-	:global(.headquarters-marker-wrap) {
+	:global(.headquarters-marker-wrap),
+	:global(.route-step-label-wrap) {
 		background: transparent !important;
 		border: none !important;
 	}

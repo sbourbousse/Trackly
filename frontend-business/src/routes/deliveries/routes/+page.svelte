@@ -133,6 +133,7 @@
 								<TableHead>Tournée</TableHead>
 								<TableHead>Chauffeur</TableHead>
 								<TableHead>Progression</TableHead>
+								<TableHead class="text-muted-foreground">Durée estimée</TableHead>
 								<TableHead class="w-[140px]"></TableHead>
 							</TableRow>
 						</TableHeader>
@@ -151,6 +152,9 @@
 									<TableCell>{route.driverName}</TableCell>
 									<TableCell class="min-w-[200px]">
 										<RouteProgressIndicator deliveries={getDeliveriesForProgress(route)} />
+									</TableCell>
+									<TableCell class="text-muted-foreground text-sm">
+										<span title="Voir le détail de la tournée pour l'estimation Mapbox">–</span>
 									</TableCell>
 									<TableCell class="space-x-2">
 										<Button

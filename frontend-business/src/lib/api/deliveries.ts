@@ -89,6 +89,9 @@ export const deleteDeliveriesBatch = async (request: DeleteDeliveriesBatchReques
 export type CreateDeliveriesBatchRequest = {
 	driverId: string;
 	orderIds: string[];
+	name?: string;
+	/** Heure de début prévue (ISO 8601) pour le calcul des ETA. */
+	plannedStartAt?: string;
 };
 
 export type CreateDeliveriesBatchResponse = {
@@ -106,7 +109,8 @@ export const createDeliveriesBatch = async (request: CreateDeliveriesBatchReques
 		body: JSON.stringify({
 			driverId: request.driverId,
 			orderIds: request.orderIds,
-			...(request.name != null && request.name !== '' && { name: request.name })
+			...(request.name != null && request.name !== '' && { name: request.name }),
+			...(request.plannedStartAt != null && request.plannedStartAt !== '' && { plannedStartAt: request.plannedStartAt })
 		})
 	});
 };

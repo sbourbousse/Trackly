@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using Trackly.Backend.Features.Auth;
@@ -12,12 +13,14 @@ using Trackly.Backend.Features.Drivers;
 using Trackly.Backend.Features.Geocode;
 using Trackly.Backend.Features.Orders;
 using Trackly.Backend.Features.Tenants;
+using Trackly.Backend.Features.Mapbox;
 using Trackly.Backend.Features.Tracking;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<TenantContext>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddSingleton<AuthService>();
@@ -144,6 +147,12 @@ builder.Services.AddHttpClient("Nominatim", client =>
 {
     client.BaseAddress = new Uri("https://nominatim.openstreetmap.org/");
     client.DefaultRequestHeaders.Add("User-Agent", "Trackly/1.0 (contact@trackly.app)");
+});
+
+// Mapbox : Directions, Matrix, Isochrone (token via MAPBOX_ACCESS_TOKEN)
+builder.Services.AddHttpClient<IMapboxService, MapboxService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.mapbox.com/");
 });
 
 // Service de simulation GPS pour les démonstrations (TEMPORAIREMENT DÉSACTIVÉ)
@@ -385,6 +394,54 @@ app.MapPut("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, Te
         lat = tenant.HeadquartersLat,
         lng = tenant.HeadquartersLng
     });
+});
+
+// Isochrones autour du siège social (Mapbox) — requiert X-Tenant-Id (cache 1 h)
+app.MapGet("/api/tenants/me/isochrones", async (
+    TracklyDbContext dbContext,
+    TenantContext tenantContext,
+    IMemoryCache cache,
+    IMapboxService mapboxService,
+    string? minutes,
+    CancellationToken cancellationToken) =>
+{
+    if (tenantContext.TenantId == Guid.Empty)
+        return Results.BadRequest("Tenant manquant.");
+    var tenant = await dbContext.Tenants
+        .AsNoTracking()
+        .FirstOrDefaultAsync(t => t.Id == tenantContext.TenantId, cancellationToken);
+    if (tenant == null || !tenant.HeadquartersLat.HasValue || !tenant.HeadquartersLng.HasValue)
+        return Results.NotFound("Siège social non configuré. Définissez une adresse et des coordonnées dans les paramètres.");
+    if (!mapboxService.IsConfigured)
+        return Results.Json(new { contours = Array.Empty<object>(), message = "Mapbox non configuré." });
+    List<int> minutesList = string.IsNullOrWhiteSpace(minutes)
+        ? new List<int> { 10, 20, 30 }
+        : minutes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => int.TryParse(s, out var m) && m >= 1 && m <= 60 ? m : (int?)null)
+            .Where(m => m.HasValue)
+            .Select(m => m!.Value)
+            .OrderBy(x => x)
+            .Take(4)
+            .ToList();
+    if (minutesList.Count == 0)
+        return Results.BadRequest("Paramètre minutes invalide (entiers 1–60, séparés par des virgules).");
+    var lat = tenant.HeadquartersLat.Value;
+    var lng = tenant.HeadquartersLng.Value;
+    var minutesKey = string.Join(",", minutesList);
+    var cacheKey = $"mapbox:isochrones:{tenantContext.TenantId}:{lat:F5}:{lng:F5}:{minutesKey}";
+    var result = await cache.GetOrCreateAsync(cacheKey, async entry =>
+    {
+        entry!.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+        return await mapboxService.GetIsochronesAsync(lng, lat, minutesList, "mapbox/driving", cancellationToken);
+    });
+    if (result == null)
+        return Results.Ok(new { contours = Array.Empty<object>(), message = "Impossible de calculer les isochrones. Vérifiez les coordonnées du siège et la configuration Mapbox." });
+    var contours = result.Contours.Select(c => new
+    {
+        minutes = c.Minutes,
+        coordinates = c.Coordinates
+    }).ToList();
+    return Results.Ok(new { contours });
 });
 
 app.MapOrderEndpoints();

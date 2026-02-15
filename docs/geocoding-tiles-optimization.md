@@ -33,11 +33,15 @@ Pour chaque adresse, `geocodeAddressCached()` :
 2. Puis dans le **cache localStorage** (avec TTL)  
 3. Sinon appelle **Nominatim** (rate-limited), puis met en cache (mémoire + localStorage).
 
+### En place (Mapbox / temps de trajet)
+
+- **Order.Lat / Order.Lng** (optionnels) : stockés sur les commandes à la création si fournis ; utilisés par le backend pour calculer itinéraires et temps de trajet (Mapbox Directions/Matrix) sans géocoder à chaque requête.
+- Si une commande n’a pas de lat/lng, les endpoints `route-geometry` et `travel-times` renvoient une erreur explicite (« Coordonnées manquantes ») ; le géocodage (Nominatim ou Mapbox Geocoding) peut être ajouté côté backend pour remplir ces champs à la volée.
+
 ### Pistes d’évolution
 
-- **Backend** : stocker `lat`/`lng` sur les commandes et livraisons à la création ; les cartes n’auraient plus qu’à afficher des coordonnées déjà connues.
 - **API backend** : utiliser `/api/geocode` depuis les pages carte pour centraliser le cache côté serveur (et éventuellement un cache Redis).
-- **Provider payant** : pour un volume élevé, un service (Google, Mapbox, etc.) avec quota plus large.
+- **Provider payant** : pour un volume élevé, Mapbox Geocoding avec quota plus large.
 
 ---
 

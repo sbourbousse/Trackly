@@ -168,6 +168,27 @@
 	const GAP_PX = 8;
 	const chartMinWidthPx = $derived(stackedData.length * BAR_MIN_PX + Math.max(0, stackedData.length - 1) * GAP_PX);
 
+	/** Graduations de l'axe Y : 0, puis réparties jusqu'à maxTotal (max 6 ticks). */
+	const yAxisTicks = $derived.by(() => {
+		if (maxTotal <= 0) return [0];
+		const maxTicks = 6;
+		let step = 1;
+		if (maxTotal > 1) {
+			const rawStep = maxTotal / (maxTicks - 1);
+			const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+			step = Math.ceil(rawStep / magnitude) * magnitude;
+			if (step < 1) step = 1;
+		}
+		const ticks: number[] = [0];
+		for (let v = step; v <= maxTotal; v += step) {
+			ticks.push(Math.round(v * 10) / 10);
+		}
+		if (ticks[ticks.length - 1] !== maxTotal && maxTotal > 0) {
+			ticks.push(maxTotal);
+		}
+		return ticks;
+	});
+
 	/** Libellé tooltip : relatif (Hier, Aujourd’hui) + absolu en secondaire (évolutif pour switch plus tard). */
 	function tooltipTitle(row: StackedRow): { primary: string; secondary: string | null } {
 		if (byHour) return { primary: row.period, secondary: null };
@@ -224,8 +245,20 @@
 		{:else if stackedData.length === 0}
 			<div class="text-muted-foreground py-8 text-center text-sm">{emptyMessage}</div>
 		{:else}
-			<div class="min-w-0 overflow-x-auto" role="img" aria-label={variant === 'delivery' ? 'Répartition des tournées par période et par statut' : 'Répartition des commandes par période et par statut (planification)'}>
-				<div class="min-w-0" style="width: 100%; min-width: max(100%, {chartMinWidthPx}px)">
+			<div class="flex min-w-0 flex-col gap-2">
+				<div class="flex min-w-0 gap-2">
+					<!-- Axe Y : graduations -->
+					<div
+						class="text-muted-foreground flex shrink-0 flex-col justify-between py-0.5 text-right text-xs tabular-nums"
+						style="height: {BAR_HEIGHT}px; width: 2.25rem"
+						aria-hidden="true"
+					>
+						{#each [...yAxisTicks].reverse() as tick}
+							<span>{tick}</span>
+						{/each}
+					</div>
+					<div class="min-w-0 flex-1 overflow-x-auto" role="img" aria-label={variant === 'delivery' ? 'Répartition des tournées par période et par statut' : 'Répartition des commandes par période et par statut (planification)'}>
+					<div class="min-w-0" style="width: 100%; min-width: max(100%, {chartMinWidthPx}px)">
 				<div
 					class="flex items-end gap-2"
 					style="width: 100%"
@@ -303,11 +336,14 @@
 					</div>
 				{/each}
 			</div>
-			{#if legendItems.length > 0}
-				<div
-					class="text-muted-foreground mt-4 flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs"
-					style="width: 100%"
-				>
+					</div>
+					</div>
+				</div>
+				{#if legendItems.length > 0}
+					<div
+						class="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs"
+						style="width: 100%"
+					>
 					{#each legendItems as item}
 						{@const LegendIcon = item.icon}
 						{@const isSelected = selectedStatus === item.key}
@@ -324,9 +360,8 @@
 							<span class={isSelected ? 'font-semibold' : ''}>{item.label}</span>
 						</button>
 					{/each}
-				</div>
-			{/if}
-				</div>
+					</div>
+				{/if}
 			</div>
 		{/if}
 	</div>

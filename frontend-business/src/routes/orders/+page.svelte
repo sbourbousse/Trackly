@@ -9,8 +9,9 @@
 	import { dateRangeState } from '$lib/stores/dateRange.svelte';
 	import { getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
 	import { deleteOrdersBatch, getOrdersStats, type OrderStatsResponse } from '$lib/api/orders';
-	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
@@ -38,6 +39,7 @@
 	let orderStats = $state<OrderStatsResponse | null>(null);
 	let orderStatsLoading = $state(false);
 	let statusFilter = $state<string | null>(null);
+	let chartOpen = $state(false);
 
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
@@ -191,31 +193,51 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." icon={ClipboardListIcon} />
+		<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." icon={ClipboardListIcon} />
 
-	<DateFilterCard
-		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
-		chartDescription="Répartition par statut pour la planification des tournées."
-		chartDefaultOpen={false}
-		onDateFilterChange={async () => { await ordersActions.loadOrders(); }}
-	>
-		{#snippet chart()}
-			<OrdersChartContent
-				loading={orderStatsLoading}
-				labels={chartData.labels}
-				values={chartData.values}
-				orders={ordersState.items}
-				periodKeys={chartData.periodKeys}
-				byHour={chartData.byHour}
-				byMonth={chartData.byMonth}
-				emptyMessage="Sélectionnez une plage pour afficher le graphique."
-				selectedStatus={statusFilter}
-				onStatusClick={handleStatusClick}
-			/>
-		{/snippet}
-	</DateFilterCard>
+		<Card class="min-w-0">
+			<div class="flex flex-col gap-0.5 border-b px-4 py-3">
+				<div class="flex flex-row items-center justify-between gap-2">
+					<span class="text-muted-foreground text-sm font-medium">
+						{chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
+					</span>
+					<Button
+						variant="ghost"
+						size="sm"
+						class="gap-1.5 text-muted-foreground hover:text-foreground"
+						onclick={() => (chartOpen = !chartOpen)}
+						aria-expanded={chartOpen}
+					>
+						{#if chartOpen}
+							<ChevronUpIcon class="size-4" aria-hidden="true" />
+							Réduire
+						{:else}
+							<ChevronDownIcon class="size-4" aria-hidden="true" />
+							Développer
+						{/if}
+					</Button>
+				</div>
+				<p class="text-muted-foreground text-xs">Répartition par statut pour la planification des tournées.</p>
+			</div>
+			{#if chartOpen}
+				<div class="min-w-0 px-4 pb-4">
+					<OrdersChartContent
+						loading={orderStatsLoading}
+						labels={chartData.labels}
+						values={chartData.values}
+						orders={ordersState.items}
+						periodKeys={chartData.periodKeys}
+						byHour={chartData.byHour}
+						byMonth={chartData.byMonth}
+						emptyMessage="Sélectionnez une plage pour afficher le graphique."
+						selectedStatus={statusFilter}
+						onStatusClick={handleStatusClick}
+					/>
+				</div>
+			{/if}
+		</Card>
 
-	<Card>
+		<Card>
 			<CardHeader class="space-y-1">
 				<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 					<div>

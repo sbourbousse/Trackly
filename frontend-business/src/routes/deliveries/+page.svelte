@@ -10,13 +10,11 @@
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { deleteDeliveriesBatch, getDeliveriesStats, type DeliveryStatsResponse } from '$lib/api/deliveries';
 	import { ordersActions } from '$lib/stores/orders.svelte';
-	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
+	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 
-	async function onDateFilterChange() {
-		await deliveriesActions.loadDeliveries();
-	}
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
@@ -39,6 +37,7 @@
 	let deliveryStats = $state<DeliveryStatsResponse | null>(null);
 	let deliveryStatsLoading = $state(false);
 	let statusFilter = $state<string | null>(null);
+	let chartOpen = $state(false);
 
 	function deliveryStatusToKey(s: string): string {
 		const lower = (s ?? '').toLowerCase();
@@ -194,32 +193,52 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Livraisons" subtitle="Liste des livraisons et suivi temps réel chauffeur." icon={PackageIcon} />
+		<PageHeader title="Livraisons" subtitle="Liste des livraisons et suivi temps réel chauffeur." icon={PackageIcon} />
 
-	<DateFilterCard
-		chartTitle={chartData.byHour ? 'Livraisons par heure' : chartData.byMonth ? 'Livraisons par mois' : 'Livraisons par jour'}
-		chartDescription="Répartition par statut des livraisons."
-		chartDefaultOpen={false}
-		onDateFilterChange={onDateFilterChange}
-	>
-		{#snippet chart()}
-			<OrdersChartContent
-				variant="delivery"
-				loading={deliveryStatsLoading}
-				labels={chartData.labels}
-				values={chartData.values}
-				deliveries={deliveriesState.routes}
-				periodKeys={chartData.periodKeys}
-				byHour={chartData.byHour}
-				byMonth={chartData.byMonth}
-				emptyMessage="Sélectionnez une plage pour afficher le graphique."
-				selectedStatus={statusFilter}
-				onStatusClick={handleStatusClick}
-			/>
-		{/snippet}
-	</DateFilterCard>
+		<Card class="min-w-0">
+			<div class="flex flex-col gap-0.5 border-b px-4 py-3">
+				<div class="flex flex-row items-center justify-between gap-2">
+					<span class="text-muted-foreground text-sm font-medium">
+						{chartData.byHour ? 'Livraisons par heure' : chartData.byMonth ? 'Livraisons par mois' : 'Livraisons par jour'}
+					</span>
+					<Button
+						variant="ghost"
+						size="sm"
+						class="gap-1.5 text-muted-foreground hover:text-foreground"
+						onclick={() => (chartOpen = !chartOpen)}
+						aria-expanded={chartOpen}
+					>
+						{#if chartOpen}
+							<ChevronUpIcon class="size-4" aria-hidden="true" />
+							Réduire
+						{:else}
+							<ChevronDownIcon class="size-4" aria-hidden="true" />
+							Développer
+						{/if}
+					</Button>
+				</div>
+				<p class="text-muted-foreground text-xs">Répartition par statut des livraisons.</p>
+			</div>
+			{#if chartOpen}
+				<div class="min-w-0 px-4 pb-4">
+					<OrdersChartContent
+						variant="delivery"
+						loading={deliveryStatsLoading}
+						labels={chartData.labels}
+						values={chartData.values}
+						deliveries={deliveriesState.routes}
+						periodKeys={chartData.periodKeys}
+						byHour={chartData.byHour}
+						byMonth={chartData.byMonth}
+						emptyMessage="Sélectionnez une plage pour afficher le graphique."
+						selectedStatus={statusFilter}
+						onStatusClick={handleStatusClick}
+					/>
+				</div>
+			{/if}
+		</Card>
 
-	<Card>
+		<Card>
 		<CardHeader class="space-y-1">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div>

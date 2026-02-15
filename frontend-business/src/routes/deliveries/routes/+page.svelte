@@ -15,7 +15,6 @@
 		TableHeader,
 		TableRow
 	} from '$lib/components/ui/table';
-	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
 	import RouteProgressIndicator from '$lib/components/RouteProgressIndicator.svelte';
 
 	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
@@ -81,10 +80,6 @@
 		}
 	}
 
-	async function onDateFilterChange() {
-		await load();
-	}
-
 	$effect(() => {
 		const _ = dateRangeState.dateRange;
 		const __ = dateRangeState.dateFilter;
@@ -95,19 +90,6 @@
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
 	<PageHeader title="Tournées" subtitle="Liste des tournées créées (une par batch de livraisons)." icon={RouteIcon} />
-
-	<DateFilterCard
-		chartTitle="Tournées"
-		chartDescription="Période affichée pour les tournées."
-		chartDefaultOpen={false}
-		onDateFilterChange={onDateFilterChange}
-	>
-		{#snippet chart()}
-			<div class="py-4 text-center text-sm text-muted-foreground">
-				Modifiez la plage ci-dessus pour recharger les tournées.
-			</div>
-		{/snippet}
-	</DateFilterCard>
 
 	<Card>
 		<CardHeader class="space-y-1">

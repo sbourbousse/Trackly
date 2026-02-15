@@ -106,9 +106,11 @@
 		};
 
 		map = L.map(mapContainer, {
-			zoomControl: true,
+			zoomControl: false,
 			attributionControl: true
 		}).setView(center, zoom);
+
+		L.control.zoom({ position: 'topleft' }).addTo(map);
 
 		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
 			attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',

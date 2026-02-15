@@ -1,8 +1,6 @@
 <script lang="ts">
 	import { Button } from '$lib/components/ui/button';
-	import { Badge } from '$lib/components/ui/badge';
 	import { Switch } from '$lib/components/ui/switch';
-	import { Label } from '$lib/components/ui/label';
 	import { Separator } from '$lib/components/ui/separator';
 	import { mapFilters, type OrderStatus, type DeliveryStatus } from '$lib/stores/mapFilters.svelte';
 	import PackageIcon from '@lucide/svelte/icons/package';
@@ -11,6 +9,8 @@
 	import EyeIcon from '@lucide/svelte/icons/eye';
 	import EyeOffIcon from '@lucide/svelte/icons/eye-off';
 	import RotateCcwIcon from '@lucide/svelte/icons/rotate-ccw';
+	import SlidersHorizontalIcon from '@lucide/svelte/icons/sliders-horizontal';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 
 	const orderStatuses: { key: OrderStatus; label: string; color: string }[] = [
 		{ key: 'pending', label: 'En attente', color: 'bg-sky-500' },
@@ -27,15 +27,16 @@
 		{ key: 'failed', label: 'Échouée', color: 'bg-destructive' }
 	];
 
-	let expanded = $state(true);
+	let expanded = $state(false);
 </script>
 
-<div class="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 rounded-lg border shadow-md p-3 space-y-3 min-w-[200px]">
-	<!-- Header -->
-	<div class="flex items-center justify-between">
-		<h3 class="font-semibold text-sm flex items-center gap-2">
+{#if expanded}
+<div class="bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 rounded-lg border shadow-md p-3 space-y-3 min-w-[200px] max-w-[calc(100vw-2rem)]">
+	<!-- Header avec bouton replier -->
+	<div class="flex items-center justify-between gap-2">
+		<h3 class="font-semibold text-sm flex items-center gap-2 shrink-0">
 			<EyeIcon class="size-4" />
-			Filtres de visibilité
+			<span class="hidden sm:inline">Filtres de visibilité</span>
 		</h3>
 		<div class="flex items-center gap-1">
 			<Button variant="ghost" size="sm" class="h-7 px-2 text-xs" onclick={() => mapFilters.showAll()}>
@@ -46,6 +47,16 @@
 			</Button>
 			<Button variant="ghost" size="sm" class="h-7 w-7 p-0" onclick={() => mapFilters.reset()} title="Réinitialiser">
 				<RotateCcwIcon class="size-3.5" />
+			</Button>
+			<Button
+				variant="ghost"
+				size="sm"
+				class="h-7 w-7 p-0 shrink-0"
+				onclick={() => (expanded = false)}
+				aria-label="Replier les filtres"
+				title="Replier"
+			>
+				<ChevronDownIcon class="size-4 rotate-90" />
 			</Button>
 		</div>
 	</div>
@@ -123,3 +134,16 @@
 		</div>
 	</div>
 </div>
+{:else}
+	<!-- Bouton icône pour ouvrir les filtres (format mobile / compact) -->
+	<Button
+		variant="outline"
+		size="icon"
+		class="h-11 w-11 rounded-full shadow-lg bg-background border-2 border-border"
+		onclick={() => (expanded = true)}
+		aria-label="Ouvrir les filtres de visibilité"
+		title="Filtres de visibilité"
+	>
+		<SlidersHorizontalIcon class="size-5" />
+	</Button>
+{/if}

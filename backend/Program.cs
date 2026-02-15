@@ -158,6 +158,15 @@ app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
 
+// Affiche l'hôte de la base utilisée (run + migrations)
+var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? builder.Configuration.GetConnectionString("TracklyDb");
+if (!string.IsNullOrWhiteSpace(rawConnectionString))
+{
+    var displayDb = GetDatabaseDisplayString(NormalizeConnectionString(rawConnectionString));
+    Console.WriteLine($"[DB] Base utilisée : {displayDb}");
+}
+
 // Exécute les migrations en développement et production
 using (var scope = app.Services.CreateScope())
 {
@@ -464,4 +473,21 @@ static string NormalizeConnectionString(string connectionString)
     }
 
     return connectionString;
+}
+
+/// <summary>Retourne une chaîne affichable (sans mot de passe) : Host:Port/Database</summary>
+static string GetDatabaseDisplayString(string connectionString)
+{
+    if (string.IsNullOrWhiteSpace(connectionString)) return "(non configurée)";
+    try
+    {
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+        var port = builder.Port > 0 ? $":{builder.Port}" : "";
+        var db = string.IsNullOrEmpty(builder.Database) ? "" : $"/{builder.Database}";
+        return $"{builder.Host}{port}{db}";
+    }
+    catch
+    {
+        return "(chaîne non reconnue)";
+    }
 }

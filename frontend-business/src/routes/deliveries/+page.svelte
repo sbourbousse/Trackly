@@ -6,13 +6,10 @@
 	import XIcon from '@lucide/svelte/icons/x';
 	import PageHeader from '$lib/components/PageHeader.svelte';
 	import PackageIcon from '@lucide/svelte/icons/package';
-	import { dateRangeState, getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
+	import { dateRangeState, getListFilters } from '$lib/stores/dateRange.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
-	import { deleteDeliveriesBatch, getDeliveriesStats, type DeliveryStatsResponse } from '$lib/api/deliveries';
+	import { deleteDeliveriesBatch } from '$lib/api/deliveries';
 	import { ordersActions } from '$lib/stores/orders.svelte';
-	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
-	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -34,10 +31,7 @@
 	let selectedIds = $state<Set<string>>(new Set());
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
-	let deliveryStats = $state<DeliveryStatsResponse | null>(null);
-	let deliveryStatsLoading = $state(false);
 	let statusFilter = $state<string | null>(null);
-	let chartOpen = $state(false);
 
 	function deliveryStatusToKey(s: string): string {
 		const lower = (s ?? '').toLowerCase();
@@ -81,64 +75,6 @@
 		statusFilter = null;
 	}
 
-	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
-
-	const chartData = $derived.by(() => {
-		if (!deliveryStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
-		if (deliveryStats.byHour.length > 0) {
-			return {
-				labels: deliveryStats.byHour.map((x) => x.hour),
-				values: deliveryStats.byHour.map((x) => x.count),
-				periodKeys: [] as string[],
-				byHour: true,
-				byMonth: false
-			};
-		}
-		const dayCount = getDateRangeDayCount();
-		if (dayCount > 30 && deliveryStats.byDay.length > 0) {
-			const byMonthMap = new Map<string, number>();
-			for (const { date, count } of deliveryStats.byDay) {
-				const [y, m] = date.split('-');
-				const key = `${y}-${m}`;
-				byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + count);
-			}
-			const sorted = [...byMonthMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-			return {
-				labels: sorted.map(([key]) => {
-					const [, m] = key.split('-');
-					return `${MONTH_LABELS[Number(m) - 1]} ${key.slice(0, 4)}`;
-				}),
-				values: sorted.map(([, count]) => count),
-				periodKeys: sorted.map(([key]) => key),
-				byHour: false,
-				byMonth: true
-			};
-		}
-		return {
-			labels: deliveryStats.byDay.map((x) => x.date),
-			values: deliveryStats.byDay.map((x) => x.count),
-			periodKeys: deliveryStats.byDay.map((x) => x.date),
-			byHour: false,
-			byMonth: false
-		};
-	});
-
-	async function loadDeliveryStats() {
-		const filters = getListFilters();
-		if (!filters.dateFrom || !filters.dateTo) {
-			deliveryStats = null;
-			return;
-		}
-		deliveryStatsLoading = true;
-		try {
-			deliveryStats = await getDeliveriesStats(filters);
-		} catch {
-			deliveryStats = null;
-		} finally {
-			deliveryStatsLoading = false;
-		}
-	}
-
 	$effect(() => {
 		const _ = dateRangeState.dateRange;
 		const __ = dateRangeState.dateFilter;
@@ -146,7 +82,6 @@
 		const routeId = page.url.searchParams.get('routeId') || undefined;
 		deliveriesActions.loadDeliveries({ ...getListFilters(), routeId });
 		ordersActions.loadOrders();
-		loadDeliveryStats();
 	});
 
 	$effect(() => {
@@ -193,52 +128,9 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-		<PageHeader title="Livraisons" subtitle="Liste des livraisons et suivi temps réel chauffeur." icon={PackageIcon} />
+	<PageHeader title="Livraisons" subtitle="Liste des livraisons et suivi temps réel chauffeur." icon={PackageIcon} />
 
-		<Card class="min-w-0">
-			<div class="flex flex-col gap-0.5 border-b px-4 py-3">
-				<div class="flex flex-row items-center justify-between gap-2">
-					<span class="text-muted-foreground text-sm font-medium">
-						{chartData.byHour ? 'Livraisons par heure' : chartData.byMonth ? 'Livraisons par mois' : 'Livraisons par jour'}
-					</span>
-					<Button
-						variant="ghost"
-						size="sm"
-						class="gap-1.5 text-muted-foreground hover:text-foreground"
-						onclick={() => (chartOpen = !chartOpen)}
-						aria-expanded={chartOpen}
-					>
-						{#if chartOpen}
-							<ChevronUpIcon class="size-4" aria-hidden="true" />
-							Réduire
-						{:else}
-							<ChevronDownIcon class="size-4" aria-hidden="true" />
-							Développer
-						{/if}
-					</Button>
-				</div>
-				<p class="text-muted-foreground text-xs">Répartition par statut des livraisons.</p>
-			</div>
-			{#if chartOpen}
-				<div class="min-w-0 px-4 pb-4">
-					<OrdersChartContent
-						variant="delivery"
-						loading={deliveryStatsLoading}
-						labels={chartData.labels}
-						values={chartData.values}
-						deliveries={deliveriesState.routes}
-						periodKeys={chartData.periodKeys}
-						byHour={chartData.byHour}
-						byMonth={chartData.byMonth}
-						emptyMessage="Sélectionnez une plage pour afficher le graphique."
-						selectedStatus={statusFilter}
-						onStatusClick={handleStatusClick}
-					/>
-				</div>
-			{/if}
-		</Card>
-
-		<Card>
+	<Card>
 		<CardHeader class="space-y-1">
 			<div class="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
 				<div>

@@ -10,15 +10,25 @@
 		dateRangeActions,
 		dateRangeState,
 		dateRangeUI,
+		getDateRangeDayKeys,
+		getDateRangeFourHourSlotKeys,
+		getCurrentFourHourSlotIndex,
+		getTodayKey,
 		isSingleDay,
 		type DateFilterType,
 		type TimePreset,
 		TIME_PRESET_RANGES
 	} from '$lib/stores/dateRange.svelte';
+	import { ordersState } from '$lib/stores/orders.svelte';
+	import { deliveriesState } from '$lib/stores/deliveries.svelte';
+	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import XIcon from '@lucide/svelte/icons/x';
+	import BarChart3Icon from '@lucide/svelte/icons/bar-chart-3';
 	import { getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 	import type { DateRange } from 'bits-ui';
+
+	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 	const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => ({
 		value: `${String(i).padStart(2, '0')}:00`,
@@ -49,6 +59,46 @@
 	}
 
 	let { onDateFilterChange, collapsed = false, onToggle, showCloseButton = true }: Props = $props();
+
+	let chartOpen = $state(false);
+	let chartVariant = $state<'order' | 'delivery'>('order');
+
+	const periodKeys = $derived(getDateRangeDayKeys());
+	/** En affichage journée (un seul jour) : tranches 4h ; sinon jours. */
+	const chartPeriodKeys = $derived(
+		isSingleDay() && periodKeys.length === 1
+			? getDateRangeFourHourSlotKeys(periodKeys[0]!).keys
+			: periodKeys
+	);
+	const chartLabels = $derived(
+		isSingleDay() && periodKeys.length === 1
+			? getDateRangeFourHourSlotKeys(periodKeys[0]!).labels
+			: periodKeys.map((key) => {
+					const [, m, d] = key.split('-');
+					return `${Number(d)} ${MONTH_LABELS[Number(m) - 1]}`;
+				})
+	);
+	/** Index de la barre « maintenant » : tranche 4h courante (journée) ou jour aujourd’hui (multi-jours). */
+	const chartCurrentBarIndex = $derived(
+		isSingleDay() && periodKeys.length === 1
+			? getCurrentFourHourSlotIndex(periodKeys[0]!)
+			: periodKeys.length > 0
+				? (() => {
+						const idx = periodKeys.indexOf(getTodayKey());
+						return idx >= 0 ? idx : null;
+					})()
+				: null
+	);
+	const ordersInPeriod = $derived.by(() => {
+		if (!periodKeys.length) return [];
+		const set = new Set(periodKeys);
+		return ordersState.items.filter((o) => set.has((o.orderDate ?? '').toString().slice(0, 10)));
+	});
+	const deliveriesInPeriod = $derived.by(() => {
+		if (!periodKeys.length) return [];
+		const set = new Set(periodKeys);
+		return deliveriesState.routes.filter((d) => set.has((d.createdAt ?? '').toString().slice(0, 10)));
+	});
 
 	function formatRangeLabel(): string {
 		if (!dateRangeUI.ready) return '…';
@@ -108,10 +158,22 @@
 {:else}
 	<aside class="flex h-full w-full flex-col border-l bg-background">
 		<div class="flex items-center justify-between border-b px-4 py-3">
-			<h2 class="font-semibold text-sm flex items-center gap-2">
-				<CalendarIcon class="size-4 text-muted-foreground" />
-				Période
-			</h2>
+			<div class="flex items-center gap-1">
+				<h2 class="font-semibold text-sm flex items-center gap-2">
+					<CalendarIcon class="size-4 text-muted-foreground" />
+					Période
+				</h2>
+				<Button
+					variant={chartOpen ? 'secondary' : 'ghost'}
+					size="icon"
+					class="h-8 w-8 shrink-0"
+					aria-label={chartOpen ? 'Masquer le graphique' : 'Afficher le graphique'}
+					title={chartOpen ? 'Masquer le graphique' : 'Afficher le graphique'}
+					onclick={() => (chartOpen = !chartOpen)}
+				>
+					<BarChart3Icon class="size-4" />
+				</Button>
+			</div>
 			{#if showCloseButton && onToggle}
 				<Button variant="ghost" size="icon" class="h-8 w-8" onclick={onToggle} aria-label="Fermer le panneau">
 					<XIcon class="size-4" />
@@ -119,97 +181,153 @@
 			{/if}
 		</div>
 		<div class="flex flex-1 flex-col gap-4 overflow-y-auto p-4">
-			<div>
-				<p class="text-muted-foreground mb-2 text-xs font-medium uppercase">Raccourcis</p>
-				<div class="flex flex-col gap-1">
-					{#each PRESETS as preset}
-						<Button variant="ghost" size="sm" class="justify-start font-normal h-9" onclick={() => applyPreset(preset)}>
-							{preset.label}
-						</Button>
-					{/each}
-				</div>
-			</div>
-			<div class="border-t pt-4">
-				<p class="text-muted-foreground mb-2 text-xs font-medium uppercase">Personnalisé</p>
-				<RangeCalendar
-					numberOfMonths={1}
-					value={dateRangeState.dateRange}
-					placeholder={dateRangeState.dateRange.start ?? today(getLocalTimeZone())}
-					onValueChange={onDateRangeChange}
-				/>
-			</div>
-			{#if isSingleDay()}
-				<div class="border-t pt-4 space-y-3">
-					<p class="text-muted-foreground text-xs font-medium uppercase">Plage horaire</p>
-					<label class="flex items-center gap-2 text-sm">
-						<Checkbox
-							checked={dateRangeState.useManualTime}
-							onCheckedChange={(v) => {
-								dateRangeActions.setUseManualTime(v === true);
-								handleTimeChange();
-							}}
-						/>
-						Heures personnalisées
-					</label>
-					{#if dateRangeState.useManualTime}
-						<div class="flex items-center gap-1">
-							<select
-								class="border-input bg-background flex h-9 w-20 rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-								value={dateRangeState.timeRange?.start ?? '08:00'}
-								onchange={(e) => {
-									dateRangeActions.setTimeRange({ ...dateRangeState.timeRange!, start: (e.target as HTMLSelectElement).value });
-									handleTimeChange();
-								}}
-							>
-								{#each HOUR_OPTIONS as opt}
-									<option value={opt.value}>{opt.label}</option>
-								{/each}
-							</select>
-							<span class="text-muted-foreground text-sm">–</span>
-							<select
-								class="border-input bg-background flex h-9 w-20 rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-								value={dateRangeState.timeRange?.end ?? '20:00'}
-								onchange={(e) => {
-									dateRangeActions.setTimeRange({ ...dateRangeState.timeRange!, end: (e.target as HTMLSelectElement).value });
-									handleTimeChange();
-								}}
-							>
-								{#each HOUR_OPTIONS as opt}
-									<option value={opt.value}>{opt.label}</option>
-								{/each}
-							</select>
-						</div>
-					{:else}
-						<select
-							class="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2"
-							value={dateRangeState.timePreset}
-							onchange={(e) => {
-								dateRangeActions.setTimePreset((e.target as HTMLSelectElement).value as TimePreset);
-								handleTimeChange();
-							}}
-							aria-label="Créneau horaire"
+			{#if chartOpen}
+				<!-- Vue graphique : remplace le calendrier -->
+				<div class="flex flex-col gap-3">
+					<div class="flex gap-1 rounded-md border border-border bg-muted/30 p-1">
+						<Button
+							variant={chartVariant === 'order' ? 'secondary' : 'ghost'}
+							size="sm"
+							class="h-8 flex-1 text-xs"
+							onclick={() => (chartVariant = 'order')}
 						>
-							{#each TIME_PRESET_OPTIONS as opt}
-								<option value={opt.value}>{opt.label}</option>
-							{/each}
+							Commandes
+						</Button>
+						<Button
+							variant={chartVariant === 'delivery' ? 'secondary' : 'ghost'}
+							size="sm"
+							class="h-8 flex-1 text-xs"
+							onclick={() => (chartVariant = 'delivery')}
+						>
+							Livraisons
+						</Button>
+					</div>
+					<div class="min-w-0">
+						{#if chartVariant === 'order'}
+							<OrdersChartContent
+								variant="order"
+								horizontal={true}
+								loading={ordersState.loading && !ordersInPeriod.length}
+								labels={chartLabels}
+								values={[]}
+								orders={ordersInPeriod}
+								periodKeys={chartPeriodKeys}
+								currentBarIndex={chartCurrentBarIndex}
+								byHour={false}
+								byMonth={false}
+								emptyMessage="Sélectionnez une plage pour afficher le graphique."
+							/>
+						{:else}
+							<OrdersChartContent
+								variant="delivery"
+								horizontal={true}
+								loading={deliveriesState.loading && !deliveriesInPeriod.length}
+								labels={chartLabels}
+								values={[]}
+								deliveries={deliveriesInPeriod}
+								periodKeys={chartPeriodKeys}
+								currentBarIndex={chartCurrentBarIndex}
+								byHour={false}
+								byMonth={false}
+								emptyMessage="Sélectionnez une plage pour afficher le graphique."
+							/>
+						{/if}
+					</div>
+				</div>
+			{:else}
+				<!-- Vue calendrier -->
+				<div>
+					<p class="text-muted-foreground mb-2 text-xs font-medium uppercase">Raccourcis</p>
+					<div class="flex flex-col gap-1">
+						{#each PRESETS as preset}
+							<Button variant="ghost" size="sm" class="justify-start font-normal h-9" onclick={() => applyPreset(preset)}>
+								{preset.label}
+							</Button>
+						{/each}
+					</div>
+				</div>
+				<div class="border-t pt-4">
+					<p class="text-muted-foreground mb-2 text-xs font-medium uppercase">Personnalisé</p>
+					<RangeCalendar
+						numberOfMonths={1}
+						value={dateRangeState.dateRange}
+						placeholder={dateRangeState.dateRange.start ?? today(getLocalTimeZone())}
+						onValueChange={onDateRangeChange}
+					/>
+				</div>
+				{#if isSingleDay()}
+					<div class="border-t pt-4 space-y-3">
+						<p class="text-muted-foreground text-xs font-medium uppercase">Plage horaire</p>
+						<label class="flex items-center gap-2 text-sm">
+							<Checkbox
+								checked={dateRangeState.useManualTime}
+								onCheckedChange={(v) => {
+									dateRangeActions.setUseManualTime(v === true);
+									handleTimeChange();
+								}}
+							/>
+							Heures personnalisées
+						</label>
+						{#if dateRangeState.useManualTime}
+							<div class="flex items-center gap-1">
+								<select
+									class="border-input bg-background flex h-9 w-20 rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
+									value={dateRangeState.timeRange?.start ?? '08:00'}
+									onchange={(e) => {
+										dateRangeActions.setTimeRange({ ...dateRangeState.timeRange!, start: (e.target as HTMLSelectElement).value });
+										handleTimeChange();
+									}}
+								>
+									{#each HOUR_OPTIONS as opt}
+										<option value={opt.value}>{opt.label}</option>
+									{/each}
+								</select>
+								<span class="text-muted-foreground text-sm">–</span>
+								<select
+									class="border-input bg-background flex h-9 w-20 rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
+									value={dateRangeState.timeRange?.end ?? '20:00'}
+									onchange={(e) => {
+										dateRangeActions.setTimeRange({ ...dateRangeState.timeRange!, end: (e.target as HTMLSelectElement).value });
+										handleTimeChange();
+									}}
+								>
+									{#each HOUR_OPTIONS as opt}
+										<option value={opt.value}>{opt.label}</option>
+									{/each}
+								</select>
+							</div>
+						{:else}
+							<select
+								class="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2"
+								value={dateRangeState.timePreset}
+								onchange={(e) => {
+									dateRangeActions.setTimePreset((e.target as HTMLSelectElement).value as TimePreset);
+									handleTimeChange();
+								}}
+								aria-label="Créneau horaire"
+							>
+								{#each TIME_PRESET_OPTIONS as opt}
+									<option value={opt.value}>{opt.label}</option>
+								{/each}
+							</select>
+						{/if}
+					</div>
+				{/if}
+				<div class="border-t pt-4">
+					<label class="text-muted-foreground flex flex-col gap-1.5 text-xs">
+						<span>Filtrer par</span>
+						<select
+							class="border-input bg-background flex h-9 rounded-md border px-3 text-sm outline-none focus-visible:ring-2"
+							value={dateRangeState.dateFilter}
+							onchange={handleDateFilterChange}
+							aria-label="Type de filtre date"
+						>
+							<option value="OrderDate">Date commande</option>
+							<option value="CreatedAt">Date création</option>
 						</select>
-					{/if}
+					</label>
 				</div>
 			{/if}
-			<div class="border-t pt-4">
-				<label class="text-muted-foreground flex flex-col gap-1.5 text-xs">
-					<span>Filtrer par</span>
-					<select
-						class="border-input bg-background flex h-9 rounded-md border px-3 text-sm outline-none focus-visible:ring-2"
-						value={dateRangeState.dateFilter}
-						onchange={handleDateFilterChange}
-						aria-label="Type de filtre date"
-					>
-						<option value="OrderDate">Date commande</option>
-						<option value="CreatedAt">Date création</option>
-					</select>
-				</label>
-			</div>
 		</div>
 	</aside>
 {/if}

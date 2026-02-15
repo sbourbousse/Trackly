@@ -13,9 +13,20 @@
 
 	type IconComponent = typeof ClockIcon;
 
+	/** Seuil en nombre de barres : en dessous, on passe en mode "large" (barres plus larges / plus visibles). */
+	export type WideBarThreshold = number;
+
 	interface Props {
 		/** 'order' = commandes (statuts order), 'delivery' = tournées (statuts delivery). */
 		variant?: 'order' | 'delivery';
+		/** true = barres horizontales : jours de haut en bas (axe Y), valeurs à droite (axe X). */
+		horizontal?: boolean;
+		/** Seuil : si nombre de barres <= à cette valeur, mode "large" (barres plus visibles). Défaut 5. */
+		wideBarThreshold?: number;
+		/** En mode vertical, largeur min par barre quand mode large (barres peu nombreuses). Défaut 80. */
+		wideBarMinWidthPx?: number;
+		/** En mode horizontal, largeur max des barres (axe X) quand mode large. Défaut 160. */
+		wideBarMaxWidthPx?: number;
 		loading?: boolean;
 		labels?: string[];
 		values?: number[];
@@ -24,12 +35,18 @@
 		periodKeys?: string[];
 		byHour?: boolean;
 		byMonth?: boolean;
+		/** Index de la barre correspondant à « maintenant » (tranche ou jour courant). Délimitation visuelle. */
+		currentBarIndex?: number | null;
 		emptyMessage?: string;
 		selectedStatus?: string | null;
 		onStatusClick?: (statusKey: string | null) => void;
 	}
 	let {
 		variant = 'order',
+		horizontal = false,
+		wideBarThreshold = 5,
+		wideBarMinWidthPx = 80,
+		wideBarMaxWidthPx = 160,
 		loading = false,
 		labels = [],
 		values = [],
@@ -38,6 +55,7 @@
 		periodKeys,
 		byHour = false,
 		byMonth = false,
+		currentBarIndex = null,
 		emptyMessage = 'Sélectionnez une plage pour afficher le graphique.',
 		selectedStatus = null,
 		onStatusClick
@@ -105,6 +123,30 @@
 		return forMonth ? d.slice(0, 7) : d;
 	}
 
+	/** Clé tranche 4h (yyyy-MM-dd-HH) à partir d’une date/heure ISO ou yyyy-MM-dd. Heure locale. */
+	function getSlotKeyFromDate(isoOrDateStr: string | null | undefined): string | null {
+		if (!isoOrDateStr) return null;
+		const s = isoOrDateStr.trim();
+		if (s.length < 10) return null;
+		const d = new Date(s);
+		if (Number.isNaN(d.getTime())) return null;
+		const y = d.getFullYear();
+		const m = String(d.getMonth() + 1).padStart(2, '0');
+		const day = String(d.getDate()).padStart(2, '0');
+		const datePart = `${y}-${m}-${day}`;
+		const hour = d.getHours();
+		const slot = Math.min(20, Math.floor(hour / 4) * 4);
+		return `${datePart}-${String(slot).padStart(2, '0')}`;
+	}
+
+	/** true si la clé période est une tranche 4h (yyyy-MM-dd-00|04|08|12|16|20). */
+	function isFourHourSlotKey(key: string): boolean {
+		const parts = key.split('-');
+		if (parts.length !== 4) return false;
+		const h = parseInt(parts[3]!, 10);
+		return [0, 4, 8, 12, 16, 20].includes(h);
+	}
+
 	const stackedData = $derived.by((): StackedRow[] => {
 		if (!labels.length) return [];
 		const keys = periodKeys ?? labels;
@@ -117,15 +159,18 @@
 				segments: [{ key: 'total', label: totalLabel, colorClass: 'bg-primary', icon: PackageIcon, count: values[i] ?? 0 }]
 			}));
 		}
+		const useFourHourSlots = keys.length > 0 && isFourHourSlotKey(keys[0]!);
 		if (variant === 'delivery') {
 			return labels.map((period, i) => {
 				const key = keys[i];
 				if (!key) return { period, periodKey: period, total: 0, segments: [] };
-				const deliveriesInPeriod = deliveries.filter((d) => {
-					const k = deliveryPeriodKey(d.createdAt, byMonth);
-					if (key.length === 7) return k.startsWith(key);
-					return k === key || k.startsWith(key);
-				});
+				const deliveriesInPeriod = useFourHourSlots
+					? deliveries.filter((d) => getSlotKeyFromDate(d.createdAt) === key)
+					: deliveries.filter((d) => {
+							const k = deliveryPeriodKey(d.createdAt, byMonth);
+							if (key.length === 7) return k.startsWith(key);
+							return k === key || k.startsWith(key);
+						});
 				const byStatus = new Map<string, number>();
 				for (const d of deliveriesInPeriod) {
 					const k = deliveryStatusToKey(d.status);
@@ -142,11 +187,13 @@
 		return labels.map((period, i) => {
 			const key = keys[i];
 			if (!key) return { period, periodKey: period, total: 0, segments: [] };
-			const ordersInPeriod = orders.filter((o) => {
-				const d = o.orderDate ?? '';
-				if (key.length === 7) return d.startsWith(key);
-				return d === key || d.startsWith(key);
-			});
+			const ordersInPeriod = useFourHourSlots
+				? orders.filter((o) => getSlotKeyFromDate(o.orderDate ?? null) === key)
+				: orders.filter((o) => {
+						const d = o.orderDate ?? '';
+						if (key.length === 7) return d.startsWith(key);
+						return d === key || d.startsWith(key);
+					});
 			const byStatus = new Map<string, number>();
 			for (const o of ordersInPeriod) {
 				const k = statusToKey(o.status);
@@ -163,10 +210,17 @@
 
 	const maxTotal = $derived(stackedData.length ? Math.max(...stackedData.map((r) => r.total), 1) : 1);
 	const BAR_HEIGHT = 120;
-	/** Largeur minimale des barres ; au-delà, scroll horizontal. */
-	const BAR_MIN_PX = 48;
+	const ROW_HEIGHT_H = 24;
 	const GAP_PX = 8;
-	const chartMinWidthPx = $derived(stackedData.length * BAR_MIN_PX + Math.max(0, stackedData.length - 1) * GAP_PX);
+
+	/** Mode "large" : peu de barres → barres plus larges / plus visibles. */
+	const isWideMode = $derived(stackedData.length > 0 && stackedData.length <= wideBarThreshold);
+
+	/** Largeur max des barres horizontales (axe X) : plus grande en mode large. */
+	const barMaxWidthH = $derived(isWideMode ? wideBarMaxWidthPx : 100);
+	/** Largeur min par barre (vertical) : plus grande en mode large. */
+	const barMinPx = $derived(isWideMode ? wideBarMinWidthPx : 48);
+	const chartMinWidthPx = $derived(stackedData.length * barMinPx + Math.max(0, stackedData.length - 1) * GAP_PX);
 
 	/** Graduations de l'axe Y : 0, puis réparties jusqu'à maxTotal (max 6 ticks). */
 	const yAxisTicks = $derived.by(() => {
@@ -192,6 +246,13 @@
 	/** Libellé tooltip : relatif (Hier, Aujourd’hui) + absolu en secondaire (évolutif pour switch plus tard). */
 	function tooltipTitle(row: StackedRow): { primary: string; secondary: string | null } {
 		if (byHour) return { primary: row.period, secondary: null };
+		if (isFourHourSlotKey(row.periodKey)) {
+			const dayKey = row.periodKey.slice(0, 10);
+			return {
+				primary: getRelativeDateLabel(dayKey),
+				secondary: row.period
+			};
+		}
 		if (parsePeriodKey(row.periodKey)) {
 			return {
 				primary: getRelativeDateLabel(row.periodKey),
@@ -246,6 +307,104 @@
 			<div class="text-muted-foreground py-8 text-center text-sm">{emptyMessage}</div>
 		{:else}
 			<div class="flex min-w-0 flex-col gap-2">
+				{#if horizontal}
+					<!-- Mode horizontal : jours de haut en bas (axe Y), barres vers la droite (axe X) -->
+					<div
+						class="flex min-w-0 flex-col gap-1"
+						role="img"
+						aria-label={variant === 'delivery' ? 'Répartition des tournées par jour (haut en bas)' : 'Répartition des commandes par jour (haut en bas)'}
+					>
+						{#each stackedData as row, i}
+							<div
+								class="flex min-w-0 items-center gap-2 rounded-sm transition-colors"
+								class:border-l-2={currentBarIndex !== null && currentBarIndex === i}
+								class:border-primary={currentBarIndex !== null && currentBarIndex === i}
+								class:pl-1={currentBarIndex !== null && currentBarIndex === i}
+								style="min-height: {ROW_HEIGHT_H}px"
+							>
+							<TooltipRoot>
+								<TooltipTrigger>
+									<div class="flex min-w-0 flex-1 items-center gap-2" style="min-height: {ROW_HEIGHT_H}px">
+										<span class="text-muted-foreground w-14 shrink-0 truncate text-right text-xs" title={row.period}>{row.period}</span>
+										<div
+											class="flex min-w-0 flex-1 items-stretch overflow-hidden rounded"
+											style="width: {row.total === 0 ? 2 : Math.max(4, (row.total / maxTotal) * barMaxWidthH)}px; max-width: {barMaxWidthH}px; height: {ROW_HEIGHT_H - 4}px"
+										>
+											{#if row.total === 0}
+												<div class="bg-muted h-full w-full rounded" aria-hidden="true"></div>
+											{:else}
+												{#each row.segments as seg}
+													{#if seg.count > 0}
+														{@const isOtherSelected = selectedStatus && selectedStatus !== seg.key}
+														<button
+															type="button"
+															class="h-full min-w-[2px] flex-1 transition-opacity hover:opacity-90 {seg.colorClass} cursor-pointer border-0 p-0 first:rounded-l last:rounded-r"
+															style="flex: {seg.count}; opacity: {isOtherSelected ? '0.3' : '1'}"
+															onclick={(e) => {
+																e.stopPropagation();
+																handleSegmentClick(seg.key);
+															}}
+															aria-label="Filtrer par {seg.label}"
+														></button>
+													{/if}
+												{/each}
+											{/if}
+										</div>
+									</div>
+								</TooltipTrigger>
+								{@const tt = tooltipTitle(row)}
+								<TooltipContent side="top" class="rounded-md border border-border bg-popover px-3 py-2 text-popover-foreground shadow-md max-w-[280px]">
+									<p class="mb-1 text-xs font-semibold">{tt.primary}</p>
+									{#if tt.secondary}
+										<p class="text-muted-foreground mb-2 text-[11px]">{tt.secondary}</p>
+									{/if}
+									<div class="flex flex-col gap-1.5 text-xs">
+										{#if row.total === 0}
+											<p class="text-muted-foreground">{variant === 'delivery' ? 'Aucune livraison' : 'Aucune commande'}</p>
+										{:else}
+											{#each row.segments as seg}
+												{@const Icon = seg.icon}
+												<div class="flex items-center gap-2">
+													<span class="inline-flex size-3 shrink-0 rounded-sm {seg.colorClass}" aria-hidden="true"></span>
+													<Icon class="size-3.5 shrink-0 text-muted-foreground" />
+													<span class="font-medium">{seg.label}</span>
+													<span class="tabular-nums text-muted-foreground">{seg.count}</span>
+												</div>
+											{/each}
+										{/if}
+									</div>
+								</TooltipContent>
+							</TooltipRoot>
+							</div>
+						{/each}
+						<!-- Axe X : 0 à max -->
+						<div class="text-muted-foreground flex items-center gap-1 pl-[3.5rem] text-[10px] tabular-nums">
+							<span>0</span>
+							<div class="flex-1" style="max-width: {barMaxWidthH}px"></div>
+							<span>{maxTotal}</span>
+						</div>
+					</div>
+					{#if legendItems.length > 0}
+						<div class="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs">
+							{#each legendItems as item}
+								{@const LegendIcon = item.icon}
+								{@const isSelected = selectedStatus === item.key}
+								{@const isOtherSelected = selectedStatus && selectedStatus !== item.key}
+								<button
+									type="button"
+									class="flex shrink-0 items-center gap-1.5 transition-opacity hover:opacity-80 cursor-pointer border-0 bg-transparent p-0"
+									style="opacity: {isOtherSelected ? '0.4' : '1'}"
+									onclick={() => handleSegmentClick(item.key)}
+									aria-label="Filtrer par {item.label}"
+								>
+									<span class="inline-flex size-3 shrink-0 rounded-sm {item.colorClass}" aria-hidden="true"></span>
+									<LegendIcon class="size-3.5 shrink-0" />
+									<span class={isSelected ? 'font-semibold' : ''}>{item.label}</span>
+								</button>
+							{/each}
+						</div>
+					{/if}
+				{:else}
 				<div class="flex min-w-0 gap-2">
 					<!-- Axe Y : graduations -->
 					<div
@@ -263,8 +422,11 @@
 					class="flex items-end gap-2"
 					style="width: 100%"
 				>
-					{#each stackedData as row}
-						<div class="chart-bar-column flex flex-1 shrink-0 flex-col" style="min-width: {BAR_MIN_PX}px; width: 0">
+					{#each stackedData as row, i}
+						{#if currentBarIndex !== null && currentBarIndex === i}
+							<div class="bg-primary shrink-0 self-stretch w-0.5 rounded-full min-h-[80px]" aria-hidden="true" title="Maintenant"></div>
+						{/if}
+						<div class="chart-bar-column flex flex-1 shrink-0 flex-col" style="min-width: {barMinPx}px; width: 0">
 							<div class="chart-bar-column-inner flex min-h-0 w-full flex-1 flex-col">
 							<TooltipRoot>
 								<TooltipTrigger>
@@ -279,6 +441,10 @@
 								>
 									<!-- Spacer = espace au-dessus des segments (remplit tout l'espace par graduation) -->
 									<div class="w-full flex-1 min-h-0" aria-hidden="true"></div>
+									{#if row.total === 0}
+										<!-- Jour vide : petite barre placeholder -->
+										<div class="bg-muted w-full min-h-[2px] shrink-0 rounded" style="height: 2px" aria-hidden="true"></div>
+									{:else}
 									{#each [...row.segments].reverse() as seg, segIdx}
 										{@const h = maxTotal > 0 ? (seg.count / maxTotal) * BAR_HEIGHT : 0}
 										{#if h > 0}
@@ -298,6 +464,7 @@
 											></button>
 										{/if}
 									{/each}
+									{/if}
 								</div>
 								</div>
 							</TooltipTrigger>
@@ -308,15 +475,19 @@
 									<p class="text-muted-foreground mb-2 text-[11px]">{tt.secondary}</p>
 								{/if}
 								<div class="flex flex-col gap-1.5 text-xs">
-									{#each row.segments as seg}
-										{@const Icon = seg.icon}
-										<div class="flex items-center gap-2">
-											<span class="inline-flex size-3 shrink-0 rounded-sm {seg.colorClass}" aria-hidden="true"></span>
-											<Icon class="size-3.5 shrink-0 text-muted-foreground" />
-											<span class="font-medium">{seg.label}</span>
-											<span class="tabular-nums text-muted-foreground">{seg.count}</span>
-										</div>
-									{/each}
+									{#if row.total === 0}
+										<p class="text-muted-foreground">{variant === 'delivery' ? 'Aucune livraison' : 'Aucune commande'}</p>
+									{:else}
+										{#each row.segments as seg}
+											{@const Icon = seg.icon}
+											<div class="flex items-center gap-2">
+												<span class="inline-flex size-3 shrink-0 rounded-sm {seg.colorClass}" aria-hidden="true"></span>
+												<Icon class="size-3.5 shrink-0 text-muted-foreground" />
+												<span class="font-medium">{seg.label}</span>
+												<span class="tabular-nums text-muted-foreground">{seg.count}</span>
+											</div>
+										{/each}
+									{/if}
 								</div>
 							</TooltipContent>
 							</TooltipRoot>
@@ -329,7 +500,7 @@
 				style="width: 100%"
 			>
 				{#each stackedData as row, i}
-					<div class="flex flex-1 min-w-[{BAR_MIN_PX}px] shrink-0 justify-center truncate" style="min-width: {BAR_MIN_PX}px">
+					<div class="flex flex-1 shrink-0 justify-center truncate" style="min-width: {barMinPx}px">
 						{#if axisTickIndices.includes(i)}
 							<span class="truncate" title={row.period}>{row.period}</span>
 						{/if}
@@ -361,6 +532,7 @@
 						</button>
 					{/each}
 					</div>
+				{/if}
 				{/if}
 			</div>
 		{/if}

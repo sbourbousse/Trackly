@@ -202,6 +202,7 @@
 							}]}
 							trackPosition={trackingState.point ? { lat: trackingState.point.lat, lng: trackingState.point.lng } : null}
 							followTracking={true}
+							tileTheme="stadia-alidade-smooth-dark"
 						/>
 						<div class="mt-4 rounded-md border bg-muted/50 px-4 py-3 text-sm">
 							{#if trackingState.point}

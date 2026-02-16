@@ -136,6 +136,22 @@ export const dateRangeActions = {
 			};
 		}
 	},
+	/** Réinitialise la plage et vide le localStorage. À appeler au logout. */
+	reset() {
+		dateRangeState.dateRange = getDefaultState().dateRange;
+		dateRangeState.timeRange = getDefaultState().timeRange;
+		dateRangeState.timePreset = getDefaultState().timePreset;
+		dateRangeState.useManualTime = getDefaultState().useManualTime;
+		dateRangeState.dateFilter = getDefaultState().dateFilter;
+		dateRangeUI.ready = false;
+		if (typeof window !== 'undefined') {
+			try {
+				localStorage.removeItem(STORAGE_KEY);
+			} catch {
+				// ignore
+			}
+		}
+	},
 	/** Restaure la période depuis localStorage (à appeler au chargement, côté client). */
 	restoreFromStorage() {
 		if (typeof window === 'undefined') return;

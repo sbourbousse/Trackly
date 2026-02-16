@@ -337,6 +337,7 @@
 			isochronePolygons={showIsochrones ? isochronePolygons : []}
 			lockView={true}
 			fitBoundsMaxZoom={11}
+			tileTheme="stadia-alidade-smooth-dark"
 		/>
 		<div class="absolute bottom-4 left-4 z-[1100] flex flex-col gap-2 max-w-[calc(100%-2rem)]">
 			<div class="flex flex-wrap items-center gap-2">

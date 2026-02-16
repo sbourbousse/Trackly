@@ -4,8 +4,11 @@
 	import { goto } from '$app/navigation';
 	import { createOrder } from '$lib/api/orders';
 	import { geocodeAddress } from '$lib/api/geocode';
-	import { ordersActions } from '$lib/stores/orders.svelte';
+	import { ordersState, ordersActions } from '$lib/stores/orders.svelte';
 	import Map from '$lib/components/Map.svelte';
+	import { getHeadquarters } from '$lib/api/headquarters';
+	import { getIsochrones, type ApiIsochroneContour } from '$lib/api/routes';
+	import { onMount } from 'svelte';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -17,23 +20,93 @@
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 
-	const HOUR_OPTIONS = Array.from({ length: 24 }, (_, i) => ({
-		value: String(i).padStart(2, '0'),
-		label: `${String(i).padStart(2, '0')}h`
-	}));
 	const MINUTE_OPTIONS = [0, 10, 20, 30, 40, 50].map((m) => ({
 		value: String(m).padStart(2, '0'),
 		label: String(m).padStart(2, '0')
 	}));
 
+	/** Heure et minute actuelles arrondies aux 10 min (pour défaut et raccourci "Maintenant"). */
+	function getNowRounded(): { hour: string; minute: string } {
+		const d = new Date();
+		const m = d.getMinutes();
+		let roundedMin = Math.round(m / 10) * 10;
+		let h = d.getHours();
+		if (roundedMin === 60) {
+			h += 1;
+			roundedMin = 0;
+		}
+		return {
+			hour: String(h % 24).padStart(2, '0'),
+			minute: String(roundedMin).padStart(2, '0')
+		};
+	}
+
+	/** Prochaine tranche de 2h à partir de maintenant (ex: 20h30 → 22h). */
+	function getNextTwoHourSlot(): number {
+		const d = new Date();
+		const totalMinutes = d.getHours() * 60 + d.getMinutes();
+		const slotIndex = Math.ceil(totalMinutes / 120);
+		return (slotIndex * 2) % 24;
+	}
+
+	/** Créneaux de 2h à partir de l'heure actuelle : 12 options (ex: 20h30 → 22h, 00h, 02h, …). */
+	function getHourSlots(): { value: string; label: string }[] {
+		const start = getNextTwoHourSlot();
+		return Array.from({ length: 12 }, (_, i) => {
+			const h = (start + i * 2) % 24;
+			return { value: String(h).padStart(2, '0'), label: `${String(h).padStart(2, '0')}h` };
+		});
+	}
+
+	/** Applique un raccourci horaire : 0 = maintenant, 2/4/6 = 1ère/2ème/3ème tranche de 2h (ex: 20h30 → 22h, 00h, 02h). */
+	function setTimeShortcut(offsetHours: number) {
+		if (offsetHours === 0) {
+			const now = getNowRounded();
+			orderHour = now.hour;
+			orderMinute = now.minute;
+		} else {
+			const nextSlot = getNextTwoHourSlot();
+			const h = (nextSlot + offsetHours - 2) % 24;
+			orderHour = String(h).padStart(2, '0');
+			orderMinute = '00';
+		}
+	}
+
+	/** Nombre de commandes (en attente / planifiées) par plage de raccourci sur la date sélectionnée. */
+	function getShortcutCounts(selectedDate: CalendarDate): { now: number; plus2: number; plus4: number; plus6: number } {
+		const dateStr = orderDateToApiString(selectedDate);
+		const ordersOnDate = ordersState.items.filter((o) => (o.orderDate ?? '').toString().startsWith(dateStr));
+		const now = new Date();
+		const currentSlotStart = Math.floor(now.getHours() / 2) * 2;
+		const nextSlot = getNextTwoHourSlot();
+		const slotStarts = [currentSlotStart, nextSlot, (nextSlot + 2) % 24, (nextSlot + 4) % 24];
+		const counts = { now: 0, plus2: 0, plus4: 0, plus6: 0 };
+		const keys: ('now' | 'plus2' | 'plus4' | 'plus6')[] = ['now', 'plus2', 'plus4', 'plus6'];
+		for (const o of ordersOnDate) {
+			if (!o.orderDate) continue;
+			const h = new Date(o.orderDate).getHours();
+			for (let i = 0; i < 4; i++) {
+				const start = slotStarts[i];
+				const end = (start + 2) % 24;
+				const inSlot = end > start ? (h >= start && h < end) : (h >= start || h < end);
+				if (inSlot) {
+					counts[keys[i]] += 1;
+					break;
+				}
+			}
+		}
+		return counts;
+	}
+
+	const initialTime = getNowRounded();
 	let customerName = $state('');
 	let address = $state('');
 	let phoneNumber = $state('');
 	let internalComment = $state('');
 	let orderDateOpen = $state(false);
 	let orderDateValue = $state<CalendarDate>(today(getLocalTimeZone()));
-	let orderHour = $state('09');
-	let orderMinute = $state('00');
+	let orderHour = $state(initialTime.hour);
+	let orderMinute = $state(initialTime.minute);
 	let orderHourOpen = $state(false);
 	let orderMinuteOpen = $state(false);
 	let submitting = $state(false);
@@ -41,17 +114,63 @@
 	let geocodeResult = $state<{ lat: number; lng: number; displayName: string } | null>(null);
 	let geocodeLoading = $state(false);
 	let geocodeDebounceTimer: ReturnType<typeof setTimeout> | null = null;
+	let headquarters = $state<{ lat: number; lng: number } | null>(null);
+	let isochronePolygons = $state<{ coordinates: [number, number][]; minutes?: number }[]>([]);
+	let isochroneZone = $state<number | null>(null); // Minutes de la zone dans laquelle tombe l'adresse
 
 	const orderTime = $derived(`${orderHour.padStart(2, '0')}:${orderMinute.padStart(2, '0')}`);
 
+	// Date de commande : aujourd'hui ou dans le futur (jusqu'à 2 ans)
+	const orderDateMin = $derived(today(getLocalTimeZone()));
+	const orderDateMax = $derived(today(getLocalTimeZone()).add({ years: 2 }));
+
+	// Toujours centrer sur le siège social si disponible, sinon centre par défaut
 	const mapCenter = $derived(
-		geocodeResult ? ([geocodeResult.lat, geocodeResult.lng] as [number, number]) : ([48.8566, 2.3522] as [number, number])
+		headquarters
+			? ([headquarters.lat, headquarters.lng] as [number, number])
+			: ([48.8566, 2.3522] as [number, number])
 	);
+
+	// Marqueurs : adresse géocodée uniquement (le siège social est géré par la prop headquarters)
 	const mapMarkers = $derived(
 		geocodeResult
 			? [{ lat: geocodeResult.lat, lng: geocodeResult.lng, label: geocodeResult.displayName }]
 			: []
 	);
+
+	/** Vérifie si un point est dans un polygone (algorithme ray casting). 
+	 * Les coordonnées du polygone sont au format [lng, lat][]
+	 */
+	function isPointInPolygon(pointLng: number, pointLat: number, polygon: [number, number][]): boolean {
+		let inside = false;
+		for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+			const [xi, yi] = polygon[i]; // [lng, lat]
+			const [xj, yj] = polygon[j]; // [lng, lat]
+			const intersect =
+				yi > pointLat !== yj > pointLat && 
+				pointLng < ((xj - xi) * (pointLat - yi)) / (yj - yi) + xi;
+			if (intersect) inside = !inside;
+		}
+		return inside;
+	}
+
+	/** Détermine dans quelle zone isochrone tombe un point. Retourne le nombre de minutes ou null. */
+	function getIsochroneZone(point: { lat: number; lng: number }): number | null {
+		if (isochronePolygons.length === 0) return null;
+		
+		// Trier les isochrones par minutes (du plus petit au plus grand)
+		const sorted = [...isochronePolygons].sort((a, b) => (a.minutes ?? 0) - (b.minutes ?? 0));
+		
+		// Vérifier dans quelle zone le point tombe (de la plus petite à la plus grande)
+		// Les coordonnées sont [lng, lat] dans les isochrones
+		for (const contour of sorted) {
+			if (isPointInPolygon(point.lng, point.lat, contour.coordinates)) {
+				return contour.minutes ?? null;
+			}
+		}
+		
+		return null;
+	}
 
 	function scheduleGeocode() {
 		if (geocodeDebounceTimer) clearTimeout(geocodeDebounceTimer);
@@ -59,24 +178,52 @@
 			const addr = address.trim();
 			if (addr.length < 3) {
 				geocodeResult = null;
+				isochroneZone = null;
 				return;
 			}
 			geocodeLoading = true;
 			geocodeResult = null;
+			isochroneZone = null;
 			try {
 				const res = await geocodeAddress(addr);
 				if (res.lat != null && res.lng != null) {
 					geocodeResult = { lat: res.lat, lng: res.lng, displayName: res.displayName ?? addr };
+					// Vérifier dans quelle zone isochrone tombe ce point
+					isochroneZone = getIsochroneZone({ lat: res.lat, lng: res.lng });
 				} else {
 					geocodeResult = null;
+					isochroneZone = null;
 				}
 			} catch {
 				geocodeResult = null;
+				isochroneZone = null;
 			} finally {
 				geocodeLoading = false;
 			}
 		}, 400);
 	}
+
+	// Charger le siège social, les isochrones et les commandes au montage (pour les badges des raccourcis)
+	onMount(async () => {
+		ordersActions.loadOrders();
+		try {
+			const hq = await getHeadquarters();
+			if (hq.lat != null && hq.lng != null) {
+				headquarters = { lat: hq.lat, lng: hq.lng };
+				
+				// Charger les isochrones
+				const isochronesRes = await getIsochrones('10,20,30');
+				if (isochronesRes?.contours?.length) {
+					isochronePolygons = isochronesRes.contours.map((c) => ({
+						coordinates: c.coordinates,
+						minutes: c.minutes
+					}));
+				}
+			}
+		} catch (error) {
+			console.error('Erreur lors du chargement du siège social:', error);
+		}
+	});
 
 	function orderDateToApiString(d: CalendarDate): string {
 		const y = d.year;
@@ -84,6 +231,8 @@
 		const day = String(d.day).padStart(2, '0');
 		return `${y}-${m}-${day}`;
 	}
+
+	const shortcutCounts = $derived(getShortcutCounts(orderDateValue));
 
 	function formatOrderDateLabel(d: CalendarDate): string {
 		return d.toDate(getLocalTimeZone()).toLocaleDateString('fr-FR', {
@@ -168,6 +317,8 @@
 								<PopoverContent class="w-auto overflow-hidden p-0" align="start">
 									<Calendar
 										value={orderDateValue}
+										minValue={orderDateMin}
+										maxValue={orderDateMax}
 										onValueChange={(v: DateValue | undefined) => {
 											if (v !== undefined) orderDateValue = new CalendarDate(v.year, v.month, v.day);
 											orderDateOpen = false;
@@ -176,9 +327,86 @@
 								</PopoverContent>
 							</PopoverRoot>
 						</div>
+						<div class="space-y-2">
+							<Label>Raccourcis horaire</Label>
+							<div class="flex flex-wrap gap-2">
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									disabled={submitting}
+									onclick={() => setTimeShortcut(0)}
+									class="relative"
+								>
+									Maintenant
+									{#if shortcutCounts.now > 0}
+										<span
+											class="bg-primary text-primary-foreground ml-1.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium"
+											title={shortcutCounts.now + ' commande(s) déjà sur cette plage'}
+										>
+											{shortcutCounts.now}
+										</span>
+									{/if}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									disabled={submitting}
+									onclick={() => setTimeShortcut(2)}
+									class="relative"
+								>
+									+2h
+									{#if shortcutCounts.plus2 > 0}
+										<span
+											class="bg-primary text-primary-foreground ml-1.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium"
+											title={shortcutCounts.plus2 + ' commande(s) déjà sur cette plage'}
+										>
+											{shortcutCounts.plus2}
+										</span>
+									{/if}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									disabled={submitting}
+									onclick={() => setTimeShortcut(4)}
+									class="relative"
+								>
+									+4h
+									{#if shortcutCounts.plus4 > 0}
+										<span
+											class="bg-primary text-primary-foreground ml-1.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium"
+											title={shortcutCounts.plus4 + ' commande(s) déjà sur cette plage'}
+										>
+											{shortcutCounts.plus4}
+										</span>
+									{/if}
+								</Button>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									disabled={submitting}
+									onclick={() => setTimeShortcut(6)}
+									class="relative"
+								>
+									+6h
+									{#if shortcutCounts.plus6 > 0}
+										<span
+											class="bg-primary text-primary-foreground ml-1.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium"
+											title={shortcutCounts.plus6 + ' commande(s) déjà sur cette plage'}
+										>
+											{shortcutCounts.plus6}
+										</span>
+									{/if}
+								</Button>
+							</div>
+						</div>
 						<div class="flex gap-2">
 							<div class="space-y-2 flex-1">
-								<Label for="orderHour">Heures</Label>
+								<Label for="orderHour">Heure</Label>
 								<PopoverRoot bind:open={orderHourOpen}>
 									<PopoverTrigger id="orderHour">
 										{#snippet child({ props }: { props: Record<string, unknown> })}
@@ -195,7 +423,7 @@
 									</PopoverTrigger>
 									<PopoverContent class="w-auto p-0" align="start">
 										<div class="max-h-56 overflow-y-auto py-1">
-											{#each HOUR_OPTIONS as opt}
+											{#each getHourSlots() as opt}
 												<button
 													type="button"
 													class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {orderHour === opt.value
@@ -266,7 +494,24 @@
 						{#if geocodeLoading}
 							<p class="text-muted-foreground text-xs">Recherche de la position sur la carte…</p>
 						{:else if geocodeResult}
-							<p class="text-muted-foreground text-xs">Marqueur affiché sur la carte ci-dessous.</p>
+							<div class="flex items-center gap-2">
+								<p class="text-muted-foreground text-xs">Marqueur affiché sur la carte ci-dessous.</p>
+								{#if isochroneZone !== null}
+									<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium {
+										isochroneZone === 10
+											? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+											: isochroneZone === 20
+												? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+												: 'bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200'
+									}">
+										Zone {isochroneZone} min
+									</span>
+								{:else if isochronePolygons.length > 0}
+									<span class="inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium bg-gray-100 text-gray-800 dark:bg-gray-800 dark:text-gray-200">
+										Hors zone
+									</span>
+								{/if}
+							</div>
 						{:else if address.trim().length >= 3}
 							<p class="text-muted-foreground text-xs">Aucun résultat pour cette adresse.</p>
 						{/if}
@@ -300,9 +545,13 @@
 						<div class="overflow-hidden rounded-md border">
 							<Map
 								center={mapCenter}
-								zoom={geocodeResult ? 15 : 11}
+								zoom={headquarters ? 11 : geocodeResult ? 15 : 11}
 								height="220px"
 								deliveryMarkers={mapMarkers}
+								headquarters={headquarters}
+								isochronePolygons={isochronePolygons}
+								showZoomProgress={true}
+								tileTheme="stadia-alidade-smooth-dark"
 							/>
 						</div>
 					</div>

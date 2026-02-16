@@ -63,6 +63,10 @@
 		lockView?: boolean;
 		/** En vue verrouillée : zoom max (min = plus dézoomé) lors du fitBounds. Ex. 11 = ne pas dézoomer au-delà du niveau 11 (commande dans une autre ville). */
 		fitBoundsMaxZoom?: number;
+		/** Afficher la barre de progression de zoom même sans lockView. */
+		showZoomProgress?: boolean;
+		/** Thème des tuiles de la carte : 'openstreetmap' ou 'stadia-alidade-smooth-dark'. */
+		tileTheme?: 'openstreetmap' | 'stadia-alidade-smooth-dark';
 	}
 
 	let {
@@ -79,23 +83,84 @@
 		isochronePolygons = [],
 		routeConnectors = [],
 		lockView = false,
-		fitBoundsMaxZoom
+		fitBoundsMaxZoom,
+		showZoomProgress = false,
+		tileTheme = 'openstreetmap'
 	}: Props = $props();
 
 	let DefaultIcon: any = null;
 	let createTrackingIcon: ((color?: string) => any) | null = null;
+	let tileLayer: any = null;
 
-	/** Zoom piloté par le slider en vue verrouillée (entre min et max). */
-	const zoomSliderMin = $derived(fitBoundsMaxZoom ?? 11);
+	/** Zoom piloté par le slider en vue verrouillée ou avec showZoomProgress (entre min et max). */
+	const zoomSliderMin = $derived(fitBoundsMaxZoom ?? (showZoomProgress ? 1 : 11));
 	const zoomSliderMax = 18;
 	let zoomSliderValue = $state(13);
+	let currentZoom = $state(zoom ?? 13);
 
 	/** Marqueurs effectifs : typés si fournis, sinon legacy. */
 	const effectiveMarkers = $derived(
 		typedMarkers.length > 0
 			? typedMarkers.map((m) => ({ ...m, _typed: true as const }))
-			: deliveryMarkers.map((m) => ({ ...m, _typed: false as const }))
+			: Array.isArray(deliveryMarkers) && deliveryMarkers.length > 0
+				? deliveryMarkers.map((m) => ({ ...m, _typed: false as const }))
+				: []
 	);
+
+	/** Crée le tileLayer selon le thème choisi. */
+	async function createTileLayer() {
+		if (!L || !map) return;
+
+		// Supprimer l'ancien tileLayer s'il existe
+		if (tileLayer) {
+			map.removeLayer(tileLayer);
+			tileLayer = null;
+		}
+
+		if (tileTheme === 'stadia-alidade-smooth-dark') {
+			// Stadia Maps Alidade Smooth Dark theme
+			// Récupère la configuration depuis le backend
+			try {
+				const { apiFetch } = await import('$lib/api/client');
+				const config = await apiFetch<{ tileUrl: string | null; hasApiKey: boolean }>('/api/tenants/me/map-tiles-config');
+				
+				if (config.hasApiKey && config.tileUrl) {
+					tileLayer = L.tileLayer(config.tileUrl, {
+						attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a>, © <a href="https://openmaptiles.org/">OpenMapTiles</a> © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+						maxZoom: 20,
+						subdomains: ['a', 'b', 'c'],
+						keepBuffer: 2
+					}).addTo(map);
+				} else {
+					// Fallback vers OpenStreetMap si pas de clé API
+					console.warn('[Map] Stadia Maps non configuré, utilisation d\'OpenStreetMap');
+					tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+						attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+						maxZoom: 19,
+						subdomains: ['a', 'b', 'c'],
+						keepBuffer: 2
+					}).addTo(map);
+				}
+			} catch (error) {
+				console.error('[Map] Erreur lors de la récupération de la config des tuiles:', error);
+				// Fallback vers OpenStreetMap en cas d'erreur
+				tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+					attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+					maxZoom: 19,
+					subdomains: ['a', 'b', 'c'],
+					keepBuffer: 2
+				}).addTo(map);
+			}
+		} else {
+			// OpenStreetMap par défaut
+			tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+				maxZoom: 19,
+				subdomains: ['a', 'b', 'c'],
+				keepBuffer: 2
+			}).addTo(map);
+		}
+	}
 
 	onMount(async () => {
 		if (!browser) return;
@@ -140,17 +205,22 @@
 			zoomControl: false,
 			attributionControl: true
 		}).setView(center, zoom);
+		currentZoom = zoom ?? 13;
+
+		// Écouter les changements de zoom pour mettre à jour la progress bar
+		map.on('zoomend', () => {
+			if (map) {
+				currentZoom = map.getZoom();
+				zoomSliderValue = Math.round(currentZoom);
+			}
+		});
 
 		if (!lockView) {
 			L.control.zoom({ position: 'topleft' }).addTo(map);
 		}
 
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-			attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-			maxZoom: 19,
-			subdomains: ['a', 'b', 'c'],
-			keepBuffer: 2
-		}).addTo(map);
+		// Créer le tileLayer selon le thème choisi
+		await createTileLayer();
 
 		updateMarkers();
 		updateHeadquartersMarker();
@@ -167,6 +237,16 @@
 	$effect(() => {
 		if (map && center && zoom != null && !lockView) {
 			map.setView(center, zoom);
+			currentZoom = zoom;
+			zoomSliderValue = Math.round(zoom);
+		}
+	});
+
+	/** Mettre à jour le tileLayer si le thème change. */
+	$effect(() => {
+		if (map && L) {
+			const _ = tileTheme;
+			createTileLayer().catch((err) => console.error('[Map] Erreur lors de la mise à jour du tileLayer:', err));
 		}
 	});
 
@@ -242,7 +322,9 @@
 			markers.push(marker);
 		});
 
-		if (markers.length > 0 && map && L && !lockView) {
+		// Ne pas recentrer automatiquement si on a un siège social (centrage géré par la prop center)
+		// Seulement si pas de siège social et pas de lockView
+		if (markers.length > 0 && map && L && !lockView && !headquarters) {
 			if (markers.length === 1) {
 				const pos = markers[0].getLatLng();
 				map.setView([pos.lat, pos.lng], map.getZoom());
@@ -307,6 +389,7 @@
 	function onZoomSliderInput(e: Event) {
 		const v = Number((e.target as HTMLInputElement).value);
 		zoomSliderValue = v;
+		currentZoom = v;
 		if (map) map.setZoom(v);
 	}
 
@@ -505,9 +588,9 @@
 	});
 </script>
 
-<div class="map-wrap">
+<div class="map-wrap" class:dark-theme={tileTheme === 'stadia-alidade-smooth-dark'}>
 	<div bind:this={mapContainer} class="map-root" style="width: 100%; height: {height}; border-radius: 8px; overflow: hidden;"></div>
-	{#if lockView}
+	{#if lockView || showZoomProgress}
 		<div class="zoom-slider-wrap" title="Zoom">
 			<input
 				type="range"
@@ -523,6 +606,9 @@
 				<div class="zoom-slider-fill" style="height: {((zoomSliderValue - zoomSliderMin) / (zoomSliderMax - zoomSliderMin)) * 100}%"></div>
 			</div>
 		</div>
+	{/if}
+	{#if tileTheme === 'stadia-alidade-smooth-dark'}
+		<div class="map-dark-mask"></div>
 	{/if}
 </div>
 
@@ -623,5 +709,47 @@
 		background: white;
 		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 		cursor: grab;
+	}
+
+	/* Mask pour le dark theme Stadia Maps */
+	.map-dark-mask {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		pointer-events: none;
+		background: linear-gradient(
+			to bottom,
+			rgba(0, 0, 0, 0.05) 0%,
+			transparent 20%,
+			transparent 80%,
+			rgba(0, 0, 0, 0.05) 100%
+		);
+		border-radius: 8px;
+		z-index: 100;
+	}
+
+	.dark-theme .map-dark-mask {
+		background: linear-gradient(
+			to bottom,
+			rgba(0, 0, 0, 0.1) 0%,
+			transparent 15%,
+			transparent 85%,
+			rgba(0, 0, 0, 0.1) 100%
+		);
+	}
+
+	/* Ajustements pour le dark theme */
+	.dark-theme :global(.leaflet-container) {
+		background-color: #1a1a1a;
+	}
+
+	.dark-theme .zoom-slider-track {
+		background: rgba(255, 255, 255, 0.15);
+	}
+
+	.dark-theme .zoom-slider-fill {
+		background: rgba(255, 255, 255, 0.6);
 	}
 </style>

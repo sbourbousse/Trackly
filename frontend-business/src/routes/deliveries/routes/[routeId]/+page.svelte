@@ -544,6 +544,7 @@
 						trackPosition={inProgressDeliveryId && trackingState.point ? { lat: trackingState.point.lat, lng: trackingState.point.lng } : null}
 						followTracking={!!(inProgressDeliveryId && trackingState.point)}
 						lockView={true}
+						tileTheme="stadia-alidade-smooth-dark"
 					/>
 				{:else if inProgressDeliveryId && (trackingState.point || trackingState.isConnected)}
 					{#if trackingState.point}
@@ -551,6 +552,7 @@
 							center={[trackingState.point.lat, trackingState.point.lng]}
 							zoom={14}
 							height="300px"
+							tileTheme="stadia-alidade-smooth-dark"
 							trackPosition={{
 								lat: trackingState.point.lat,
 								lng: trackingState.point.lng

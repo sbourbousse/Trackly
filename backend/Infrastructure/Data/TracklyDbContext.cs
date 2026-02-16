@@ -28,6 +28,7 @@ public sealed class TracklyDbContext : DbContext
     public DbSet<Delivery> Deliveries => Set<Delivery>();
     public DbSet<RouteEntity> Routes => Set<RouteEntity>();
     public DbSet<Driver> Drivers => Set<Driver>();
+    public DbSet<TenantIsochrone> TenantIsochrones => Set<TenantIsochrone>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -37,6 +38,13 @@ public sealed class TracklyDbContext : DbContext
             .WithMany()
             .HasForeignKey(d => d.RouteId)
             .IsRequired(false);
+
+        modelBuilder.Entity<TenantIsochrone>(e =>
+        {
+            e.Property(x => x.CoordinatesJson).HasColumnType("jsonb");
+            e.HasIndex(x => new { x.TenantId, x.Minutes }).IsUnique();
+        });
+
         ApplyTenantFilters(modelBuilder);
     }
 

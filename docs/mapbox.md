@@ -1,6 +1,8 @@
 # Mapbox – Temps de trajet, itinéraires et isochrones
 
-Ce document décrit l’intégration Mapbox pour la gestion du temps (temps de trajet entre livraisons, itinéraires sur la carte, isochrones autour du siège social).
+> **Note :** Le projet utilise désormais **Stadia Maps** pour le routing (Directions, Matrix, Isochrones). Voir [stadia-maps.md](stadia-maps.md) pour la configuration et les détails.
+
+Ce document décrivait l’intégration Mapbox (conservé pour référence).
 
 ---
 

@@ -14,6 +14,7 @@ using Trackly.Backend.Features.Geocode;
 using Trackly.Backend.Features.Orders;
 using Trackly.Backend.Features.Tenants;
 using Trackly.Backend.Features.Mapbox;
+using Trackly.Backend.Features.StadiaMaps;
 using Trackly.Backend.Features.Tracking;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
@@ -149,10 +150,10 @@ builder.Services.AddHttpClient("Nominatim", client =>
     client.DefaultRequestHeaders.Add("User-Agent", "Trackly/1.0 (contact@trackly.app)");
 });
 
-// Mapbox : Directions, Matrix, Isochrone (token via MAPBOX_ACCESS_TOKEN)
-builder.Services.AddHttpClient<IMapboxService, MapboxService>(client =>
+// Stadia Maps : Directions, Matrix, Isochrone (clé via STADIA_MAPS_API_KEY ou config)
+builder.Services.AddHttpClient<IMapboxService, StadiaMapsService>(client =>
 {
-    client.BaseAddress = new Uri("https://api.mapbox.com/");
+    client.BaseAddress = new Uri("https://api.stadiamaps.com/");
 });
 
 // Service de simulation GPS pour les démonstrations (TEMPORAIREMENT DÉSACTIVÉ)
@@ -396,12 +397,12 @@ app.MapPut("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, Te
     });
 });
 
-// Isochrones autour du siège social (Mapbox) — requiert X-Tenant-Id (cache 1 h)
+// Isochrones autour du siège social (Stadia Maps) — requiert X-Tenant-Id (cache 1 h)
 app.MapGet("/api/tenants/me/isochrones", async (
     TracklyDbContext dbContext,
     TenantContext tenantContext,
     IMemoryCache cache,
-    IMapboxService mapboxService,
+    IMapboxService routingService,
     string? minutes,
     CancellationToken cancellationToken) =>
 {
@@ -412,8 +413,8 @@ app.MapGet("/api/tenants/me/isochrones", async (
         .FirstOrDefaultAsync(t => t.Id == tenantContext.TenantId, cancellationToken);
     if (tenant == null || !tenant.HeadquartersLat.HasValue || !tenant.HeadquartersLng.HasValue)
         return Results.NotFound("Siège social non configuré. Définissez une adresse et des coordonnées dans les paramètres.");
-    if (!mapboxService.IsConfigured)
-        return Results.Json(new { contours = Array.Empty<object>(), message = "Mapbox non configuré." });
+    if (!routingService.IsConfigured)
+        return Results.Json(new { contours = Array.Empty<object>(), message = "Stadia Maps non configuré (STADIA_MAPS_API_KEY)." });
     List<int> minutesList = string.IsNullOrWhiteSpace(minutes)
         ? new List<int> { 10, 20, 30 }
         : minutes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -428,14 +429,14 @@ app.MapGet("/api/tenants/me/isochrones", async (
     var lat = tenant.HeadquartersLat.Value;
     var lng = tenant.HeadquartersLng.Value;
     var minutesKey = string.Join(",", minutesList);
-    var cacheKey = $"mapbox:isochrones:{tenantContext.TenantId}:{lat:F5}:{lng:F5}:{minutesKey}";
+    var cacheKey = $"stadia:isochrones:{tenantContext.TenantId}:{lat:F5}:{lng:F5}:{minutesKey}";
     var result = await cache.GetOrCreateAsync(cacheKey, async entry =>
     {
         entry!.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
-        return await mapboxService.GetIsochronesAsync(lng, lat, minutesList, "mapbox/driving", cancellationToken);
+        return await routingService.GetIsochronesAsync(lng, lat, minutesList, "auto", cancellationToken);
     });
     if (result == null)
-        return Results.Ok(new { contours = Array.Empty<object>(), message = "Impossible de calculer les isochrones. Vérifiez les coordonnées du siège et la configuration Mapbox." });
+        return Results.Ok(new { contours = Array.Empty<object>(), message = "Impossible de calculer les isochrones. Vérifiez les coordonnées du siège et la configuration Stadia Maps." });
     var contours = result.Contours.Select(c => new
     {
         minutes = c.Minutes,

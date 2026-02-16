@@ -341,6 +341,32 @@
 		});
 		return out;
 	});
+
+	/**
+	 * Segments de liaison entre la fin de chaque tronçon (point « snap » sur la route)
+	 * et le marqueur réel de la livraison. Corrige le décalage route vs adresse géocodée.
+	 */
+	const routeConnectors = $derived.by(() => {
+		if (!routeDetail?.deliveries.length || !routePolylines.length) return [];
+		const out: { coordinates: [number, number][] }[] = [];
+		const minDistDeg = 0.00003; // ~3 m, évite les tout petits traits
+		for (let i = 0; i < routeDetail.deliveries.length && i < routePolylines.length; i++) {
+			const leg = routePolylines[i];
+			const coords = leg?.coordinates;
+			if (!coords?.length) continue;
+			const routeEnd = coords[coords.length - 1] as [number, number];
+			const delivery = routeDetail.deliveries[i];
+			const marker = deliveryCoords[delivery.id];
+			if (!marker) continue;
+			const [rlng, rlat] = routeEnd;
+			const distSq = (rlng - marker.lng) ** 2 + (rlat - marker.lat) ** 2;
+			if (distSq < minDistDeg * minDistDeg) continue;
+			out.push({
+				coordinates: [[rlng, rlat], [marker.lng, marker.lat]]
+			});
+		}
+		return out;
+	});
 </script>
 
 <div class="mx-auto flex max-w-4xl min-w-0 flex-col gap-6">
@@ -394,7 +420,7 @@
 						Livraisons ({routeDetail.deliveries.length})
 					</CardTitle>
 					<p class="text-sm text-muted-foreground">
-						Ordre des arrêts. Temps estimé entre chaque livraison (matrice Mapbox). Utilisez les flèches pour réorganiser.
+						Ordre des arrêts. Temps estimé entre chaque livraison (matrice Stadia Maps). Utilisez les flèches pour réorganiser.
 					</p>
 				</div>
 				{#if travelTimesMatrix?.durations?.length && routeDetail.deliveries.length > 1}
@@ -513,9 +539,11 @@
 						}))}
 						headquarters={settingsState.headquarters}
 						routePolylines={routePolylines}
+						routeConnectors={routeConnectors}
 						routeStepLabels={routeStepLabels}
 						trackPosition={inProgressDeliveryId && trackingState.point ? { lat: trackingState.point.lat, lng: trackingState.point.lng } : null}
 						followTracking={!!(inProgressDeliveryId && trackingState.point)}
+						lockView={true}
 					/>
 				{:else if inProgressDeliveryId && (trackingState.point || trackingState.isConnected)}
 					{#if trackingState.point}
@@ -546,7 +574,7 @@
 					{/if}
 				{:else}
 					<p class="text-muted-foreground text-sm">
-						Activer le géocodage des adresses ou configurer Mapbox pour afficher l'itinéraire sur la carte.
+						Activer le géocodage des adresses ou configurer Stadia Maps pour afficher l'itinéraire sur la carte.
 					</p>
 				{/if}
 			</CardContent>

@@ -483,15 +483,15 @@ public static class RouteEndpoints
         foreach (var c in coords)
             sb.AppendFormat(CultureInfo.InvariantCulture, "{0:F5},{1:F5}|", c.Lng, c.Lat);
         var hash = SHA256.HashData(Encoding.UTF8.GetBytes(sb.ToString()));
-        return "mapbox:route:" + Convert.ToHexString(hash).AsSpan(0, 32).ToString();
+        return "stadia:route:" + Convert.ToHexString(hash).AsSpan(0, 32).ToString();
     }
 
-    private static readonly TimeSpan MapboxRouteCacheTtl = TimeSpan.FromHours(1);
-    private static readonly TimeSpan MapboxMatrixCacheTtl = TimeSpan.FromHours(1);
+    private static readonly TimeSpan RouteCacheTtl = TimeSpan.FromHours(1);
+    private static readonly TimeSpan MatrixCacheTtl = TimeSpan.FromHours(1);
 
     /// <summary>
     /// GET /api/routes/{routeId}/travel-times-matrix — Matrice des temps entre tous les points (siège + livraisons).
-    /// Un seul appel Mapbox Matrix ; le front peut dériver les temps pour tout ordre de passage sans rappel API.
+    /// Un seul appel Stadia Maps Matrix ; le front peut dériver les temps pour tout ordre de passage sans rappel API.
     /// </summary>
     private static async Task<IResult> GetRouteTravelTimesMatrix(
         Guid routeId,
@@ -499,7 +499,7 @@ public static class RouteEndpoints
         TenantContext tenantContext,
         IHttpClientFactory httpClientFactory,
         IMemoryCache cache,
-        IMapboxService mapboxService,
+        IMapboxService routingService,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -509,14 +509,14 @@ public static class RouteEndpoints
         if (error != null || coords == null || pointIds == null)
             return Results.NotFound(error ?? "Coordonnées indisponibles.");
 
-        if (!mapboxService.IsConfigured)
-            return Results.Json(new { pointIds, durations = Array.Empty<object>(), distances = (object?)null, message = "Mapbox non configuré." });
+        if (!routingService.IsConfigured)
+            return Results.Json(new { pointIds, durations = Array.Empty<object>(), distances = (object?)null, message = "Stadia Maps non configuré (STADIA_MAPS_API_KEY)." });
 
-        var matrixCacheKey = "mapbox:matrix:" + BuildRouteCacheKey(coords);
+        var matrixCacheKey = "stadia:matrix:" + BuildRouteCacheKey(coords);
         var matrixResult = await cache.GetOrCreateAsync(matrixCacheKey, async entry =>
         {
-            entry!.AbsoluteExpirationRelativeToNow = MapboxMatrixCacheTtl;
-            return await mapboxService.GetMatrixAsync(coords, "mapbox/driving", cancellationToken);
+            entry!.AbsoluteExpirationRelativeToNow = MatrixCacheTtl;
+            return await routingService.GetMatrixAsync(coords, "auto", cancellationToken);
         });
         if (matrixResult == null)
             return Results.NotFound("Impossible de calculer la matrice des temps.");
@@ -554,7 +554,7 @@ public static class RouteEndpoints
         TenantContext tenantContext,
         IHttpClientFactory httpClientFactory,
         IMemoryCache cache,
-        IMapboxService mapboxService,
+        IMapboxService routingService,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -564,14 +564,14 @@ public static class RouteEndpoints
         if (error != null || coords == null)
             return Results.NotFound(error ?? "Coordonnées indisponibles.");
 
-        if (!mapboxService.IsConfigured)
-            return Results.Json(new { legs = Array.Empty<object>(), totalDurationSeconds = 0d, message = "Mapbox non configuré." });
+        if (!routingService.IsConfigured)
+            return Results.Json(new { legs = Array.Empty<object>(), totalDurationSeconds = 0d, message = "Stadia Maps non configuré (STADIA_MAPS_API_KEY)." });
 
         var routeCacheKey = BuildRouteCacheKey(coords);
         var routeResult = await cache.GetOrCreateAsync(routeCacheKey, async entry =>
         {
-            entry!.AbsoluteExpirationRelativeToNow = MapboxRouteCacheTtl;
-            return await mapboxService.GetRouteAsync(coords, "mapbox/driving", cancellationToken);
+            entry!.AbsoluteExpirationRelativeToNow = RouteCacheTtl;
+            return await routingService.GetRouteAsync(coords, "auto", cancellationToken);
         });
         if (routeResult == null)
             return Results.Json(new { legs = Array.Empty<object>(), totalDurationSeconds = 0d, message = "Impossible de calculer l'itinéraire." });
@@ -601,7 +601,7 @@ public static class RouteEndpoints
         TenantContext tenantContext,
         IHttpClientFactory httpClientFactory,
         IMemoryCache cache,
-        IMapboxService mapboxService,
+        IMapboxService routingService,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -611,14 +611,14 @@ public static class RouteEndpoints
         if (error != null || coords == null)
             return Results.NotFound(error ?? "Coordonnées indisponibles.");
 
-        if (!mapboxService.IsConfigured)
-            return Results.NotFound("Mapbox non configuré.");
+        if (!routingService.IsConfigured)
+            return Results.NotFound("Stadia Maps non configuré (STADIA_MAPS_API_KEY).");
 
         var routeCacheKey = BuildRouteCacheKey(coords);
         var routeResult = await cache.GetOrCreateAsync(routeCacheKey, async entry =>
         {
-            entry!.AbsoluteExpirationRelativeToNow = MapboxRouteCacheTtl;
-            return await mapboxService.GetRouteAsync(coords, "mapbox/driving", cancellationToken);
+            entry!.AbsoluteExpirationRelativeToNow = RouteCacheTtl;
+            return await routingService.GetRouteAsync(coords, "auto", cancellationToken);
         });
         if (routeResult == null || routeResult.Coordinates.Count == 0)
             return Results.NotFound("Impossible de calculer l'itinéraire.");

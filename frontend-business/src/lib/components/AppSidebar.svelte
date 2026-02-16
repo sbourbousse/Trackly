@@ -124,7 +124,7 @@
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton
-							tooltipContent="Livraison"
+							tooltipContent="Livraisons & tournées"
 							isActive={pathname === '/deliveries' || pathname.startsWith('/deliveries/')}
 						>
 							{#snippet child({ props })}
@@ -135,12 +135,6 @@
 							{/snippet}
 						</SidebarMenuButton>
 						<SidebarMenuSub>
-							<SidebarMenuSubItem>
-								<SidebarMenuSubButton href="/deliveries/routes" isActive={pathname === '/deliveries/routes'}>
-									<RouteIcon class="size-4 shrink-0" aria-hidden="true" />
-									<span>Liste des tournées</span>
-								</SidebarMenuSubButton>
-							</SidebarMenuSubItem>
 							<SidebarMenuSubItem>
 								<SidebarMenuSubButton href="/deliveries/new" isActive={pathname === '/deliveries/new'}>
 									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />

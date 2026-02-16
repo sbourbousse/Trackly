@@ -21,8 +21,6 @@
 	import type { TypedMapMarker } from '$lib/components/Map.svelte';
 
 	const MAX_ORDER_MARKERS = 30;
-	const MAX_DELIVERY_MARKERS = 20;
-	const MAX_ROUTE_POLYLINES = 5;
 
 	const layerParam = $derived(page.url.searchParams.get('layer'));
 	const hasPeriod = $derived(!!getListFilters().dateFrom && !!getListFilters().dateTo);
@@ -30,6 +28,13 @@
 	let showOrders = $state(true);
 	let showDeliveries = $state(true);
 	let showDrivers = $state(true);
+
+	/** Couleurs des tracés par statut de tournée (pastilles). */
+	const ROUTE_TRACE_COLORS: Record<string, string> = {
+		planned: '#3b82f6',
+		inProgress: '#f59e0b',
+		completed: '#10b981'
+	};
 
 	let lastAppliedLayer = $state<string | null | undefined>(undefined);
 	$effect(() => {
@@ -56,16 +61,11 @@
 	});
 
 	let orderMarkersData = $state<Array<{ lat: number; lng: number; label: string; status: string }>>([]);
-	let deliveryMarkersData = $state<Array<{ lat: number; lng: number; label: string; status: string; id: string }>>([]);
 	let driverLabels = $state<Record<string, string>>({});
 	let geocodingOrders = $state(false);
-	let geocodingDeliveries = $state(false);
 	let lastOrdersKey = $state('');
-	let lastDeliveriesKey = $state('');
-	let routePolylines = $state<{ coordinates: [number, number][]; color?: string }[]>([]);
+	let routePolylines = $state<{ coordinates: [number, number][]; color?: string; status?: string }[]>([]);
 	let isochronePolygons = $state<{ coordinates: [number, number][]; minutes?: number }[]>([]);
-	let showRoutePolylines = $state(true);
-	let showIsochrones = $state(false);
 	let isochronesLoading = $state(false);
 	let isochronesMessage = $state<string | null>(null);
 
@@ -96,19 +96,6 @@
 					label: m.label,
 					type: 'order',
 					status: m.status
-				});
-			}
-		}
-		// Apply filters to deliveries
-		for (const m of deliveryMarkersData) {
-			if (isMarkerVisible('delivery', m.status, mapFilters.filters)) {
-				list.push({
-					lat: m.lat,
-					lng: m.lng,
-					label: m.label,
-					type: 'delivery',
-					status: m.status,
-					id: m.id
 				});
 			}
 		}
@@ -163,39 +150,6 @@
 	});
 
 	$effect(() => {
-		if (!showDeliveries || !deliveriesState.routes.length || !hasPeriod) {
-			deliveryMarkersData = [];
-			lastDeliveriesKey = '';
-			return;
-		}
-		const key = deliveriesState.routes.slice(0, MAX_DELIVERY_MARKERS).map((r) => r.id).join(',');
-		if (key === lastDeliveriesKey) return;
-		lastDeliveriesKey = key;
-		geocodingDeliveries = true;
-		const slice = deliveriesState.routes.slice(0, MAX_DELIVERY_MARKERS);
-		Promise.all(slice.map((r) => getDelivery(r.id).catch(() => null))).then((details) => {
-			const withAddress = details.filter((d): d is NonNullable<typeof d> => d != null && !!d.address);
-			Promise.all(
-				withAddress.map(async (d) => {
-					const c = await geocodeAddressCached(d.address);
-					if (!c) return null;
-					return {
-						lat: c.lat,
-						lng: c.lng,
-						label: `<b>${d.customerName}</b><br/>${d.address}<br/><a href="/deliveries/${d.id}">Voir la tournée</a>`,
-						status: d.status,
-						id: d.id
-					};
-				})
-			).then((coords) => {
-				deliveryMarkersData = coords.filter((r): r is NonNullable<typeof r> => r != null);
-			}).finally(() => {
-				geocodingDeliveries = false;
-			});
-		});
-	});
-
-	$effect(() => {
 		if (inProgressIds.length === 0) return;
 		Promise.all(inProgressIds.map((id) => getDelivery(id).catch(() => null))).then((details) => {
 			const map: Record<string, string> = {};
@@ -222,8 +176,21 @@
 		}
 	});
 
+	/** Détermine le statut d'affichage d'une tournée : planned | inProgress | completed. */
+	function getRouteTraceStatus(route: {
+		statusSummary: { pending: number; inProgress: number; completed: number };
+		deliveryCount: number;
+	}): 'planned' | 'inProgress' | 'completed' {
+		const { statusSummary, deliveryCount } = route;
+		if (statusSummary.inProgress > 0) return 'inProgress';
+		if (deliveryCount > 0 && statusSummary.completed === deliveryCount) return 'completed';
+		return 'planned';
+	}
+
 	$effect(() => {
-		if (!showRoutePolylines || !hasPeriod || !showDeliveries) {
+		const showTraces = mapFilters.filters.showRoutePolylines;
+		const routeTraces = { ...mapFilters.filters.routeTraces };
+		if (!showTraces || !hasPeriod) {
 			routePolylines = [];
 			return;
 		}
@@ -233,14 +200,27 @@
 		if (!filters.dateFrom || !filters.dateTo) return;
 		getRoutes({ dateFrom: filters.dateFrom, dateTo: filters.dateTo })
 			.then((routes) => {
-				const ids = routes.slice(0, MAX_ROUTE_POLYLINES).map((r) => r.id);
-				return Promise.all(ids.map((id) => getRouteGeometry(id)));
+				const withStatus = routes.map((r) => ({
+					id: r.id,
+					status: getRouteTraceStatus(r)
+				}));
+				const toLoad = withStatus.filter((r) => routeTraces[r.status]);
+				return Promise.all(
+					toLoad.map(async (r) => {
+						const geom = await getRouteGeometry(r.id);
+						if (!geom?.coordinates?.length) return null;
+						return {
+							coordinates: geom.coordinates,
+							status: r.status,
+							color: ROUTE_TRACE_COLORS[r.status] ?? ROUTE_TRACE_COLORS.planned
+						};
+					})
+				);
 			})
 			.then((results) => {
-				const colors = ['#0d9488', '#7c3aed', '#ea580c', '#2563eb', '#059669'];
-				routePolylines = results
-					.filter((r): r is NonNullable<typeof r> => r != null && r.coordinates?.length > 0)
-					.map((r, i) => ({ coordinates: r.coordinates, color: colors[i % colors.length] }));
+				routePolylines = results.filter(
+					(r): r is NonNullable<typeof r> => r != null && r.coordinates?.length > 0
+				);
 			})
 			.catch(() => {
 				routePolylines = [];
@@ -248,7 +228,7 @@
 	});
 
 	$effect(() => {
-		if (!showIsochrones) {
+		if (!mapFilters.filters.showIsochrones) {
 			isochronePolygons = [];
 			isochronesMessage = null;
 			return;
@@ -333,29 +313,18 @@
 			height="100%"
 			markers={markersList}
 			headquarters={settingsState.headquarters}
-			routePolylines={showRoutePolylines ? routePolylines : []}
-			isochronePolygons={showIsochrones ? isochronePolygons : []}
+			routePolylines={mapFilters.filters.showRoutePolylines ? routePolylines : []}
+			isochronePolygons={mapFilters.filters.showIsochrones ? isochronePolygons : []}
 			lockView={true}
 			fitBoundsMaxZoom={11}
 			tileTheme="stadia-alidade-smooth-dark"
 		/>
 		<div class="absolute bottom-4 left-4 z-[1100] flex flex-col gap-2 max-w-[calc(100%-2rem)]">
-			<div class="flex flex-wrap items-center gap-2">
-				<label class="flex items-center gap-2 rounded-md border bg-background/95 px-2 py-1.5 text-sm">
-					<input type="checkbox" bind:checked={showRoutePolylines} class="rounded" />
-					<span>Itinéraires</span>
-				</label>
-				<label class="flex items-center gap-2 rounded-md border bg-background/95 px-2 py-1.5 text-sm">
-					<input type="checkbox" bind:checked={showIsochrones} class="rounded" />
-					<span>Isochrones</span>
-					{#if isochronesLoading}
-						<span class="text-muted-foreground text-xs">…</span>
-					{/if}
-				</label>
-				{#if showIsochrones && isochronesMessage && !isochronesLoading}
-					<p class="text-xs text-muted-foreground max-w-[220px]">{isochronesMessage}</p>
-				{/if}
-			</div>
+			{#if mapFilters.filters.showIsochrones && isochronesMessage && !isochronesLoading}
+				<p class="text-xs text-muted-foreground max-w-[220px] rounded-md border bg-background/95 px-2 py-1.5">
+					{isochronesMessage}
+				</p>
+			{/if}
 			<MapFilters />
 		</div>
 	</div>

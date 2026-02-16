@@ -16,6 +16,9 @@
 	import { Checkbox } from '$lib/components/ui/checkbox';
 	import { Input } from '$lib/components/ui/input';
 	import { Label } from '$lib/components/ui/label';
+	import { Root as PopoverRoot, Content as PopoverContent, Trigger as PopoverTrigger } from '$lib/components/ui/popover';
+	import { Calendar } from '$lib/components/ui/calendar';
+	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import {
 		Table,
 		TableBody,
@@ -26,17 +29,98 @@
 	} from '$lib/components/ui/table';
 	import { cn } from '$lib/utils';
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
+	import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date';
+
+	const MINUTE_OPTIONS = [0, 10, 20, 30, 40, 50].map((m) => ({
+		value: String(m).padStart(2, '0'),
+		label: String(m).padStart(2, '0')
+	}));
+
+	function getNowRounded(): { hour: string; minute: string } {
+		const d = new Date();
+		const m = d.getMinutes();
+		let roundedMin = Math.round(m / 10) * 10;
+		let h = d.getHours();
+		if (roundedMin === 60) {
+			h += 1;
+			roundedMin = 0;
+		}
+		return {
+			hour: String(h % 24).padStart(2, '0'),
+			minute: String(roundedMin).padStart(2, '0')
+		};
+	}
+
+	function getNextTwoHourSlot(): number {
+		const d = new Date();
+		const totalMinutes = d.getHours() * 60 + d.getMinutes();
+		const slotIndex = Math.ceil(totalMinutes / 120);
+		return (slotIndex * 2) % 24;
+	}
+
+	function getHourSlots(): { value: string; label: string }[] {
+		const start = getNextTwoHourSlot();
+		return Array.from({ length: 12 }, (_, i) => {
+			const h = (start + i * 2) % 24;
+			return { value: String(h).padStart(2, '0'), label: `${String(h).padStart(2, '0')}h` };
+		});
+	}
+
+	function setTimeShortcut(offsetHours: number) {
+		if (offsetHours === 0) {
+			const now = getNowRounded();
+			plannedStartHour = now.hour;
+			plannedStartMinute = now.minute;
+		} else {
+			const nextSlot = getNextTwoHourSlot();
+			const h = (nextSlot + offsetHours - 2) % 24;
+			plannedStartHour = String(h).padStart(2, '0');
+			plannedStartMinute = '00';
+		}
+	}
+
+	function plannedStartDateToApiString(d: CalendarDate): string {
+		const y = d.year;
+		const m = String(d.month).padStart(2, '0');
+		const day = String(d.day).padStart(2, '0');
+		return `${y}-${m}-${day}`;
+	}
+
+	function formatPlannedStartDateLabel(d: CalendarDate): string {
+		return d.toDate(getLocalTimeZone()).toLocaleDateString('fr-FR', {
+			weekday: 'short',
+			day: 'numeric',
+			month: 'long',
+			year: 'numeric'
+		});
+	}
+
+	const initialTime = getNowRounded();
+	const orderDateMin = $derived(today(getLocalTimeZone()));
+	const orderDateMax = $derived(today(getLocalTimeZone()).add({ years: 2 }));
 
 	let orders = $state<ApiOrder[]>([]);
 	let drivers = $state<ApiDriver[]>([]);
 	let selectedOrderIds = $state<Set<string>>(new Set());
 	let selectedDriverId = $state('');
 	let routeName = $state('');
-	let plannedStartAt = $state('');
+	let plannedStartDateOpen = $state(false);
+	let plannedStartDateValue = $state<CalendarDate>(today(getLocalTimeZone()));
+	let plannedStartHour = $state(initialTime.hour);
+	let plannedStartMinute = $state(initialTime.minute);
+	let plannedStartHourOpen = $state(false);
+	let plannedStartMinuteOpen = $state(false);
 	let loading = $state(false);
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
 	let success = $state(false);
+
+	/** Heure de début prévue au format ISO pour l'API (date/heure locale convertie en ISO). */
+	const plannedStartAtIso = $derived.by(() => {
+		const d = plannedStartDateValue.toDate(getLocalTimeZone());
+		d.setHours(parseInt(plannedStartHour, 10), parseInt(plannedStartMinute, 10), 0, 0);
+		return d.toISOString();
+	});
 
 	let didInit = $state(false);
 	$effect(() => {
@@ -92,9 +176,7 @@
 				driverId: selectedDriverId,
 				orderIds: Array.from(selectedOrderIds),
 				name: routeName.trim() || undefined,
-				plannedStartAt: plannedStartAt.trim()
-					? new Date(plannedStartAt.trim()).toISOString()
-					: undefined
+				plannedStartAt: plannedStartAtIso
 			});
 			success = true;
 			setTimeout(() => goto('/deliveries'), 1500);
@@ -136,7 +218,7 @@
 							Informations de la tournée
 						</CardTitle>
 					</CardHeader>
-					<CardContent class="grid gap-4 sm:grid-cols-2">
+					<CardContent class="space-y-4">
 						<div class="space-y-2">
 							<Label for="route">Nom de la tournée (optionnel)</Label>
 							<Input
@@ -148,17 +230,153 @@
 							/>
 						</div>
 						<div class="space-y-2">
-							<Label for="plannedStart">Heure de début prévue (optionnel)</Label>
-							<Input
-								id="plannedStart"
-								type="datetime-local"
-								value={plannedStartAt}
-								oninput={(e) => (plannedStartAt = e.currentTarget.value)}
-								disabled={submitting}
-							/>
+							<Label>Heure de début prévue</Label>
 							<p class="text-xs text-muted-foreground">Permet d'afficher l'heure d'arrivée estimée par livraison.</p>
+							<div class="space-y-2">
+								<div class="flex flex-wrap gap-2">
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										disabled={submitting}
+										onclick={() => setTimeShortcut(0)}
+									>
+										Maintenant
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										disabled={submitting}
+										onclick={() => setTimeShortcut(2)}
+									>
+										+2h
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										disabled={submitting}
+										onclick={() => setTimeShortcut(4)}
+									>
+										+4h
+									</Button>
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										disabled={submitting}
+										onclick={() => setTimeShortcut(6)}
+									>
+										+6h
+									</Button>
+								</div>
+								<div class="flex flex-wrap gap-2 items-end">
+									<div class="space-y-1">
+										<Label for="plannedStartDate" class="text-xs">Date</Label>
+										<PopoverRoot bind:open={plannedStartDateOpen}>
+											<PopoverTrigger id="plannedStartDate">
+												{#snippet child({ props }: { props: Record<string, unknown> })}
+													<Button
+														{...props}
+														variant="outline"
+														class="min-w-[180px] justify-between font-normal"
+														disabled={submitting}
+													>
+														{formatPlannedStartDateLabel(plannedStartDateValue)}
+														<ChevronDownIcon class="size-4 opacity-50" />
+													</Button>
+												{/snippet}
+											</PopoverTrigger>
+											<PopoverContent class="w-auto overflow-hidden p-0" align="start">
+												<Calendar
+													value={plannedStartDateValue}
+													minValue={orderDateMin}
+													maxValue={orderDateMax}
+													onValueChange={(v: DateValue | undefined) => {
+														if (v !== undefined) plannedStartDateValue = new CalendarDate(v.year, v.month, v.day);
+														plannedStartDateOpen = false;
+													}}
+												/>
+											</PopoverContent>
+										</PopoverRoot>
+									</div>
+									<div class="space-y-1">
+										<Label for="plannedStartHour" class="text-xs">Heure</Label>
+										<PopoverRoot bind:open={plannedStartHourOpen}>
+											<PopoverTrigger id="plannedStartHour">
+												{#snippet child({ props }: { props: Record<string, unknown> })}
+													<Button
+														{...props}
+														variant="outline"
+														class="w-[72px] justify-between font-normal"
+														disabled={submitting}
+													>
+														{plannedStartHour.padStart(2, '0')}h
+														<ChevronDownIcon class="size-4 opacity-50" />
+													</Button>
+												{/snippet}
+											</PopoverTrigger>
+											<PopoverContent class="w-auto p-0" align="start">
+												<div class="max-h-56 overflow-y-auto py-1">
+													{#each getHourSlots() as opt}
+														<button
+															type="button"
+															class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {plannedStartHour === opt.value
+																? 'bg-accent text-accent-foreground'
+																: ''}"
+															onclick={() => {
+																plannedStartHour = opt.value;
+																plannedStartHourOpen = false;
+															}}
+														>
+															{opt.label}
+														</button>
+													{/each}
+												</div>
+											</PopoverContent>
+										</PopoverRoot>
+									</div>
+									<div class="space-y-1">
+										<Label for="plannedStartMinute" class="text-xs">Minutes</Label>
+										<PopoverRoot bind:open={plannedStartMinuteOpen}>
+											<PopoverTrigger id="plannedStartMinute">
+												{#snippet child({ props }: { props: Record<string, unknown> })}
+													<Button
+														{...props}
+														variant="outline"
+														class="w-[72px] justify-between font-normal"
+														disabled={submitting}
+													>
+														{plannedStartMinute.padStart(2, '0')}
+														<ChevronDownIcon class="size-4 opacity-50" />
+													</Button>
+												{/snippet}
+											</PopoverTrigger>
+											<PopoverContent class="w-auto p-0" align="start">
+												<div class="max-h-56 overflow-y-auto py-1">
+													{#each MINUTE_OPTIONS as opt}
+														<button
+															type="button"
+															class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {plannedStartMinute === opt.value
+																? 'bg-accent text-accent-foreground'
+																: ''}"
+															onclick={() => {
+																plannedStartMinute = opt.value;
+																plannedStartMinuteOpen = false;
+															}}
+														>
+															{opt.label}
+														</button>
+													{/each}
+												</div>
+											</PopoverContent>
+										</PopoverRoot>
+									</div>
+								</div>
+							</div>
 						</div>
-						<div class="space-y-2 sm:col-span-2">
+						<div class="space-y-2">
 							<Label for="driver">Livreur *</Label>
 							<select
 								id="driver"

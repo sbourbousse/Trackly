@@ -335,13 +335,16 @@
 		}
 	}
 
-	/** Bounds englobant marqueurs, siège, polylignes et connecteurs (pour cadrage en vue verrouillée). */
+	/** Bounds englobant marqueurs, siège, numéros d'étape, polylignes et connecteurs (pour cadrage en vue verrouillée). */
 	function getContentBounds(): any {
 		if (!L || !map) return null;
 		const latLngs: [number, number][] = [];
 		effectiveMarkers.forEach((m) => latLngs.push([m.lat, m.lng]));
 		if (headquarters?.lat != null && headquarters?.lng != null) {
 			latLngs.push([headquarters.lat, headquarters.lng]);
+		}
+		for (const point of routeStepLabels) {
+			latLngs.push([point.lat, point.lng]);
 		}
 		for (const route of routePolylines) {
 			for (const [lng, lat] of route.coordinates ?? []) {
@@ -561,10 +564,10 @@
 		}
 	});
 
-	/** En vue verrouillée, recadrer dès que le contenu change (ex. itinéraire chargé, isochrones). */
+	/** En vue verrouillée, recadrer dès que le contenu change (ex. itinéraire chargé, étapes, isochrones). */
 	$effect(() => {
 		if (!map || !L || !lockView) return;
-		const _ = [effectiveMarkers, headquarters, routePolylines, routeConnectors, isochronePolygons, trackPosition];
+		const _ = [effectiveMarkers, headquarters, routeStepLabels, routePolylines, routeConnectors, isochronePolygons, trackPosition];
 		applyLockView();
 	});
 

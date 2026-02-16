@@ -11,7 +11,6 @@
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
-	import DeliveryCountBadge from '$lib/components/DeliveryCountBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -249,7 +248,6 @@
 								<TableHead>Client</TableHead>
 								<TableHead>Tél.</TableHead>
 								<TableHead>Adresse</TableHead>
-								<TableHead class="tabular-nums">Livraisons</TableHead>
 							</TableRow>
 						</TableHeader>
 						<TableBody>
@@ -281,9 +279,6 @@
 									<TableCell>{order.client}</TableCell>
 									<TableCell class="text-muted-foreground whitespace-nowrap">{order.phoneNumber ?? '—'}</TableCell>
 									<TableCell>{order.address}</TableCell>
-									<TableCell>
-										<DeliveryCountBadge count={order.deliveryCount ?? 0} />
-									</TableCell>
 								</TableRow>
 							{/each}
 						</TableBody>

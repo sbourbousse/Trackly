@@ -327,17 +327,13 @@
 		await applyReorder(optimizedIds);
 	}
 
-	/** Numéros d'étape pour le tracé : 1 = départ (siège), 2, 3, … = livraisons dans l'ordre. */
+	/** Numéros d'étape pour le tracé : 1, 2, 3… = livraisons dans l'ordre du tableau. */
 	const routeStepLabels = $derived.by(() => {
 		if (!routeDetail?.deliveries.length) return [];
 		const out: { lat: number; lng: number; step: number }[] = [];
-		const hq = settingsState.headquarters;
-		if (hq?.lat != null && hq?.lng != null) {
-			out.push({ lat: hq.lat, lng: hq.lng, step: 1 });
-		}
 		routeDetail.deliveries.forEach((d, i) => {
 			const c = deliveryCoords[d.id];
-			if (c) out.push({ lat: c.lat, lng: c.lng, step: i + 2 });
+			if (c) out.push({ lat: c.lat, lng: c.lng, step: i + 1 });
 		});
 		return out;
 	});
@@ -529,14 +525,7 @@
 				{#if Object.keys(deliveryCoords).length > 0 || routePolylines.length > 0}
 					<Map
 						height="300px"
-						markers={Object.entries(deliveryCoords).map(([id, c]) => ({
-							lat: c.lat,
-							lng: c.lng,
-							label: routeDetail?.deliveries.find((d) => d.id === id)?.customerName ?? '',
-							type: 'delivery' as const,
-							status: routeDetail?.deliveries.find((d) => d.id === id)?.status ?? '',
-							id
-						}))}
+						markers={[]}
 						headquarters={settingsState.headquarters}
 						routePolylines={routePolylines}
 						routeConnectors={routeConnectors}

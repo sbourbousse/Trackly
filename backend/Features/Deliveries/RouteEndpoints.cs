@@ -21,7 +21,8 @@ public static class RouteEndpoints
         group.MapGet("/{id:guid}", GetRoute);
         group.MapGet("/{routeId:guid}/travel-times", GetRouteTravelTimes);
         group.MapGet("/{routeId:guid}/travel-times-matrix", GetRouteTravelTimesMatrix);
-        group.MapGet("/{routeId:guid}/route-geometry", GetRouteGeometry);
+        group.MapGet("/{routeId:guid}/route-geometry", GetRouteGeometry)
+            .WithName("GetRouteGeometry");
         group.MapPatch("/{routeId:guid}", UpdateRoute);
         group.MapPatch("/{routeId:guid}/deliveries/order", ReorderDeliveries);
         return app;
@@ -222,6 +223,9 @@ public static class RouteEndpoints
         ReorderRouteDeliveriesRequest request,
         TracklyDbContext dbContext,
         TenantContext tenantContext,
+        IHttpClientFactory httpClientFactory,
+        IMemoryCache cache,
+        IMapboxService routingService,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -259,6 +263,24 @@ public static class RouteEndpoints
         }
 
         await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Recalculer et stocker la géométrie de l'itinéraire avec le nouvel ordre (en arrière-plan, non bloquant)
+        try
+        {
+            await ComputeAndStoreRouteGeometryAsync(
+                routeId,
+                dbContext,
+                tenantContext,
+                httpClientFactory,
+                cache,
+                routingService,
+                cancellationToken);
+        }
+        catch
+        {
+            // Ignorer les erreurs de calcul de géométrie (non bloquant pour la mise à jour)
+        }
+
         return Results.Ok(new { message = "Ordre mis à jour." });
     }
 
@@ -593,9 +615,10 @@ public static class RouteEndpoints
     }
 
     /// <summary>
-    /// GET /api/routes/{routeId}/route-geometry — Géométrie (polyligne) pour afficher l'itinéraire sur la carte.
+    /// Calcule et stocke la géométrie de l'itinéraire dans Route.RouteGeometry (JSON).
+    /// Appelé lors de la création de la tournée ou de la mise à jour de l'ordre des livraisons.
     /// </summary>
-    private static async Task<IResult> GetRouteGeometry(
+    public static async Task<bool> ComputeAndStoreRouteGeometryAsync(
         Guid routeId,
         TracklyDbContext dbContext,
         TenantContext tenantContext,
@@ -604,36 +627,69 @@ public static class RouteEndpoints
         IMapboxService routingService,
         CancellationToken cancellationToken)
     {
+        var route = await dbContext.Routes
+            .FirstOrDefaultAsync(r => r.Id == routeId && r.TenantId == tenantContext.TenantId && r.DeletedAt == null, cancellationToken);
+        if (route == null)
+            return false;
+
+        var (coords, error) = await ResolveRouteCoordinatesAsync(routeId, dbContext, tenantContext, httpClientFactory, cache, cancellationToken);
+        if (error != null || coords == null || coords.Count < 2)
+            return false;
+
+        if (!routingService.IsConfigured)
+            return false;
+
+        var routeResult = await routingService.GetRouteAsync(coords, "auto", cancellationToken);
+        if (routeResult == null || routeResult.Coordinates.Count == 0)
+            return false;
+
+        // Stocker uniquement les coordonnées en JSON
+        route.RouteGeometry = JsonSerializer.Serialize(routeResult.Coordinates);
+        await dbContext.SaveChangesAsync(cancellationToken);
+        return true;
+    }
+
+    /// <summary>
+    /// GET /api/routes/{routeId}/route-geometry — Géométrie (polyligne) pour afficher l'itinéraire sur la carte.
+    /// Lit depuis Route.RouteGeometry (stockée lors de la création/mise à jour) au lieu de recalculer.
+    /// </summary>
+    private static async Task<IResult> GetRouteGeometry(
+        Guid routeId,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
         if (tenantContext.TenantId == Guid.Empty)
             return Results.BadRequest("TenantId manquant.");
 
-        var (coords, error) = await ResolveRouteCoordinatesAsync(routeId, dbContext, tenantContext, httpClientFactory, cache, cancellationToken);
-        if (error != null || coords == null)
-            return Results.NotFound(error ?? "Coordonnées indisponibles.");
+        var route = await dbContext.Routes
+            .AsNoTracking()
+            .FirstOrDefaultAsync(r => r.Id == routeId && r.TenantId == tenantContext.TenantId && r.DeletedAt == null, cancellationToken);
 
-        if (!routingService.IsConfigured)
-            return Results.NotFound("Stadia Maps non configuré (STADIA_MAPS_API_KEY).");
+        if (route == null)
+            return Results.NotFound("Tournée introuvable.");
 
-        var routeCacheKey = BuildRouteCacheKey(coords);
-        var routeResult = await cache.GetOrCreateAsync(routeCacheKey, async entry =>
+        if (string.IsNullOrWhiteSpace(route.RouteGeometry))
+            return Results.NotFound("Géométrie de l'itinéraire non disponible. La tournée doit être recalculée.");
+
+        try
         {
-            entry!.AbsoluteExpirationRelativeToNow = RouteCacheTtl;
-            return await routingService.GetRouteAsync(coords, "auto", cancellationToken);
-        });
-        if (routeResult == null || routeResult.Coordinates.Count == 0)
-            return Results.NotFound("Impossible de calculer l'itinéraire.");
+            var coordinates = JsonSerializer.Deserialize<IReadOnlyList<IReadOnlyList<double>>>(route.RouteGeometry);
+            if (coordinates == null || coordinates.Count == 0)
+                return Results.NotFound("Géométrie invalide.");
 
-        var legsWithCoords = routeResult.Legs
-            .Where(l => l.LegCoordinates != null && l.LegCoordinates.Count > 0)
-            .Select(l => new { coordinates = l.LegCoordinates })
-            .ToList();
-
-        return Results.Ok(new
+            return Results.Ok(new
+            {
+                coordinates,
+                // Durée et distance ne sont plus stockées, on retourne 0 pour compatibilité
+                durationSeconds = 0d,
+                distanceMeters = 0d,
+                legs = Array.Empty<object>()
+            });
+        }
+        catch
         {
-            coordinates = routeResult.Coordinates,
-            durationSeconds = routeResult.DurationSeconds,
-            distanceMeters = routeResult.DistanceMeters,
-            legs = legsWithCoords
-        });
+            return Results.NotFound("Erreur lors de la lecture de la géométrie.");
+        }
     }
 }

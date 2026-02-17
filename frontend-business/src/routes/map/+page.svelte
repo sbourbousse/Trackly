@@ -14,10 +14,16 @@
 	import { settingsState } from '$lib/stores/settings.svelte';
 	import MapFilters from '$lib/components/map/MapFilters.svelte';
 	import { getDelivery } from '$lib/api/deliveries';
-	import { getRoutes, getRouteGeometry, getIsochrones } from '$lib/api/routes';
+	import { getRoutes, getRouteGeometry, getIsochrones, type ApiRoute } from '$lib/api/routes';
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
 	import { isOfflineMode } from '$lib/offline/config';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
+	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
+	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
 	import type { TypedMapMarker } from '$lib/components/Map.svelte';
 
 	const MAX_ORDER_MARKERS = 30;
@@ -64,10 +70,14 @@
 	let driverLabels = $state<Record<string, string>>({});
 	let geocodingOrders = $state(false);
 	let lastOrdersKey = $state('');
-	let routePolylines = $state<{ coordinates: [number, number][]; color?: string; status?: string }[]>([]);
+	let routePolylines = $state<{ coordinates: [number, number][]; color?: string; status?: string; routeId?: string }[]>([]);
 	let isochronePolygons = $state<{ coordinates: [number, number][]; minutes?: number }[]>([]);
 	let isochronesLoading = $state(false);
 	let isochronesMessage = $state<string | null>(null);
+	let routesList = $state<ApiRoute[]>([]);
+	let selectedRouteIds = $state<Set<string>>(new Set());
+	let routesLoading = $state(false);
+	let routesPanelOpen = $state(true);
 
 	const isInProgress = (s: string) => s === 'InProgress' || s === 'En cours';
 	const inProgressIds = $derived(
@@ -187,36 +197,61 @@
 		return 'planned';
 	}
 
+	// Charger la liste des routes pour le panneau de sélection
+	$effect(() => {
+		if (!hasPeriod) {
+			routesList = [];
+			selectedRouteIds = new Set();
+			return;
+		}
+		const filters = getListFilters();
+		if (!filters.dateFrom || !filters.dateTo) return;
+		routesLoading = true;
+		getRoutes({ dateFrom: filters.dateFrom, dateTo: filters.dateTo })
+			.then((routes) => {
+				routesList = routes;
+				// Sélectionner toutes les routes par défaut
+				if (selectedRouteIds.size === 0 && routes.length > 0) {
+					selectedRouteIds = new Set(routes.map((r) => r.id));
+				}
+			})
+			.catch(() => {
+				routesList = [];
+			})
+			.finally(() => {
+				routesLoading = false;
+			});
+	});
+
+	// Charger les géométries des routes sélectionnées
 	$effect(() => {
 		const showTraces = mapFilters.filters.showRoutePolylines;
 		const routeTraces = { ...mapFilters.filters.routeTraces };
-		if (!showTraces || !hasPeriod) {
+		if (!showTraces || !hasPeriod || selectedRouteIds.size === 0) {
 			routePolylines = [];
 			return;
 		}
-		dateRangeState.dateRange;
-		dateRangeState.dateFilter;
 		const filters = getListFilters();
 		if (!filters.dateFrom || !filters.dateTo) return;
-		getRoutes({ dateFrom: filters.dateFrom, dateTo: filters.dateTo })
-			.then((routes) => {
-				const withStatus = routes.map((r) => ({
-					id: r.id,
-					status: getRouteTraceStatus(r)
-				}));
-				const toLoad = withStatus.filter((r) => routeTraces[r.status]);
-				return Promise.all(
-					toLoad.map(async (r) => {
-						const geom = await getRouteGeometry(r.id);
-						if (!geom?.coordinates?.length) return null;
-						return {
-							coordinates: geom.coordinates,
-							status: r.status,
-							color: ROUTE_TRACE_COLORS[r.status] ?? ROUTE_TRACE_COLORS.planned
-						};
-					})
-				);
+		const toLoad = routesList
+			.filter((r) => selectedRouteIds.has(r.id))
+			.map((r) => ({
+				id: r.id,
+				status: getRouteTraceStatus(r)
+			}))
+			.filter((r) => routeTraces[r.status]);
+		Promise.all(
+			toLoad.map(async (r) => {
+				const geom = await getRouteGeometry(r.id);
+				if (!geom?.coordinates?.length) return null;
+				return {
+					coordinates: geom.coordinates,
+					status: r.status,
+					color: ROUTE_TRACE_COLORS[r.status] ?? ROUTE_TRACE_COLORS.planned,
+					routeId: r.id
+				};
 			})
+		)
 			.then((results) => {
 				routePolylines = results.filter(
 					(r): r is NonNullable<typeof r> => r != null && r.coordinates?.length > 0
@@ -226,6 +261,24 @@
 				routePolylines = [];
 			});
 	});
+
+	function toggleRoute(routeId: string) {
+		const newSet = new Set(selectedRouteIds);
+		if (newSet.has(routeId)) {
+			newSet.delete(routeId);
+		} else {
+			newSet.add(routeId);
+		}
+		selectedRouteIds = newSet;
+	}
+
+	function selectAllRoutes() {
+		selectedRouteIds = new Set(routesList.map((r) => r.id));
+	}
+
+	function deselectAllRoutes() {
+		selectedRouteIds = new Set();
+	}
 
 	$effect(() => {
 		if (!mapFilters.filters.showIsochrones) {
@@ -327,6 +380,108 @@
 			{/if}
 			<MapFilters />
 		</div>
+		{#if mapFilters.filters.showRoutePolylines && hasPeriod}
+			<div class="absolute top-4 right-4 z-[1100] flex flex-col items-end gap-2">
+				{#if routesPanelOpen}
+					<Card class="w-80 max-w-[calc(100vw-2rem)]">
+						<CardHeader class="pb-3">
+							<div class="flex items-center justify-between">
+								<CardTitle class="text-base">Tournées</CardTitle>
+								<div class="flex gap-1">
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-7 text-xs"
+										onclick={selectAllRoutes}
+										disabled={routesLoading || routesList.length === 0}
+									>
+										Tout
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-7 text-xs"
+										onclick={deselectAllRoutes}
+										disabled={routesLoading || selectedRouteIds.size === 0}
+									>
+										Rien
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-7 w-7 p-0"
+										onclick={() => (routesPanelOpen = false)}
+										aria-label="Réduire"
+									>
+										<ChevronRightIcon class="size-4" />
+									</Button>
+								</div>
+							</div>
+						</CardHeader>
+						<CardContent class="pt-0">
+						{#if routesLoading}
+							<div class="py-4 text-center text-sm text-muted-foreground">Chargement...</div>
+						{:else if routesList.length === 0}
+							<div class="py-4 text-center text-sm text-muted-foreground">Aucune tournée</div>
+						{:else}
+							<div class="max-h-[400px] overflow-y-auto space-y-2">
+								{#each routesList as route}
+									<div
+										class="flex items-start gap-2 rounded-md border p-2 hover:bg-muted/50 cursor-pointer transition-colors"
+										onclick={() => toggleRoute(route.id)}
+									>
+										<Checkbox
+											checked={selectedRouteIds.has(route.id)}
+											onCheckedChange={() => toggleRoute(route.id)}
+											onclick={(e) => e.stopPropagation()}
+											class="mt-0.5"
+										/>
+										<div class="flex-1 min-w-0">
+											<div class="flex items-center gap-2 mb-1">
+												<span class="font-medium text-sm truncate">
+													{route.name || `Tournée ${route.driverName}`}
+												</span>
+											</div>
+											<div class="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+												{#if route.statusSummary.pending > 0}
+													<Badge variant="outline" class="h-5 text-xs">
+														{route.statusSummary.pending} en attente
+													</Badge>
+												{/if}
+												{#if route.statusSummary.completed > 0}
+													<Badge variant="outline" class="h-5 text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
+														{route.statusSummary.completed} livrée{route.statusSummary.completed > 1 ? 's' : ''}
+													</Badge>
+												{/if}
+												{#if route.statusSummary.inProgress > 0}
+													<Badge variant="outline" class="h-5 text-xs bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800">
+														{route.statusSummary.inProgress} en cours
+													</Badge>
+												{/if}
+												{#if route.deliveryCount === 0}
+													<span class="text-muted-foreground">Aucune commande</span>
+												{/if}
+											</div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+						</CardContent>
+					</Card>
+				{:else}
+					<Button
+						variant="outline"
+						size="sm"
+						class="h-9"
+						onclick={() => (routesPanelOpen = true)}
+					>
+						<ChevronLeftIcon class="size-4 mr-2" />
+						Tournées ({selectedRouteIds.size}/{routesList.length})
+					</Button>
+				{/if}
+			</div>
+		{/if}
 	</div>
 	{/if}
 </div>

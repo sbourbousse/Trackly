@@ -58,25 +58,62 @@
 		return (slotIndex * 2) % 24;
 	}
 
-	function getHourSlots(): { value: string; label: string }[] {
-		const start = getNextTwoHourSlot();
+	/** Créneaux d'heure selon la date : si aujourd'hui, uniquement à partir de la prochaine tranche 2h (ex: 21h30 → 22h, 23h). Sinon tous les créneaux 00–22h. */
+	function getHourSlots(selectedDate: CalendarDate): { value: string; label: string }[] {
+		const todayRef = today(getLocalTimeZone());
+		const isToday =
+			selectedDate.year === todayRef.year &&
+			selectedDate.month === todayRef.month &&
+			selectedDate.day === todayRef.day;
+		if (isToday) {
+			const start = getNextTwoHourSlot();
+			const options: { value: string; label: string }[] = [];
+			for (let h = start; h < 24; h += 2) {
+				options.push({ value: String(h).padStart(2, '0'), label: `${String(h).padStart(2, '0')}h` });
+			}
+			return options;
+		}
 		return Array.from({ length: 12 }, (_, i) => {
-			const h = (start + i * 2) % 24;
+			const h = i * 2;
 			return { value: String(h).padStart(2, '0'), label: `${String(h).padStart(2, '0')}h` };
 		});
 	}
 
+	/** Options de minutes : si date = aujourd'hui et heure = heure actuelle, seulement minutes >= maintenant (arrondi 10 min). */
+	function getMinuteOptions(selectedDate: CalendarDate, selectedHour: string): { value: string; label: string }[] {
+		const todayRef = today(getLocalTimeZone());
+		const isToday =
+			selectedDate.year === todayRef.year &&
+			selectedDate.month === todayRef.month &&
+			selectedDate.day === todayRef.day;
+		if (!isToday) return MINUTE_OPTIONS;
+		const now = getNowRounded();
+		if (selectedHour !== now.hour) return MINUTE_OPTIONS;
+		const nowMin = parseInt(now.minute, 10);
+		return MINUTE_OPTIONS.filter((opt) => parseInt(opt.value, 10) >= nowMin);
+	}
+
+	/** Raccourci horaire : Maintenant = aujourd'hui + heure actuelle ; +2h/+4h/+6h = maintenant + offset, la date passe au lendemain si besoin. */
 	function setTimeShortcut(offsetHours: number) {
+		const d = new Date();
+		if (offsetHours > 0) d.setTime(d.getTime() + offsetHours * 60 * 60 * 1000);
+		const rounded = getNowRounded();
 		if (offsetHours === 0) {
-			const now = getNowRounded();
-			plannedStartHour = now.hour;
-			plannedStartMinute = now.minute;
-		} else {
-			const nextSlot = getNextTwoHourSlot();
-			const h = (nextSlot + offsetHours - 2) % 24;
-			plannedStartHour = String(h).padStart(2, '0');
-			plannedStartMinute = '00';
+			plannedStartHour = rounded.hour;
+			plannedStartMinute = rounded.minute;
+			plannedStartDateValue = today(getLocalTimeZone());
+			return;
 		}
+		let h = d.getHours();
+		let m = d.getMinutes();
+		m = Math.round(m / 10) * 10;
+		if (m === 60) {
+			h += 1;
+			m = 0;
+		}
+		plannedStartHour = String(h % 24).padStart(2, '0');
+		plannedStartMinute = String(m).padStart(2, '0');
+		plannedStartDateValue = new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
 	}
 
 	function plannedStartDateToApiString(d: CalendarDate): string {
@@ -122,6 +159,40 @@
 		return d.toISOString();
 	});
 
+	/** Commandes affichées : uniquement celles dont la date/heure de livraison est >= heure de début de la tournée. */
+	const ordersToShow = $derived.by(() => {
+		const startMs = new Date(plannedStartAtIso).getTime();
+		return orders.filter((o) => {
+			if (!o.orderDate) return true;
+			const orderMs = new Date(o.orderDate).getTime();
+			return orderMs >= startMs;
+		});
+	});
+
+	/** Écart entre le début de la tournée et la date de livraison de la commande (texte lisible). */
+	function formatTimeDiffFromRouteStart(orderDateIso: string | null): string {
+		if (!orderDateIso) return '–';
+		const startMs = new Date(plannedStartAtIso).getTime();
+		const orderMs = new Date(orderDateIso).getTime();
+		const diffMs = orderMs - startMs;
+		if (diffMs < 0) return '–';
+		const totalMin = Math.floor(diffMs / 60000);
+		const days = Math.floor(totalMin / (24 * 60));
+		const restMin = totalMin % (24 * 60);
+		const hours = Math.floor(restMin / 60);
+		const min = restMin % 60;
+		if (days > 0) {
+			const parts = [`${days} j`];
+			if (hours > 0) parts.push(`${hours} h`);
+			if (min > 0) parts.push(`${min} min`);
+			return parts.join(' ');
+		}
+		if (hours > 0) {
+			return min > 0 ? `${hours} h ${min} min` : `${hours} h`;
+		}
+		return `${min} min`;
+	}
+
 	let didInit = $state(false);
 	$effect(() => {
 		if (didInit) return;
@@ -152,7 +223,7 @@
 	}
 
 	function selectAll() {
-		selectedOrderIds = new Set(orders.map((o) => o.id));
+		selectedOrderIds = new Set(ordersToShow.map((o) => o.id));
 	}
 
 	function deselectAll() {
@@ -231,7 +302,7 @@
 						</div>
 						<div class="space-y-2">
 							<Label>Heure de début prévue</Label>
-							<p class="text-xs text-muted-foreground">Permet d'afficher l'heure d'arrivée estimée par livraison.</p>
+							<p class="text-xs text-muted-foreground">Filtre les commandes affichées (date/heure de livraison ≥ cette heure) et sert au calcul des heures d'arrivée estimées.</p>
 							<div class="space-y-2">
 								<div class="flex flex-wrap gap-2">
 									<Button
@@ -294,7 +365,22 @@
 													minValue={orderDateMin}
 													maxValue={orderDateMax}
 													onValueChange={(v: DateValue | undefined) => {
-														if (v !== undefined) plannedStartDateValue = new CalendarDate(v.year, v.month, v.day);
+														if (v !== undefined) {
+															const newDate = new CalendarDate(v.year, v.month, v.day);
+															plannedStartDateValue = newDate;
+															const todayRef = today(getLocalTimeZone());
+															if (newDate.year === todayRef.year && newDate.month === todayRef.month && newDate.day === todayRef.day) {
+																const now = getNowRounded();
+																const h = parseInt(plannedStartHour, 10);
+																const m = parseInt(plannedStartMinute, 10);
+																const nowH = parseInt(now.hour, 10);
+																const nowM = parseInt(now.minute, 10);
+																if (h < nowH || (h === nowH && m < nowM)) {
+																	plannedStartHour = now.hour;
+																	plannedStartMinute = now.minute;
+																}
+															}
+														}
 														plannedStartDateOpen = false;
 													}}
 												/>
@@ -319,7 +405,7 @@
 											</PopoverTrigger>
 											<PopoverContent class="w-auto p-0" align="start">
 												<div class="max-h-56 overflow-y-auto py-1">
-													{#each getHourSlots() as opt}
+													{#each getHourSlots(plannedStartDateValue) as opt}
 														<button
 															type="button"
 															class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {plannedStartHour === opt.value
@@ -355,7 +441,7 @@
 											</PopoverTrigger>
 											<PopoverContent class="w-auto p-0" align="start">
 												<div class="max-h-56 overflow-y-auto py-1">
-													{#each MINUTE_OPTIONS as opt}
+													{#each getMinuteOptions(plannedStartDateValue, plannedStartHour) as opt}
 														<button
 															type="button"
 															class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {plannedStartMinute === opt.value
@@ -403,8 +489,8 @@
 							</CardTitle>
 							<p class="mt-1 text-sm text-muted-foreground">
 								{selectedOrderIds.size} commande{selectedOrderIds.size > 1 ? 's' : ''} sélectionnée{selectedOrderIds.size > 1 ? 's' : ''}
-								{#if orders.length > 0}
-									({orders.length} en attente)
+								{#if ordersToShow.length > 0}
+									({ordersToShow.length} à livrer à partir de l'heure de début)
 								{/if}
 							</p>
 						</div>
@@ -414,7 +500,7 @@
 								variant="outline"
 								size="sm"
 								onclick={selectAll}
-								disabled={submitting || orders.length === 0}
+								disabled={submitting || ordersToShow.length === 0}
 							>
 								Tout sélectionner
 							</Button>
@@ -435,6 +521,10 @@
 								Aucune commande en attente.
 								<Button variant="link" href="/orders" class="px-1">Importer des commandes</Button>
 							</div>
+						{:else if ordersToShow.length === 0}
+							<div class="py-8 text-center text-muted-foreground">
+								Aucune commande dont la date/heure de livraison est après l'heure de début choisie. Modifiez l'heure de début ou ajoutez des commandes.
+							</div>
 						{:else}
 							<div class="max-h-[400px] min-w-0 overflow-auto">
 								<Table>
@@ -442,22 +532,23 @@
 										<TableRow>
 											<TableHead class="w-10">
 												<Checkbox
-													checked={selectedOrderIds.size === orders.length && orders.length > 0}
+													checked={selectedOrderIds.size === ordersToShow.length && ordersToShow.length > 0}
 													onCheckedChange={() => {
-														if (selectedOrderIds.size === orders.length) deselectAll();
+														if (selectedOrderIds.size === ordersToShow.length) deselectAll();
 														else selectAll();
 													}}
 													aria-label="Tout sélectionner"
 												/>
 											</TableHead>
 											<TableHead>Statut</TableHead>
-											<TableHead>Date</TableHead>
+											<TableHead>Date livraison</TableHead>
+											<TableHead class="whitespace-nowrap">Après départ</TableHead>
 											<TableHead>Client</TableHead>
 											<TableHead>Adresse</TableHead>
 										</TableRow>
 									</TableHeader>
 									<TableBody>
-										{#each orders as order}
+										{#each ordersToShow as order}
 											<TableRow
 												class={cn(
 													'cursor-pointer transition-colors hover:bg-muted/50',
@@ -477,6 +568,9 @@
 												<TableCell>
 													<RelativeTimeIndicator date={order.orderDate} showTime={true} />
 												</TableCell>
+												<TableCell class="tabular-nums text-muted-foreground">
+													{formatTimeDiffFromRouteStart(order.orderDate)}
+												</TableCell>
 												<TableCell>{order.customerName}</TableCell>
 												<TableCell>{order.address}</TableCell>
 											</TableRow>
@@ -494,7 +588,7 @@
 					</Button>
 					<Button
 						type="submit"
-						disabled={submitting || selectedOrderIds.size === 0 || !selectedDriverId || orders.length === 0}
+						disabled={submitting || selectedOrderIds.size === 0 || !selectedDriverId}
 					>
 						{submitting ? 'Création...' : `Créer la tournée (${selectedOrderIds.size} livraison${selectedOrderIds.size > 1 ? 's' : ''})`}
 					</Button>

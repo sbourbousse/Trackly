@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using System.Net.Http;
 using Trackly.Backend.Features.Billing;
+using Trackly.Backend.Features.Mapbox;
 using Trackly.Backend.Features.Orders;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
@@ -308,6 +311,9 @@ public static class DeliveryEndpoints
         TracklyDbContext dbContext,
         TenantContext tenantContext,
         IBillingService billingService,
+        IHttpClientFactory httpClientFactory,
+        IMemoryCache cache,
+        IMapboxService routingService,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -413,6 +419,23 @@ public static class DeliveryEndpoints
                 orderId,
                 dbContext,
                 cancellationToken);
+        }
+
+        // Calculer et stocker la géométrie de l'itinéraire (en arrière-plan, non bloquant)
+        try
+        {
+            await RouteEndpoints.ComputeAndStoreRouteGeometryAsync(
+                route.Id,
+                dbContext,
+                tenantContext,
+                httpClientFactory,
+                cache,
+                routingService,
+                cancellationToken);
+        }
+        catch
+        {
+            // Ignorer les erreurs de calcul de géométrie (non bloquant pour la création)
         }
 
         createdDeliveries = deliveries.Select(ToResponse).ToList();

@@ -49,27 +49,62 @@
 		return (slotIndex * 2) % 24;
 	}
 
-	/** Créneaux de 2h à partir de l'heure actuelle : 12 options (ex: 20h30 → 22h, 00h, 02h, …). */
-	function getHourSlots(): { value: string; label: string }[] {
-		const start = getNextTwoHourSlot();
+	/** Créneaux d'heure selon la date : si aujourd'hui, uniquement à partir de la prochaine tranche 2h (ex: 21h30 → 22h, 23h). Sinon tous les créneaux 00–22h. */
+	function getHourSlots(selectedDate: CalendarDate): { value: string; label: string }[] {
+		const todayRef = today(getLocalTimeZone());
+		const isToday =
+			selectedDate.year === todayRef.year &&
+			selectedDate.month === todayRef.month &&
+			selectedDate.day === todayRef.day;
+		if (isToday) {
+			const start = getNextTwoHourSlot();
+			const options: { value: string; label: string }[] = [];
+			for (let h = start; h < 24; h += 2) {
+				options.push({ value: String(h).padStart(2, '0'), label: `${String(h).padStart(2, '0')}h` });
+			}
+			return options;
+		}
 		return Array.from({ length: 12 }, (_, i) => {
-			const h = (start + i * 2) % 24;
+			const h = i * 2;
 			return { value: String(h).padStart(2, '0'), label: `${String(h).padStart(2, '0')}h` };
 		});
 	}
 
-	/** Applique un raccourci horaire : 0 = maintenant, 2/4/6 = 1ère/2ème/3ème tranche de 2h (ex: 20h30 → 22h, 00h, 02h). */
+	/** Options de minutes : si date = aujourd'hui et heure = heure actuelle, seulement minutes >= maintenant (arrondi 10 min). */
+	function getMinuteOptions(selectedDate: CalendarDate, selectedHour: string): { value: string; label: string }[] {
+		const todayRef = today(getLocalTimeZone());
+		const isToday =
+			selectedDate.year === todayRef.year &&
+			selectedDate.month === todayRef.month &&
+			selectedDate.day === todayRef.day;
+		if (!isToday) return MINUTE_OPTIONS;
+		const now = getNowRounded();
+		if (selectedHour !== now.hour) return MINUTE_OPTIONS;
+		const nowMin = parseInt(now.minute, 10);
+		return MINUTE_OPTIONS.filter((opt) => parseInt(opt.value, 10) >= nowMin);
+	}
+
+	/** Raccourci horaire : Maintenant = aujourd'hui + heure actuelle ; +2h/+4h/+6h = maintenant + offset, la date passe au lendemain si besoin. */
 	function setTimeShortcut(offsetHours: number) {
+		const d = new Date();
+		if (offsetHours > 0) d.setTime(d.getTime() + offsetHours * 60 * 60 * 1000);
+		const rounded = getNowRounded();
 		if (offsetHours === 0) {
-			const now = getNowRounded();
-			orderHour = now.hour;
-			orderMinute = now.minute;
-		} else {
-			const nextSlot = getNextTwoHourSlot();
-			const h = (nextSlot + offsetHours - 2) % 24;
-			orderHour = String(h).padStart(2, '0');
-			orderMinute = '00';
+			orderHour = rounded.hour;
+			orderMinute = rounded.minute;
+			orderDateValue = today(getLocalTimeZone());
+			return;
 		}
+		let h = d.getHours();
+		let m = d.getMinutes();
+		m = Math.round(m / 10) * 10;
+		if (m === 60) {
+			h += 1;
+			m = 0;
+		}
+		orderHour = String(h % 24).padStart(2, '0');
+		orderMinute = String(m).padStart(2, '0');
+		orderDateValue = new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
 	}
 
 	/** Nombre de commandes (en attente / planifiées) par plage de raccourci sur la date sélectionnée. */
@@ -320,7 +355,23 @@
 										minValue={orderDateMin}
 										maxValue={orderDateMax}
 										onValueChange={(v: DateValue | undefined) => {
-											if (v !== undefined) orderDateValue = new CalendarDate(v.year, v.month, v.day);
+											if (v !== undefined) {
+												const newDate = new CalendarDate(v.year, v.month, v.day);
+												orderDateValue = newDate;
+												// Si on passe à aujourd'hui et que l'heure saisie est passée, ramener à maintenant
+												const todayRef = today(getLocalTimeZone());
+												if (newDate.year === todayRef.year && newDate.month === todayRef.month && newDate.day === todayRef.day) {
+													const now = getNowRounded();
+													const h = parseInt(orderHour, 10);
+													const m = parseInt(orderMinute, 10);
+													const nowH = parseInt(now.hour, 10);
+													const nowM = parseInt(now.minute, 10);
+													if (h < nowH || (h === nowH && m < nowM)) {
+														orderHour = now.hour;
+														orderMinute = now.minute;
+													}
+												}
+											}
 											orderDateOpen = false;
 										}}
 									/>
@@ -423,7 +474,7 @@
 									</PopoverTrigger>
 									<PopoverContent class="w-auto p-0" align="start">
 										<div class="max-h-56 overflow-y-auto py-1">
-											{#each getHourSlots() as opt}
+											{#each getHourSlots(orderDateValue) as opt}
 												<button
 													type="button"
 													class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {orderHour === opt.value
@@ -459,7 +510,7 @@
 									</PopoverTrigger>
 									<PopoverContent class="w-auto p-0" align="start">
 										<div class="max-h-56 overflow-y-auto py-1">
-											{#each MINUTE_OPTIONS as opt}
+											{#each getMinuteOptions(orderDateValue, orderHour) as opt}
 												<button
 													type="button"
 													class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {orderMinute === opt.value

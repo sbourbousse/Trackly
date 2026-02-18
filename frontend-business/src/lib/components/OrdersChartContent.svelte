@@ -27,6 +27,8 @@
 		wideBarMinWidthPx?: number;
 		/** En mode horizontal, largeur max des barres (axe X) quand mode large. Défaut 160. */
 		wideBarMaxWidthPx?: number;
+		/** Mode compact : réduit le padding et la hauteur des barres pour s'intégrer dans une barre de navigation. */
+		compact?: boolean;
 		loading?: boolean;
 		labels?: string[];
 		values?: number[];
@@ -47,6 +49,7 @@
 		wideBarThreshold = 5,
 		wideBarMinWidthPx = 80,
 		wideBarMaxWidthPx = 160,
+		compact = false,
 		loading = false,
 		labels = [],
 		values = [],
@@ -209,9 +212,9 @@
 	});
 
 	const maxTotal = $derived(stackedData.length ? Math.max(...stackedData.map((r) => r.total), 1) : 1);
-	const BAR_HEIGHT = 120;
-	const ROW_HEIGHT_H = 24;
-	const GAP_PX = 8;
+	const BAR_HEIGHT = $derived(compact ? 40 : 120);
+	const ROW_HEIGHT_H = $derived(compact ? 16 : 24);
+	const GAP_PX = $derived(compact ? 2 : 8);
 
 	/** Mode "large" : peu de barres → barres plus larges / plus visibles. */
 	const isWideMode = $derived(stackedData.length > 0 && stackedData.length <= wideBarThreshold);
@@ -300,35 +303,34 @@
 </style>
 
 <TooltipProvider delayDuration={200}>
-	<div class="min-w-0 rounded-md border bg-muted/30 p-4">
+	<div class="min-w-0 h-full flex flex-col {compact ? 'p-0' : 'rounded-md border bg-muted/30 p-4'}">
 		{#if loading}
 			<div class="text-muted-foreground py-8 text-center text-sm">Chargement…</div>
 		{:else if stackedData.length === 0}
 			<div class="text-muted-foreground py-8 text-center text-sm">{emptyMessage}</div>
 		{:else}
-			<div class="flex min-w-0 flex-col gap-2">
+			<div class="flex min-w-0 flex-1 flex-col {compact ? 'gap-0' : 'gap-2'}">
 				{#if horizontal}
 					<!-- Mode horizontal : jours de haut en bas (axe Y), barres vers la droite (axe X) -->
 					<div
-						class="flex min-w-0 flex-col gap-1"
+						class="flex min-w-0 flex-col gap-1 relative"
 						role="img"
 						aria-label={variant === 'delivery' ? 'Répartition des tournées par jour (haut en bas)' : 'Répartition des commandes par jour (haut en bas)'}
 					>
-						{#each stackedData as row, i}
-							<div
-								class="flex min-w-0 items-center gap-2 rounded-sm transition-colors"
-								class:border-l-2={currentBarIndex !== null && currentBarIndex === i}
-								class:border-primary={currentBarIndex !== null && currentBarIndex === i}
-								class:pl-1={currentBarIndex !== null && currentBarIndex === i}
-								style="min-height: {ROW_HEIGHT_H}px"
-							>
+					{#each stackedData as row, i}
+						<div
+							class="flex min-w-0 items-center {compact ? 'gap-1' : 'gap-2'} rounded-sm transition-colors {currentBarIndex !== null && currentBarIndex === i ? 'bg-primary/10 dark:bg-primary/20 border border-primary/50' : ''}"
+							style="min-height: {ROW_HEIGHT_H}px"
+						>
 							<TooltipRoot>
 								<TooltipTrigger>
-									<div class="flex min-w-0 flex-1 items-center gap-2" style="min-height: {ROW_HEIGHT_H}px">
-										<span class="text-muted-foreground w-14 shrink-0 truncate text-right text-xs" title={row.period}>{row.period}</span>
+									<div class="flex min-w-0 flex-1 items-center {compact ? 'gap-1' : 'gap-2'}" style="min-height: {ROW_HEIGHT_H}px">
+										{#if !compact}
+											<span class="text-muted-foreground w-14 shrink-0 truncate text-right text-xs" title={row.period}>{row.period}</span>
+										{/if}
 										<div
 											class="flex min-w-0 flex-1 items-stretch overflow-hidden rounded"
-											style="width: {row.total === 0 ? 2 : Math.max(4, (row.total / maxTotal) * barMaxWidthH)}px; max-width: {barMaxWidthH}px; height: {ROW_HEIGHT_H - 4}px"
+											style="width: {row.total === 0 ? 2 : Math.max(4, (row.total / maxTotal) * barMaxWidthH)}px; max-width: {barMaxWidthH}px; height: {ROW_HEIGHT_H - (compact ? 2 : 4)}px"
 										>
 											{#if row.total === 0}
 												<div class="bg-muted h-full w-full rounded" aria-hidden="true"></div>
@@ -405,28 +407,27 @@
 						</div>
 					{/if}
 				{:else}
-				<div class="flex min-w-0 gap-2">
-					<!-- Axe Y : graduations -->
-					<div
-						class="text-muted-foreground flex shrink-0 flex-col justify-between py-0.5 text-right text-xs tabular-nums"
-						style="height: {BAR_HEIGHT}px; width: 2.25rem"
-						aria-hidden="true"
-					>
-						{#each [...yAxisTicks].reverse() as tick}
-							<span>{tick}</span>
-						{/each}
-					</div>
-					<div class="min-w-0 flex-1 overflow-x-auto" role="img" aria-label={variant === 'delivery' ? 'Répartition des tournées par période et par statut' : 'Répartition des commandes par période et par statut (planification)'}>
+				<div class="flex min-w-0 {compact ? 'gap-1' : 'gap-2'}">
+					{#if !compact}
+						<!-- Axe Y : graduations -->
+						<div
+							class="text-muted-foreground flex shrink-0 flex-col justify-between py-0.5 text-right text-xs tabular-nums"
+							style="height: {BAR_HEIGHT}px; width: 2.25rem"
+							aria-hidden="true"
+						>
+							{#each [...yAxisTicks].reverse() as tick}
+								<span>{tick}</span>
+							{/each}
+						</div>
+					{/if}
+					<div class="min-w-0 flex-1 overflow-x-auto relative" role="img" aria-label={variant === 'delivery' ? 'Répartition des tournées par période et par statut' : 'Répartition des commandes par période et par statut (planification)'}>
 					<div class="min-w-0" style="width: 100%; min-width: max(100%, {chartMinWidthPx}px)">
 				<div
-					class="flex items-end gap-2"
+					class="flex items-end {compact ? 'gap-1' : 'gap-2'} relative"
 					style="width: 100%"
 				>
 					{#each stackedData as row, i}
-						{#if currentBarIndex !== null && currentBarIndex === i}
-							<div class="bg-primary shrink-0 self-stretch w-0.5 rounded-full min-h-[80px]" aria-hidden="true" title="Maintenant"></div>
-						{/if}
-						<div class="chart-bar-column flex flex-1 shrink-0 flex-col" style="min-width: {barMinPx}px; width: 0">
+						<div class="chart-bar-column flex flex-1 shrink-0 flex-col relative {currentBarIndex !== null && currentBarIndex === i ? 'bg-primary/10 dark:bg-primary/20 outline outline-2 outline-primary/50 outline-offset-[-2px] rounded-sm' : ''}" style="min-width: {barMinPx}px; width: 0;">
 							<div class="chart-bar-column-inner flex min-h-0 w-full flex-1 flex-col">
 							<TooltipRoot>
 								<TooltipTrigger>
@@ -496,12 +497,15 @@
 					{/each}
 				</div>
 			<div
-				class="text-muted-foreground mt-2 flex min-w-0 gap-2 text-xs"
+				class="text-muted-foreground flex min-w-0 {compact ? 'mt-0.5 gap-0.5 text-[10px] leading-tight' : 'mt-2 gap-2 text-xs'}"
 				style="width: 100%"
 			>
 				{#each stackedData as row, i}
 					<div class="flex flex-1 shrink-0 justify-center truncate" style="min-width: {barMinPx}px">
-						{#if axisTickIndices.includes(i)}
+						{#if compact}
+							<!-- En mode compact, afficher toutes les dates/heures mais en petit -->
+							<span class="truncate text-center whitespace-nowrap" title={row.period}>{row.period}</span>
+						{:else if axisTickIndices.includes(i)}
 							<span class="truncate" title={row.period}>{row.period}</span>
 						{/if}
 					</div>
@@ -510,7 +514,7 @@
 					</div>
 					</div>
 				</div>
-				{#if legendItems.length > 0}
+				{#if !compact && legendItems.length > 0}
 					<div
 						class="text-muted-foreground flex min-w-0 flex-wrap items-center gap-x-4 gap-y-1 border-t border-border pt-3 text-xs"
 						style="width: 100%"

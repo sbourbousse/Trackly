@@ -77,7 +77,7 @@
 	let routesList = $state<ApiRoute[]>([]);
 	let selectedRouteIds = $state<Set<string>>(new Set());
 	let routesLoading = $state(false);
-	let routesPanelOpen = $state(true);
+	let routesPanelOpen = $state(false);
 
 	const isInProgress = (s: string) => s === 'InProgress' || s === 'En cours';
 	const inProgressIds = $derived(
@@ -383,7 +383,7 @@
 		{#if mapFilters.filters.showRoutePolylines && hasPeriod}
 			<div class="absolute top-4 right-4 z-[1100] flex flex-col items-end gap-2">
 				{#if routesPanelOpen}
-					<Card class="w-80 max-w-[calc(100vw-2rem)]">
+					<Card class="pb-6 w-80 max-w-[calc(100vw-2rem)]">
 						<CardHeader class="pb-3">
 							<div class="flex items-center justify-between">
 								<CardTitle class="text-base">Tournées</CardTitle>

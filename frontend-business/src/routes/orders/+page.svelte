@@ -43,9 +43,84 @@
 		return 'pending';
 	}
 
+	/** Retourne la tranche horaire d'une commande (ex: "8h-12h") */
+	function getTimeSlot(orderDate: string | null | undefined): string {
+		if (!orderDate) return '—';
+		try {
+			const date = new Date(orderDate);
+			if (Number.isNaN(date.getTime())) return '—';
+			const hour = date.getHours();
+			// Tranches de 4h : 0-4h, 4-8h, 8-12h, 12-16h, 16-20h, 20-24h
+			const slotStart = Math.floor(hour / 4) * 4;
+			const slotEnd = slotStart + 4;
+			return `${slotStart}h-${slotEnd}h`;
+		} catch {
+			return '—';
+		}
+	}
+
+	/** Retourne la classe de couleur pour une tranche horaire selon son statut temporel */
+	function getTimeSlotColorClass(orderDate: string | null | undefined, timeSlot: string): string {
+		if (!orderDate || timeSlot === '—') return 'text-muted-foreground';
+		
+		try {
+			const orderDateTime = new Date(orderDate);
+			if (Number.isNaN(orderDateTime.getTime())) return 'text-muted-foreground';
+			
+			const now = new Date();
+			const orderDateStr = orderDate.slice(0, 10); // yyyy-MM-dd
+			const todayStr = now.toISOString().slice(0, 10);
+			
+			// Si la commande est dans le futur (date différente), c'est à venir
+			if (orderDateStr > todayStr) {
+				return 'text-muted-foreground'; // Gris pour à venir
+			}
+			
+			// Si la commande est dans le passé (date différente), c'est dépassé
+			if (orderDateStr < todayStr) {
+				return 'text-red-600 dark:text-red-400'; // Rouge pour dépassé
+			}
+			
+			// Même jour : vérifier si la tranche est en cours, passée ou à venir
+			const hour = now.getHours();
+			const currentSlotStart = Math.floor(hour / 4) * 4;
+			const currentSlotEnd = currentSlotStart + 4;
+			const currentSlot = `${currentSlotStart}h-${currentSlotEnd}h`;
+			
+			// Extraire l'heure de début de la tranche de la commande
+			const orderHour = orderDateTime.getHours();
+			const orderSlotStart = Math.floor(orderHour / 4) * 4;
+			const orderSlotEnd = orderSlotStart + 4;
+			const orderSlot = `${orderSlotStart}h-${orderSlotEnd}h`;
+			
+			// Si c'est la tranche en cours
+			if (orderSlot === currentSlot) {
+				return 'text-amber-600 dark:text-amber-400'; // Jaune pour en cours
+			}
+			
+			// Si la tranche de la commande est passée
+			if (orderSlotStart < currentSlotStart) {
+				return 'text-red-600 dark:text-red-400'; // Rouge pour dépassé
+			}
+			
+			// Sinon c'est à venir
+			return 'text-muted-foreground'; // Gris pour à venir
+		} catch {
+			return 'text-muted-foreground';
+		}
+	}
+
 	const filteredOrders = $derived.by(() => {
-		if (!statusFilter) return ordersState.items;
-		return ordersState.items.filter((order) => statusToKey(order.status) === statusFilter);
+		let orders = statusFilter
+			? ordersState.items.filter((order) => statusToKey(order.status) === statusFilter)
+			: ordersState.items;
+		
+		// Trier par date/heure : plus ancienne en haut
+		return [...orders].sort((a, b) => {
+			const dateA = a.orderDate ? new Date(a.orderDate).getTime() : 0;
+			const dateB = b.orderDate ? new Date(b.orderDate).getTime() : 0;
+			return dateA - dateB; // Tri croissant (plus ancienne en premier)
+		});
 	});
 
 	const STATUS_LABELS: Record<string, string> = {
@@ -244,6 +319,7 @@
 								</TableHead>
 								<TableHead>Statut</TableHead>
 								<TableHead>Date</TableHead>
+								<TableHead>Tranche</TableHead>								
 								<TableHead>Ref</TableHead>
 								<TableHead>Client</TableHead>
 								<TableHead>Tél.</TableHead>
@@ -270,6 +346,12 @@
 									</TableCell>
 									<TableCell>
 										<RelativeTimeIndicator date={order.orderDate} showTime={true} />
+									</TableCell>
+									<TableCell class="whitespace-nowrap">
+										{@const timeSlot = getTimeSlot(order.orderDate)}
+										<span class={getTimeSlotColorClass(order.orderDate, timeSlot)}>
+											{timeSlot}
+										</span>
 									</TableCell>
 									<TableCell class="tabular-nums font-medium" onclick={(e) => e.stopPropagation()}>
 										<Button variant="link" href="/orders/{order.id}" class="h-auto p-0 font-normal">

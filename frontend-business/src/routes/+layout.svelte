@@ -12,11 +12,16 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte';
 	import { initTheme } from '$lib/stores/theme.svelte';
-	import { dateRangeState, dateRangeActions } from '$lib/stores/dateRange.svelte';
+	import { dateRangeState, dateRangeActions, getDateRangeDayKeys, getDateRangeFourHourSlotKeys, getCurrentFourHourSlotIndex, getTodayKey, isSingleDay } from '$lib/stores/dateRange.svelte';
 	import { settingsActions } from '$lib/stores/settings.svelte';
 	import { userState } from '$lib/stores/user.svelte';
+	import { ordersState, ordersActions } from '$lib/stores/orders.svelte';
+	import { deliveriesState, deliveriesActions } from '$lib/stores/deliveries.svelte';
+	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
 	import CalendarIcon from '@lucide/svelte/icons/calendar';
 	import '../app.css';
+
+	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 	const publicPaths = ['/login', '/register', '/auth/callback', '/logout'];
 
@@ -53,6 +58,42 @@
 	let isMapPage = $derived(pathname === '/map');
 	let showPeriod = $derived(withSidebar && showPeriodSidebar(pathname));
 
+	// Données pour le graphique dans le header
+	const periodKeys = $derived(showPeriod ? getDateRangeDayKeys() : []);
+	const chartPeriodKeys = $derived(
+		isSingleDay() && periodKeys.length === 1
+			? getDateRangeFourHourSlotKeys(periodKeys[0]!).keys
+			: periodKeys
+	);
+	const chartLabels = $derived(
+		isSingleDay() && periodKeys.length === 1
+			? getDateRangeFourHourSlotKeys(periodKeys[0]!).labels
+			: periodKeys.map((key) => {
+					const [, m, d] = key.split('-');
+					return `${Number(d)} ${MONTH_LABELS[Number(m) - 1]}`;
+				})
+	);
+	const chartCurrentBarIndex = $derived(
+		isSingleDay() && periodKeys.length === 1
+			? getCurrentFourHourSlotIndex(periodKeys[0]!)
+			: periodKeys.length > 0
+				? (() => {
+						const idx = periodKeys.indexOf(getTodayKey());
+						return idx >= 0 ? idx : null;
+					})()
+				: null
+	);
+	const ordersInPeriod = $derived.by(() => {
+		if (!periodKeys.length) return [];
+		const set = new Set(periodKeys);
+		return ordersState.items.filter((o) => set.has((o.orderDate ?? '').toString().slice(0, 10)));
+	});
+	const deliveriesInPeriod = $derived.by(() => {
+		if (!periodKeys.length) return [];
+		const set = new Set(periodKeys);
+		return deliveriesState.routes.filter((d) => set.has((d.createdAt ?? '').toString().slice(0, 10)));
+	});
+
 	// Redirection client vers /login si route protégée et pas connecté
 	$effect(() => {
 		if (!browser || isPublic) return;
@@ -84,6 +125,16 @@
 			dateRangeActions.persistToStorage();
 		}
 	});
+
+	// Charger les données pour le graphique du header
+	$effect(() => {
+		if (!showPeriod || !browser) return;
+		const _ = dateRangeState.dateRange;
+		const __ = dateRangeState.dateFilter;
+		const ___ = dateRangeState.timeRange;
+		ordersActions.loadOrders();
+		deliveriesActions.loadDeliveries();
+	});
 </script>
 
 <svelte:head>
@@ -101,9 +152,31 @@
 	<SidebarProvider>
 		<AppSidebar />
 		<SidebarInset>
-			<header class="relative z-50 flex h-12 shrink-0 items-center gap-2 border-b bg-background px-4">
+			<header class="relative z-50 flex shrink-0 items-center gap-2 border-b bg-background px-4" style="min-height: 48px; height: auto;">
 				<SidebarTrigger class="-ms-2" />
 				<Separator orientation="vertical" class="h-5" />
+				{#if showPeriod && periodKeys.length > 0}
+					<div class="flex-1 min-w-0 flex flex-col px-2 overflow-hidden py-1">
+						<div class="w-full flex-1 min-h-0 overflow-x-auto overflow-y-hidden">
+							<OrdersChartContent
+								variant="order"
+								horizontal={false}
+								compact={true}
+								loading={ordersState.loading && !ordersInPeriod.length}
+								labels={chartLabels}
+								values={[]}
+								orders={ordersInPeriod}
+								periodKeys={chartPeriodKeys}
+								currentBarIndex={chartCurrentBarIndex}
+								byHour={false}
+								byMonth={false}
+								wideBarThreshold={20}
+								wideBarMinWidthPx={40}
+								emptyMessage=""
+							/>
+						</div>
+					</div>
+				{/if}
 				{#if showPeriod}
 					<Button
 						variant="ghost"
@@ -119,7 +192,7 @@
 			</header>
 			<div class="flex min-h-0 min-w-0 flex-1 flex-col">
 				<div class="flex min-h-0 min-w-0 flex-1">
-					<div class="min-h-0 min-w-0 flex-1 overflow-auto {isMapPage ? 'p-0' : 'p-6'}">
+					<div class="min-h-0 min-w-0 flex-1 overflow-auto {isMapPage ? 'p-0' : 'pt-3 pb-6 px-6'}">
 						{@render children()}
 					</div>
 					{#if showPeriod}

@@ -19,6 +19,7 @@
 	import { Calendar } from '$lib/components/ui/calendar';
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date';
+	import TimeSlotSelector from '$lib/components/TimeSlotSelector.svelte';
 
 	const MINUTE_OPTIONS = [0, 10, 20, 30, 40, 50].map((m) => ({
 		value: String(m).padStart(2, '0'),
@@ -84,53 +85,26 @@
 		return MINUTE_OPTIONS.filter((opt) => parseInt(opt.value, 10) >= nowMin);
 	}
 
-	/** Raccourci horaire : Maintenant = aujourd'hui + heure actuelle ; +2h/+4h/+6h = maintenant + offset, la date passe au lendemain si besoin. */
-	function setTimeShortcut(offsetHours: number) {
-		const d = new Date();
-		if (offsetHours > 0) d.setTime(d.getTime() + offsetHours * 60 * 60 * 1000);
-		const rounded = getNowRounded();
-		if (offsetHours === 0) {
-			orderHour = rounded.hour;
-			orderMinute = rounded.minute;
-			orderDateValue = today(getLocalTimeZone());
-			return;
-		}
-		let h = d.getHours();
-		let m = d.getMinutes();
-		m = Math.round(m / 10) * 10;
-		if (m === 60) {
-			h += 1;
-			m = 0;
-		}
-		orderHour = String(h % 24).padStart(2, '0');
-		orderMinute = String(m).padStart(2, '0');
-		orderDateValue = new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
-	}
-
-	/** Nombre de commandes (en attente / planifiées) par plage de raccourci sur la date sélectionnée. */
-	function getShortcutCounts(selectedDate: CalendarDate): { now: number; plus2: number; plus4: number; plus6: number } {
-		const dateStr = orderDateToApiString(selectedDate);
-		const ordersOnDate = ordersState.items.filter((o) => (o.orderDate ?? '').toString().startsWith(dateStr));
-		const now = new Date();
-		const currentSlotStart = Math.floor(now.getHours() / 2) * 2;
-		const nextSlot = getNextTwoHourSlot();
-		const slotStarts = [currentSlotStart, nextSlot, (nextSlot + 2) % 24, (nextSlot + 4) % 24];
-		const counts = { now: 0, plus2: 0, plus4: 0, plus6: 0 };
-		const keys: ('now' | 'plus2' | 'plus4' | 'plus6')[] = ['now', 'plus2', 'plus4', 'plus6'];
-		for (const o of ordersOnDate) {
-			if (!o.orderDate) continue;
-			const h = new Date(o.orderDate).getHours();
-			for (let i = 0; i < 4; i++) {
-				const start = slotStarts[i];
-				const end = (start + 2) % 24;
-				const inSlot = end > start ? (h >= start && h < end) : (h >= start || h < end);
-				if (inSlot) {
-					counts[keys[i]] += 1;
-					break;
-				}
+	/** Mettre à jour la date si nécessaire lors du changement de tranche */
+	function handleSlotChange(slotIndex: number) {
+		selectedSlot = slotIndex;
+		// Si on sélectionne une tranche future et qu'on est aujourd'hui, vérifier si on doit passer au lendemain
+		const todayRef = today(getLocalTimeZone());
+		const isToday = orderDateValue.year === todayRef.year && 
+		                orderDateValue.month === todayRef.month && 
+		                orderDateValue.day === todayRef.day;
+		
+		if (isToday) {
+			const now = new Date();
+			const currentHour = now.getHours();
+			const currentSlot = Math.floor(currentHour / 4);
+			const selectedHour = slotIndex * 4;
+			
+			// Si la tranche sélectionnée est passée aujourd'hui, passer au lendemain
+			if (slotIndex < currentSlot) {
+				orderDateValue = todayRef.add({ days: 1 });
 			}
 		}
-		return counts;
 	}
 
 	const initialTime = getNowRounded();
@@ -140,10 +114,14 @@
 	let internalComment = $state('');
 	let orderDateOpen = $state(false);
 	let orderDateValue = $state<CalendarDate>(today(getLocalTimeZone()));
-	let orderHour = $state(initialTime.hour);
-	let orderMinute = $state(initialTime.minute);
-	let orderHourOpen = $state(false);
-	let orderMinuteOpen = $state(false);
+	
+	// Sélection de tranche horaire (0-5 pour 0h-4h, 4h-8h, 8h-12h, 12h-16h, 16h-20h, 20h-24h)
+	const initialSlot = Math.floor(parseInt(initialTime.hour, 10) / 4);
+	let selectedSlot = $state(initialSlot);
+	
+	// Convertir la tranche sélectionnée en heure/minute pour l'API
+	const orderHour = $derived(String(selectedSlot * 4).padStart(2, '0'));
+	const orderMinute = $derived('00');
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
 	let geocodeResult = $state<{ lat: number; lng: number; displayName: string } | null>(null);
@@ -267,7 +245,6 @@
 		return `${y}-${m}-${day}`;
 	}
 
-	const shortcutCounts = $derived(getShortcutCounts(orderDateValue));
 
 	function formatOrderDateLabel(d: CalendarDate): string {
 		return d.toDate(getLocalTimeZone()).toLocaleDateString('fr-FR', {
@@ -358,17 +335,14 @@
 											if (v !== undefined) {
 												const newDate = new CalendarDate(v.year, v.month, v.day);
 												orderDateValue = newDate;
-												// Si on passe à aujourd'hui et que l'heure saisie est passée, ramener à maintenant
+												// Si on passe à aujourd'hui et que la tranche sélectionnée est passée, ramener à la tranche actuelle
 												const todayRef = today(getLocalTimeZone());
 												if (newDate.year === todayRef.year && newDate.month === todayRef.month && newDate.day === todayRef.day) {
-													const now = getNowRounded();
-													const h = parseInt(orderHour, 10);
-													const m = parseInt(orderMinute, 10);
-													const nowH = parseInt(now.hour, 10);
-													const nowM = parseInt(now.minute, 10);
-													if (h < nowH || (h === nowH && m < nowM)) {
-														orderHour = now.hour;
-														orderMinute = now.minute;
+													const now = new Date();
+													const currentHour = now.getHours();
+													const currentSlot = Math.floor(currentHour / 4);
+													if (selectedSlot < currentSlot) {
+														selectedSlot = currentSlot;
 													}
 												}
 											}
@@ -379,155 +353,13 @@
 							</PopoverRoot>
 						</div>
 						<div class="space-y-2">
-							<Label>Raccourcis horaire</Label>
-							<div class="flex flex-wrap gap-2">
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									disabled={submitting}
-									onclick={() => setTimeShortcut(0)}
-									class="relative"
-								>
-									Maintenant
-									{#if shortcutCounts.now > 0}
-										<span
-											class="bg-primary text-primary-foreground ml-1.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium"
-											title={shortcutCounts.now + ' commande(s) déjà sur cette plage'}
-										>
-											{shortcutCounts.now}
-										</span>
-									{/if}
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									disabled={submitting}
-									onclick={() => setTimeShortcut(2)}
-									class="relative"
-								>
-									+2h
-									{#if shortcutCounts.plus2 > 0}
-										<span
-											class="bg-primary text-primary-foreground ml-1.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium"
-											title={shortcutCounts.plus2 + ' commande(s) déjà sur cette plage'}
-										>
-											{shortcutCounts.plus2}
-										</span>
-									{/if}
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									disabled={submitting}
-									onclick={() => setTimeShortcut(4)}
-									class="relative"
-								>
-									+4h
-									{#if shortcutCounts.plus4 > 0}
-										<span
-											class="bg-primary text-primary-foreground ml-1.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium"
-											title={shortcutCounts.plus4 + ' commande(s) déjà sur cette plage'}
-										>
-											{shortcutCounts.plus4}
-										</span>
-									{/if}
-								</Button>
-								<Button
-									type="button"
-									variant="outline"
-									size="sm"
-									disabled={submitting}
-									onclick={() => setTimeShortcut(6)}
-									class="relative"
-								>
-									+6h
-									{#if shortcutCounts.plus6 > 0}
-										<span
-											class="bg-primary text-primary-foreground ml-1.5 inline-flex size-5 shrink-0 items-center justify-center rounded-full text-xs font-medium"
-											title={shortcutCounts.plus6 + ' commande(s) déjà sur cette plage'}
-										>
-											{shortcutCounts.plus6}
-										</span>
-									{/if}
-								</Button>
-							</div>
-						</div>
-						<div class="flex gap-2">
-							<div class="space-y-2 flex-1">
-								<Label for="orderHour">Heure</Label>
-								<PopoverRoot bind:open={orderHourOpen}>
-									<PopoverTrigger id="orderHour">
-										{#snippet child({ props }: { props: Record<string, unknown> })}
-											<Button
-												{...props}
-												variant="outline"
-												class="w-full justify-between font-normal"
-												disabled={submitting}
-											>
-												{orderHour.padStart(2, '0')}h
-												<ChevronDownIcon class="size-4 opacity-50" />
-											</Button>
-										{/snippet}
-									</PopoverTrigger>
-									<PopoverContent class="w-auto p-0" align="start">
-										<div class="max-h-56 overflow-y-auto py-1">
-											{#each getHourSlots(orderDateValue) as opt}
-												<button
-													type="button"
-													class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {orderHour === opt.value
-														? 'bg-accent text-accent-foreground'
-														: ''}"
-													onclick={() => {
-														orderHour = opt.value;
-														orderHourOpen = false;
-													}}
-												>
-													{opt.label}
-												</button>
-											{/each}
-										</div>
-									</PopoverContent>
-								</PopoverRoot>
-							</div>
-							<div class="space-y-2 flex-1">
-								<Label for="orderMinute">Minutes</Label>
-								<PopoverRoot bind:open={orderMinuteOpen}>
-									<PopoverTrigger id="orderMinute">
-										{#snippet child({ props }: { props: Record<string, unknown> })}
-											<Button
-												{...props}
-												variant="outline"
-												class="w-full justify-between font-normal"
-												disabled={submitting}
-											>
-												{orderMinute.padStart(2, '0')}
-												<ChevronDownIcon class="size-4 opacity-50" />
-											</Button>
-										{/snippet}
-									</PopoverTrigger>
-									<PopoverContent class="w-auto p-0" align="start">
-										<div class="max-h-56 overflow-y-auto py-1">
-											{#each getMinuteOptions(orderDateValue, orderHour) as opt}
-												<button
-													type="button"
-													class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {orderMinute === opt.value
-														? 'bg-accent text-accent-foreground'
-														: ''}"
-													onclick={() => {
-														orderMinute = opt.value;
-														orderMinuteOpen = false;
-													}}
-												>
-													{opt.label}
-												</button>
-											{/each}
-										</div>
-									</PopoverContent>
-								</PopoverRoot>
-							</div>
+							<TimeSlotSelector
+								selectedDate={orderDateValue}
+								selectedSlot={selectedSlot}
+								onSlotChange={handleSlotChange}
+								onDateChange={(newDate) => { orderDateValue = newDate; }}
+								disabled={submitting}
+							/>
 						</div>
 					</div>
 					<div class="space-y-2">

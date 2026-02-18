@@ -30,6 +30,7 @@
 	import { cn } from '$lib/utils';
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 	import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date';
+	import TimeSlotSelector from '$lib/components/TimeSlotSelector.svelte';
 
 	const MINUTE_OPTIONS = [0, 10, 20, 30, 40, 50].map((m) => ({
 		value: String(m).padStart(2, '0'),
@@ -93,27 +94,25 @@
 		return MINUTE_OPTIONS.filter((opt) => parseInt(opt.value, 10) >= nowMin);
 	}
 
-	/** Raccourci horaire : Maintenant = aujourd'hui + heure actuelle ; +2h/+4h/+6h = maintenant + offset, la date passe au lendemain si besoin. */
-	function setTimeShortcut(offsetHours: number) {
-		const d = new Date();
-		if (offsetHours > 0) d.setTime(d.getTime() + offsetHours * 60 * 60 * 1000);
-		const rounded = getNowRounded();
-		if (offsetHours === 0) {
-			plannedStartHour = rounded.hour;
-			plannedStartMinute = rounded.minute;
-			plannedStartDateValue = today(getLocalTimeZone());
-			return;
+	/** Mettre à jour la date si nécessaire lors du changement de tranche */
+	function handleSlotChange(slotIndex: number) {
+		selectedSlot = slotIndex;
+		// Si on sélectionne une tranche future et qu'on est aujourd'hui, vérifier si on doit passer au lendemain
+		const todayRef = today(getLocalTimeZone());
+		const isToday = plannedStartDateValue.year === todayRef.year && 
+		                plannedStartDateValue.month === todayRef.month && 
+		                plannedStartDateValue.day === todayRef.day;
+		
+		if (isToday) {
+			const now = new Date();
+			const currentHour = now.getHours();
+			const currentSlot = Math.floor(currentHour / 4);
+			
+			// Si la tranche sélectionnée est passée aujourd'hui, passer au lendemain
+			if (slotIndex < currentSlot) {
+				plannedStartDateValue = todayRef.add({ days: 1 });
+			}
 		}
-		let h = d.getHours();
-		let m = d.getMinutes();
-		m = Math.round(m / 10) * 10;
-		if (m === 60) {
-			h += 1;
-			m = 0;
-		}
-		plannedStartHour = String(h % 24).padStart(2, '0');
-		plannedStartMinute = String(m).padStart(2, '0');
-		plannedStartDateValue = new CalendarDate(d.getFullYear(), d.getMonth() + 1, d.getDate());
 	}
 
 	function plannedStartDateToApiString(d: CalendarDate): string {
@@ -143,10 +142,13 @@
 	let routeName = $state('');
 	let plannedStartDateOpen = $state(false);
 	let plannedStartDateValue = $state<CalendarDate>(today(getLocalTimeZone()));
-	let plannedStartHour = $state(initialTime.hour);
-	let plannedStartMinute = $state(initialTime.minute);
-	let plannedStartHourOpen = $state(false);
-	let plannedStartMinuteOpen = $state(false);
+	// Sélection de tranche horaire (0-5 pour 0h-4h, 4h-8h, 8h-12h, 12h-16h, 16h-20h, 20h-24h)
+	const initialSlot = Math.floor(parseInt(initialTime.hour, 10) / 4);
+	let selectedSlot = $state(initialSlot);
+	
+	// Convertir la tranche sélectionnée en heure/minute pour l'API
+	const plannedStartHour = $derived(String(selectedSlot * 4).padStart(2, '0'));
+	const plannedStartMinute = $derived('00');
 	let loading = $state(false);
 	let submitting = $state(false);
 	let error = $state<string | null>(null);
@@ -300,49 +302,10 @@
 								placeholder="Ex: Est - Matin, Nuit 22h-6h"
 							/>
 						</div>
-						<div class="space-y-2">
-							<Label>Heure de début prévue</Label>
-							<p class="text-xs text-muted-foreground">Filtre les commandes affichées (date/heure de livraison ≥ cette heure) et sert au calcul des heures d'arrivée estimées.</p>
 							<div class="space-y-2">
-								<div class="flex flex-wrap gap-2">
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										disabled={submitting}
-										onclick={() => setTimeShortcut(0)}
-									>
-										Maintenant
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										disabled={submitting}
-										onclick={() => setTimeShortcut(2)}
-									>
-										+2h
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										disabled={submitting}
-										onclick={() => setTimeShortcut(4)}
-									>
-										+4h
-									</Button>
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										disabled={submitting}
-										onclick={() => setTimeShortcut(6)}
-									>
-										+6h
-									</Button>
-								</div>
-								<div class="flex flex-wrap gap-2 items-end">
+								<Label>Heure de début prévue</Label>
+								<p class="text-xs text-muted-foreground">Filtre les commandes affichées (date/heure de livraison ≥ cette heure) et sert au calcul des heures d'arrivée estimées.</p>
+								<div class="space-y-2">
 									<div class="space-y-1">
 										<Label for="plannedStartDate" class="text-xs">Date</Label>
 										<PopoverRoot bind:open={plannedStartDateOpen}>
@@ -370,14 +333,11 @@
 															plannedStartDateValue = newDate;
 															const todayRef = today(getLocalTimeZone());
 															if (newDate.year === todayRef.year && newDate.month === todayRef.month && newDate.day === todayRef.day) {
-																const now = getNowRounded();
-																const h = parseInt(plannedStartHour, 10);
-																const m = parseInt(plannedStartMinute, 10);
-																const nowH = parseInt(now.hour, 10);
-																const nowM = parseInt(now.minute, 10);
-																if (h < nowH || (h === nowH && m < nowM)) {
-																	plannedStartHour = now.hour;
-																	plannedStartMinute = now.minute;
+																const now = new Date();
+																const currentHour = now.getHours();
+																const currentSlot = Math.floor(currentHour / 4);
+																if (selectedSlot < currentSlot) {
+																	selectedSlot = currentSlot;
 																}
 															}
 														}
@@ -387,81 +347,15 @@
 											</PopoverContent>
 										</PopoverRoot>
 									</div>
-									<div class="space-y-1">
-										<Label for="plannedStartHour" class="text-xs">Heure</Label>
-										<PopoverRoot bind:open={plannedStartHourOpen}>
-											<PopoverTrigger id="plannedStartHour">
-												{#snippet child({ props }: { props: Record<string, unknown> })}
-													<Button
-														{...props}
-														variant="outline"
-														class="w-[72px] justify-between font-normal"
-														disabled={submitting}
-													>
-														{plannedStartHour.padStart(2, '0')}h
-														<ChevronDownIcon class="size-4 opacity-50" />
-													</Button>
-												{/snippet}
-											</PopoverTrigger>
-											<PopoverContent class="w-auto p-0" align="start">
-												<div class="max-h-56 overflow-y-auto py-1">
-													{#each getHourSlots(plannedStartDateValue) as opt}
-														<button
-															type="button"
-															class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {plannedStartHour === opt.value
-																? 'bg-accent text-accent-foreground'
-																: ''}"
-															onclick={() => {
-																plannedStartHour = opt.value;
-																plannedStartHourOpen = false;
-															}}
-														>
-															{opt.label}
-														</button>
-													{/each}
-												</div>
-											</PopoverContent>
-										</PopoverRoot>
-									</div>
-									<div class="space-y-1">
-										<Label for="plannedStartMinute" class="text-xs">Minutes</Label>
-										<PopoverRoot bind:open={plannedStartMinuteOpen}>
-											<PopoverTrigger id="plannedStartMinute">
-												{#snippet child({ props }: { props: Record<string, unknown> })}
-													<Button
-														{...props}
-														variant="outline"
-														class="w-[72px] justify-between font-normal"
-														disabled={submitting}
-													>
-														{plannedStartMinute.padStart(2, '0')}
-														<ChevronDownIcon class="size-4 opacity-50" />
-													</Button>
-												{/snippet}
-											</PopoverTrigger>
-											<PopoverContent class="w-auto p-0" align="start">
-												<div class="max-h-56 overflow-y-auto py-1">
-													{#each getMinuteOptions(plannedStartDateValue, plannedStartHour) as opt}
-														<button
-															type="button"
-															class="hover:bg-accent hover:text-accent-foreground flex w-full cursor-pointer px-3 py-2 text-left text-sm outline-none focus:bg-accent focus:text-accent-foreground disabled:pointer-events-none disabled:opacity-50 {plannedStartMinute === opt.value
-																? 'bg-accent text-accent-foreground'
-																: ''}"
-															onclick={() => {
-																plannedStartMinute = opt.value;
-																plannedStartMinuteOpen = false;
-															}}
-														>
-															{opt.label}
-														</button>
-													{/each}
-												</div>
-											</PopoverContent>
-										</PopoverRoot>
-									</div>
+									<TimeSlotSelector
+										selectedDate={plannedStartDateValue}
+										selectedSlot={selectedSlot}
+										onSlotChange={handleSlotChange}
+										onDateChange={(newDate) => { plannedStartDateValue = newDate; }}
+										disabled={submitting}
+									/>
 								</div>
 							</div>
-						</div>
 						<div class="space-y-2">
 							<Label for="driver">Livreur *</Label>
 							<select

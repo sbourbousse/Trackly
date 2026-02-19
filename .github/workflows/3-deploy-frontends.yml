@@ -1,0 +1,163 @@
+# Deploy Frontends - Déclenchement Manuel
+# Déploie les frontends sur Vercel
+
+name: Deploy Frontends (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environnement Vercel'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+      branch:
+        description: 'Branche à déployer'
+        required: false
+        default: 'develop'
+        type: string
+      frontend:
+        description: 'Frontend(s) à déployer'
+        required: true
+        default: 'all'
+        type: choice
+        options:
+          - all
+          - frontend-business
+          - frontend-driver
+          - frontend-tracking
+          - frontend-landing-page
+
+jobs:
+  deploy-business:
+    name: Deploy Business
+    if: github.event.inputs.frontend == 'all' || github.event.inputs.frontend == 'frontend-business'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ./frontend-business/package-lock.json
+
+      - name: Install & Deploy
+        working-directory: ./frontend-business
+        run: |
+          npm ci
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }}
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BUSINESS }}
+
+  deploy-driver:
+    name: Deploy Driver
+    if: github.event.inputs.frontend == 'all' || github.event.inputs.frontend == 'frontend-driver'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ./frontend-driver/package-lock.json
+
+      - name: Install & Deploy
+        working-directory: ./frontend-driver
+        run: |
+          npm ci
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }}
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DRIVER }}
+
+  deploy-tracking:
+    name: Deploy Tracking
+    if: github.event.inputs.frontend == 'all' || github.event.inputs.frontend == 'frontend-tracking'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ./frontend-tracking/package-lock.json
+
+      - name: Install & Deploy
+        working-directory: ./frontend-tracking
+        run: |
+          npm ci
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }}
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_TRACKING }}
+
+  deploy-landing:
+    name: Deploy Landing Page
+    if: github.event.inputs.frontend == 'all' || github.event.inputs.frontend == 'frontend-landing-page'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ./frontend-landing-page/package-lock.json
+
+      - name: Install & Deploy
+        working-directory: ./frontend-landing-page
+        run: |
+          npm ci
+          if [ "${{ github.event.inputs.environment }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }}
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+
+  summary:
+    name: Deployment Summary
+    needs: [deploy-business, deploy-driver, deploy-tracking, deploy-landing]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## ✅ Déploiement Frontends Terminé" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environnement:** ${{ github.event.inputs.environment }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Branche:** ${{ github.event.inputs.branch }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Frontend(s):** ${{ github.event.inputs.frontend }}" >> $GITHUB_STEP_SUMMARY

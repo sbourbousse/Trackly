@@ -1,0 +1,249 @@
+# Deploy All - Backend + Frontends
+# Déploie tout d'un coup avec déclenchement manuel
+
+name: Deploy All (Manual)
+
+on:
+  workflow_dispatch:
+    inputs:
+      backend_env:
+        description: 'Environnement Backend (Railway)'
+        required: true
+        default: 'production'
+        type: choice
+        options:
+          - production
+          - testing
+      frontend_env:
+        description: 'Environnement Frontends (Vercel)'
+        required: true
+        default: 'preview'
+        type: choice
+        options:
+          - preview
+          - production
+      branch:
+        description: 'Branche à déployer'
+        required: false
+        default: 'main'
+        type: string
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_OWNER: ${{ github.repository_owner }}
+
+jobs:
+  # ===== BUILD BACKEND =====
+  build-backend:
+    name: Build Backend Image
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Determine tag
+        id: tag
+        run: |
+          if [ "${{ github.event.inputs.backend_env }}" == "production" ]; then
+            echo "TAG=latest" >> $GITHUB_OUTPUT
+          else
+            echo "TAG=testing" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ./backend
+          file: ./backend/Dockerfile
+          push: true
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/trackly-backend:${{ steps.tag.outputs.TAG }}
+            ${{ env.REGISTRY }}/${{ env.IMAGE_OWNER }}/trackly-backend:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  # ===== DEPLOY BACKEND =====
+  deploy-backend:
+    name: Deploy Backend
+    needs: build-backend
+    runs-on: ubuntu-latest
+    environment: ${{ github.event.inputs.backend_env }}
+    steps:
+      - name: Determine Environment ID
+        id: env
+        run: |
+          if [ "${{ github.event.inputs.backend_env }}" == "production" ]; then
+            echo "ENV_ID=${{ secrets.RAILWAY_ENVIRONMENT_ID }}" >> $GITHUB_OUTPUT
+          else
+            echo "ENV_ID=${{ secrets.RAILWAY_TESTING_ENVIRONMENT_ID }}" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Redeploy Backend
+        env:
+          RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+          RAILWAY_ENVIRONMENT_ID: ${{ steps.env.outputs.ENV_ID }}
+          RAILWAY_SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID_BACKEND }}
+        run: |
+          echo "🚀 Redéploiement du backend..."
+          resp=$(curl -sS -w '\n%{http_code}' -X POST "https://backboard.railway.com/graphql/v2" \
+            -H "Authorization: Bearer ${RAILWAY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            --data "{\"query\":\"mutation serviceInstanceRedeploy(\$environmentId: String!, \$serviceId: String!) { serviceInstanceRedeploy(environmentId: \$environmentId, serviceId: \$serviceId) }\",\"variables\":{\"environmentId\":\"${RAILWAY_ENVIRONMENT_ID}\",\"serviceId\":\"${RAILWAY_SERVICE_ID}\"}}")
+          code=$(echo "$resp" | tail -n1)
+          body=$(echo "$resp" | sed '$d')
+          echo "$body" | jq . 2>/dev/null || echo "$body"
+          if [ "$code" != "200" ] || echo "$body" | grep -qE '"errors"[[:space:]]*:[[:space:]]*\[[^]]'; then 
+            echo "❌ Redeploy failed"
+            exit 1
+          fi
+          echo "✅ Backend redéployé"
+
+  # ===== DEPLOY FRONTENDS (parallel) =====
+  deploy-business:
+    name: Deploy Business
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ./frontend-business/package-lock.json
+
+      - name: Install & Deploy
+        working-directory: ./frontend-business
+        run: |
+          npm ci
+          if [ "${{ github.event.inputs.frontend_env }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }}
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_BUSINESS }}
+
+  deploy-driver:
+    name: Deploy Driver
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ./frontend-driver/package-lock.json
+
+      - name: Install & Deploy
+        working-directory: ./frontend-driver
+        run: |
+          npm ci
+          if [ "${{ github.event.inputs.frontend_env }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }}
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_DRIVER }}
+
+  deploy-tracking:
+    name: Deploy Tracking
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ./frontend-tracking/package-lock.json
+
+      - name: Install & Deploy
+        working-directory: ./frontend-tracking
+        run: |
+          npm ci
+          if [ "${{ github.event.inputs.frontend_env }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }}
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_TRACKING }}
+
+  deploy-landing:
+    name: Deploy Landing
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.branch }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ./frontend-landing-page/package-lock.json
+
+      - name: Install & Deploy
+        working-directory: ./frontend-landing-page
+        run: |
+          npm ci
+          if [ "${{ github.event.inputs.frontend_env }}" == "production" ]; then
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+          else
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }}
+          fi
+        env:
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+
+  # ===== SUMMARY =====
+  summary:
+    name: Deployment Summary
+    needs: [deploy-backend, deploy-business, deploy-driver, deploy-tracking, deploy-landing]
+    if: always()
+    runs-on: ubuntu-latest
+    steps:
+      - name: Summary
+        run: |
+          echo "## 🚀 Déploiement Complet Terminé" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Backend (Railway)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environnement:** ${{ github.event.inputs.backend_env }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Statut:** ${{ needs.deploy-backend.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Frontends (Vercel)" >> $GITHUB_STEP_SUMMARY
+          echo "- **Environnement:** ${{ github.event.inputs.frontend_env }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Business:** ${{ needs.deploy-business.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Driver:** ${{ needs.deploy-driver.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Tracking:** ${{ needs.deploy-tracking.result }}" >> $GITHUB_STEP_SUMMARY
+          echo "- **Landing:** ${{ needs.deploy-landing.result }}" >> $GITHUB_STEP_SUMMARY

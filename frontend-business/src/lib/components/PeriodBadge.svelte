@@ -12,6 +12,8 @@
 	import { cn } from '$lib/utils';
 	import type { DateRange } from 'bits-ui';
 
+	let { absolute = false } = $props();
+
 	// Indices dans DateFilterSidebar PRESETS : 0=7 derniers jours, 1=Hier, 2=Aujourd'hui, 3=Demain, 4=7 prochains jours, 5=Personnalisé
 	const NAVIGABLE_PRESET_INDICES = [0, 1, 2, 3, 4]; // 7 derniers jours, Hier, Aujourd'hui, Demain, 7 prochains jours
 	
@@ -105,7 +107,11 @@
 	const isLast = $derived(currentNavIndex === NAVIGABLE_PRESET_INDICES.length - 1); // 7 prochains jours
 </script>
 
-<div class="absolute left-1/2 top-2 -translate-x-1/2 z-[1100]">
+<div class={cn(
+	absolute 
+		? "absolute left-1/2 top-2 -translate-x-1/2 z-[1100]" 
+		: "flex justify-center mb-4"
+)}>
 	<div class="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 shadow-sm">
 		{#if !isFirst}
 			<button

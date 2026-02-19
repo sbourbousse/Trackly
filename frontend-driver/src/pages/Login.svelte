@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { createEventDispatcher } from 'svelte';
+	import { createEventDispatcher, onMount } from 'svelte';
 	import { getDriverTenantId } from '../lib/api/client';
 	import { getRuntimeConfig } from '../lib/config';
 
@@ -8,9 +8,28 @@
 	let driverId = $state('');
 	let loading = $state(false);
 	let error = $state<string | null>(null);
+	let autoLoginAttempted = $state(false);
 
 	const config = getRuntimeConfig();
 	const baseUrl = config.API_BASE_URL || 'http://localhost:5257';
+
+	// Lire le driverId depuis l'URL
+	onMount(() => {
+		if (typeof window !== 'undefined') {
+			const urlParams = new URLSearchParams(window.location.search);
+			const urlDriverId = urlParams.get('driverId');
+			if (urlDriverId) {
+				driverId = urlDriverId;
+				// Déclencher automatiquement la connexion après un court délai
+				setTimeout(() => {
+					if (!autoLoginAttempted) {
+						autoLoginAttempted = true;
+						handleLogin();
+					}
+				}, 500);
+			}
+		}
+	});
 
 	async function handleLogin() {
 		if (!driverId.trim()) {

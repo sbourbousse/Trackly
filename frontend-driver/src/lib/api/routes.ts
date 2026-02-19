@@ -12,6 +12,7 @@ export type ApiDeliveryInRoute = {
 	completedAt: string | null;
 	customerName: string;
 	address: string;
+	orderDate?: string | null;
 };
 
 /** Détail tournée (pour afficher "X / Y livrées" dans l'app chauffeur). */

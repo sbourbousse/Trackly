@@ -26,7 +26,6 @@
 	import UserPlusIcon from '@lucide/svelte/icons/user-plus';
 	import MoonIcon from '@lucide/svelte/icons/moon';
 	import SunIcon from '@lucide/svelte/icons/sun';
-	import UploadIcon from '@lucide/svelte/icons/upload';
 	import MapPinIcon from '@lucide/svelte/icons/map-pin';
 	import RouteIcon from '@lucide/svelte/icons/route';
 	import SettingsIcon from '@lucide/svelte/icons/settings';
@@ -105,12 +104,6 @@
 								<SidebarMenuSubButton href="/orders/new" isActive={pathname === '/orders/new'}>
 									<ClipboardEditIcon class="size-4 shrink-0" aria-hidden="true" />
 									<span>Créer commande</span>
-								</SidebarMenuSubButton>
-							</SidebarMenuSubItem>
-							<SidebarMenuSubItem>
-								<SidebarMenuSubButton href="/orders/import" isActive={pathname === '/orders/import'}>
-									<UploadIcon class="size-4 shrink-0" aria-hidden="true" />
-									<span>Importer commande</span>
 								</SidebarMenuSubButton>
 							</SidebarMenuSubItem>
 						</SidebarMenuSub>

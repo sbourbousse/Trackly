@@ -3,9 +3,11 @@
 	import { goto } from '$app/navigation';
 	import { DropdownMenu } from 'bits-ui';
 	import MoreVerticalIcon from '@lucide/svelte/icons/more-vertical';
+	import ExternalLinkIcon from '@lucide/svelte/icons/external-link';
+	import CopyIcon from '@lucide/svelte/icons/copy';
+	import CheckIcon from '@lucide/svelte/icons/check';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import XIcon from '@lucide/svelte/icons/x';
-	import PageHeader from '$lib/components/PageHeader.svelte';
 	import PackageIcon from '@lucide/svelte/icons/package';
 	import RouteIcon from '@lucide/svelte/icons/route';
 	import MapPinIcon from '@lucide/svelte/icons/map-pin';
@@ -50,6 +52,57 @@
 	let deleting = $state(false);
 	let deleteError = $state<string | null>(null);
 	let statusFilter = $state<string | null>(null);
+	let copiedTrackingDeliveryId = $state<string | null>(null);
+
+	// URL de l'app frontend-tracking (configurable par variable d'environnement)
+	const trackingAppUrl = import.meta.env.VITE_TRACKING_APP_URL || 'http://localhost:3001';
+
+	function getClientTrackingUrl(deliveryId: string): string {
+		const tenantId =
+			typeof window !== 'undefined'
+				? (localStorage.getItem('trackly_tenant_id') || sessionStorage.getItem('trackly_tenant_id'))
+				: null;
+		const base = `${trackingAppUrl}/tracking/${encodeURIComponent(deliveryId)}`;
+		return tenantId ? `${base}?tenantId=${encodeURIComponent(tenantId)}` : base;
+	}
+
+	function openClientTracking(deliveryId: string) {
+		window.open(getClientTrackingUrl(deliveryId), '_blank');
+	}
+
+	function openClientTrackingPopup(deliveryId: string) {
+		const url = getClientTrackingUrl(deliveryId);
+		const width = 430;
+		const height = 820;
+		const left = Math.max(0, Math.round((window.screen.width - width) / 2));
+		const top = Math.max(0, Math.round((window.screen.height - height) / 2));
+
+		const popup = window.open(
+			url,
+			'trackly-client-tracking-popup',
+			`popup=yes,width=${width},height=${height},left=${left},top=${top},resizable=yes,scrollbars=yes`
+		);
+
+		// Fallback sur un onglet classique si la popup est bloquee.
+		if (!popup) {
+			window.open(url, '_blank');
+			return;
+		}
+
+		popup.focus();
+	}
+
+	async function copyClientTrackingLink(deliveryId: string) {
+		try {
+			await navigator.clipboard.writeText(getClientTrackingUrl(deliveryId));
+			copiedTrackingDeliveryId = deliveryId;
+			setTimeout(() => {
+				if (copiedTrackingDeliveryId === deliveryId) copiedTrackingDeliveryId = null;
+			}, 2000);
+		} catch (err) {
+			console.error('Erreur lors de la copie du lien de suivi client:', err);
+		}
+	}
 
 	function deliveryStatusToKey(s: string): string {
 		const lower = (s ?? '').toLowerCase();
@@ -206,10 +259,6 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6 relative">
-	<PageHeader
-		title="Livraisons &amp; tournées"
-		icon={PackageIcon}
-	/>
 	<PeriodBadge />
 
 	<Tabs value={activeTab} onValueChange={setTab} class="w-full">
@@ -349,6 +398,7 @@
 										<TableHead>Date</TableHead>
 										<TableHead>Ref</TableHead>
 										<TableHead>Chauffeur</TableHead>
+										<TableHead class="w-[70px] text-right">Actions</TableHead>
 									</TableRow>
 								</TableHeader>
 								<TableBody>
@@ -378,6 +428,50 @@
 												</Button>
 											</TableCell>
 											<TableCell>{delivery.driver}</TableCell>
+											<TableCell class="text-right" onclick={(e) => e.stopPropagation()}>
+												<DropdownMenu.Root>
+													<DropdownMenu.Trigger
+														class="inline-flex size-8 items-center justify-center rounded-md hover:bg-muted focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+														aria-label="Actions de la livraison"
+													>
+														<MoreVerticalIcon class="size-4" />
+													</DropdownMenu.Trigger>
+													<DropdownMenu.Portal>
+														<DropdownMenu.Content
+															class="z-50 min-w-[12rem] overflow-hidden rounded-md border border-border bg-popover p-1 text-popover-foreground shadow-md"
+															sideOffset={4}
+															align="end"
+														>
+															<DropdownMenu.Item
+																class="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+																onSelect={() => openClientTrackingPopup(delivery.id)}
+															>
+																<ExternalLinkIcon class="size-4" />
+																Ouvrir suivi client (fenêtre)
+															</DropdownMenu.Item>
+															<DropdownMenu.Item
+																class="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+																onSelect={() => openClientTracking(delivery.id)}
+															>
+																<ExternalLinkIcon class="size-4" />
+																Ouvrir suivi client
+															</DropdownMenu.Item>
+															<DropdownMenu.Item
+																class="relative flex cursor-default select-none items-center gap-2 rounded-sm px-2 py-1.5 text-sm outline-none hover:bg-accent hover:text-accent-foreground focus:bg-accent focus:text-accent-foreground"
+																onSelect={() => copyClientTrackingLink(delivery.id)}
+															>
+																{#if copiedTrackingDeliveryId === delivery.id}
+																	<CheckIcon class="size-4" />
+																	Lien copié
+																{:else}
+																	<CopyIcon class="size-4" />
+																	Copier lien suivi
+																{/if}
+															</DropdownMenu.Item>
+														</DropdownMenu.Content>
+													</DropdownMenu.Portal>
+												</DropdownMenu.Root>
+											</TableCell>
 										</TableRow>
 									{/each}
 								</TableBody>

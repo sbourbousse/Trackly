@@ -171,13 +171,46 @@
 				{/if}
 				Livraison {delivery.id.slice(0, 8).toUpperCase()}
 			</h2>
-			<p style="margin-bottom: 0.5rem;"><strong>Commande:</strong> {delivery.orderId.slice(0, 8).toUpperCase()}</p>
-			<p style="margin-bottom: 0.5rem;"><strong>Statut:</strong> {delivery.status}</p>
-			{#if delivery.completedAt}
-				<p style="color: var(--text-muted);">
-					Livrée le {new Date(delivery.completedAt).toLocaleString('fr-FR')}
-				</p>
-			{/if}
+			<div style="display: flex; flex-direction: column; gap: 0.75rem;">
+				<div>
+					<p style="margin-bottom: 0.25rem; font-weight: 600; color: var(--text);">Client</p>
+					<p style="color: var(--text-muted);">{delivery.customerName}</p>
+				</div>
+				<div>
+					<p style="margin-bottom: 0.25rem; font-weight: 600; color: var(--text);">Adresse</p>
+					<p style="color: var(--text-muted);">{delivery.address}</p>
+				</div>
+				<div>
+					<p style="margin-bottom: 0.25rem; font-weight: 600; color: var(--text);">Commande</p>
+					<p style="color: var(--text-muted);">{delivery.orderId.slice(0, 8).toUpperCase()}</p>
+				</div>
+				{#if delivery.orderDate}
+					<div>
+						<p style="margin-bottom: 0.25rem; font-weight: 600; color: var(--text);">Tranche horaire</p>
+						<p style="color: var(--text-muted);">
+							{(() => {
+								const date = new Date(delivery.orderDate);
+								const hour = date.getHours();
+								const slotStart = Math.floor(hour / 4) * 4;
+								const slotEnd = slotStart + 4;
+								return `${slotStart}h-${slotEnd}h`;
+							})()}
+						</p>
+					</div>
+				{/if}
+				<div>
+					<p style="margin-bottom: 0.25rem; font-weight: 600; color: var(--text);">Statut</p>
+					<p style="color: var(--text-muted);">{delivery.status}</p>
+				</div>
+				{#if delivery.completedAt}
+					<div>
+						<p style="margin-bottom: 0.25rem; font-weight: 600; color: var(--text);">Livrée le</p>
+						<p style="color: var(--text-muted);">
+							{new Date(delivery.completedAt).toLocaleString('fr-FR')}
+						</p>
+					</div>
+				{/if}
+			</div>
 		</div>
 
 		<div class="card">
@@ -241,7 +274,7 @@
 			{/if}
 		</div>
 
-		{#if delivery.status.toLowerCase() !== 'completed'}
+		{#if delivery.status.toLowerCase() !== 'completed' && delivery.status.toLowerCase() !== 'failed'}
 			<div style="display: flex; gap: 0.75rem; margin-top: 1.5rem;">
 				<button
 					class="btn btn-success"
@@ -263,10 +296,16 @@
 			<p style="text-align: center; margin-top: 0.75rem; color: var(--text-muted); font-size: 0.875rem;">
 				Appuyez longuement pour confirmer
 			</p>
-		{:else}
+		{:else if delivery.status.toLowerCase() === 'completed'}
 			<div class="card" style="background: #d1fae5; text-align: center;">
 				<p style="color: #065f46; font-weight: 600; font-size: 1.125rem;">
 					✅ Livraison complétée
+				</p>
+			</div>
+		{:else}
+			<div class="card" style="background: #fee2e2; text-align: center;">
+				<p style="color: #991b1b; font-weight: 600; font-size: 1.125rem;">
+					❌ Livraison marquée non livrée
 				</p>
 			</div>
 		{/if}

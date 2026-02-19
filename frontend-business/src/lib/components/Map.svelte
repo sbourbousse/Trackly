@@ -201,11 +201,17 @@
 			});
 		};
 
+		// Si on a un siège social, toujours centrer dessus
+		const initialCenter = headquarters 
+			? [headquarters.lat, headquarters.lng] as [number, number]
+			: center;
+		const initialZoom = headquarters ? (zoom ?? 11) : (zoom ?? 13);
+		
 		map = L.map(mapContainer, {
 			zoomControl: false,
 			attributionControl: true
-		}).setView(center, zoom);
-		currentZoom = zoom ?? 13;
+		}).setView(initialCenter, initialZoom);
+		currentZoom = initialZoom;
 
 		// Écouter les changements de zoom pour mettre à jour la progress bar
 		map.on('zoomend', () => {
@@ -234,13 +240,15 @@
 		}
 	});
 
-	$effect(() => {
-		if (map && center && zoom != null && !lockView) {
-			map.setView(center, zoom);
-			currentZoom = zoom;
-			zoomSliderValue = Math.round(zoom);
-		}
-	});
+	// Ne pas repositionner automatiquement quand center ou zoom change
+	// Le zoom doit rester fixe sur le siège social
+	// $effect(() => {
+	// 	if (map && center && zoom != null && !lockView && !headquarters) {
+	// 		map.setView(center, zoom);
+	// 		currentZoom = zoom;
+	// 		zoomSliderValue = Math.round(zoom);
+	// 	}
+	// });
 
 	/** Mettre à jour le tileLayer si le thème change. */
 	$effect(() => {
@@ -322,9 +330,10 @@
 			markers.push(marker);
 		});
 
-		// Ne pas recentrer automatiquement si on a un siège social (centrage géré par la prop center)
-		// Seulement si pas de siège social et pas de lockView
+		// Ne jamais recentrer automatiquement si on a un siège social ou en lockView
+		// Le zoom doit toujours rester centré sur le siège social
 		if (markers.length > 0 && map && L && !lockView && !headquarters) {
+			// Seulement si pas de siège social et pas de lockView, on peut recentrer
 			if (markers.length === 1) {
 				const pos = markers[0].getLatLng();
 				map.setView([pos.lat, pos.lng], map.getZoom());
@@ -369,7 +378,7 @@
 		return bounds.pad(0.2);
 	}
 
-	/** Désactive déplacement et zoom, puis centre sur tout le contenu. */
+	/** Désactive déplacement et zoom, puis centre sur le siège social ou le contenu. */
 	function applyLockView() {
 		if (!map || !L) return;
 		map.dragging.disable();
@@ -378,6 +387,17 @@
 		map.touchZoom.disable();
 		map.boxZoom.disable();
 		map.keyboard.disable();
+		
+		// Si on a un siège social, toujours centrer dessus avec le zoom actuel
+		if (headquarters) {
+			map.setView([headquarters.lat, headquarters.lng], map.getZoom());
+			zoomSliderValue = Math.round(
+				Math.max(zoomSliderMin, Math.min(zoomSliderMax, map.getZoom()))
+			);
+			return;
+		}
+		
+		// Sinon, utiliser fitBounds pour centrer sur tout le contenu
 		const bounds = getContentBounds();
 		if (bounds) {
 			const options: { maxZoom?: number } = {};
@@ -465,17 +485,45 @@
 		if (!L || !map) return;
 		isochronePolygonsLayer.forEach((layer) => layer.remove());
 		isochronePolygonsLayer = [];
-		const colors = ['#3b82f6', '#22c55e', '#eab308', '#ef4444'];
-		for (let i = 0; i < isochronePolygons.length; i++) {
-			const contour = isochronePolygons[i];
+		
+		// Trier les isochrones par minutes (du plus petit au plus grand)
+		const sorted = [...isochronePolygons].sort((a, b) => (a.minutes ?? 0) - (b.minutes ?? 0));
+		
+		// Couleurs de plus en plus prononcées : vert clair -> vert -> jaune -> orange -> rouge
+		// Plus la zone est éloignée (plus de minutes), plus la couleur est prononcée
+		const colorMap: Record<number, string> = {
+			10: '#22c55e',   // Vert clair (zone proche)
+			20: '#eab308',   // Jaune (zone moyenne)
+			30: '#f97316',   // Orange (zone éloignée)
+			40: '#ef4444',   // Rouge (zone très éloignée)
+			50: '#dc2626',   // Rouge foncé
+			60: '#b91c1c'    // Rouge très foncé
+		};
+		
+		for (const contour of sorted) {
 			if (!contour.coordinates?.length) continue;
 			const latLngs = toLeafletLatLngs(contour.coordinates);
-			const color = colors[i % colors.length];
+			const minutes = contour.minutes ?? 0;
+			// Utiliser la couleur correspondante ou une couleur par défaut basée sur les minutes
+			let color = colorMap[minutes];
+			if (!color) {
+				// Pour les minutes non définies, calculer une couleur progressive
+				if (minutes <= 10) color = '#22c55e';      // Vert clair
+				else if (minutes <= 20) color = '#eab308';  // Jaune
+				else if (minutes <= 30) color = '#f97316';  // Orange
+				else if (minutes <= 40) color = '#ef4444';  // Rouge
+				else if (minutes <= 50) color = '#dc2626';  // Rouge foncé
+				else color = '#b91c1c';                     // Rouge très foncé
+			}
+			
+			// Augmenter l'épaisseur pour les zones plus éloignées
+			const weight = Math.min(2 + Math.floor(minutes / 20), 4);
+			
 			const polygon = L.polygon(latLngs, {
 				color,
 				fillColor: color,
-				fillOpacity: 0.2,
-				weight: 2
+				fillOpacity: 0.12,
+				weight
 			}).addTo(map);
 			if (contour.minutes != null) {
 				polygon.bindPopup(`${contour.minutes} min`);
@@ -512,9 +560,11 @@
 				}).addTo(map);
 			}
 
-			if (followTracking && !lockView) {
-				map.setView([trackPosition.lat, trackPosition.lng], map.getZoom());
-			}
+			// Ne pas repositionner automatiquement sur la position de tracking
+			// Le zoom doit rester centré sur le siège social
+			// if (followTracking && !lockView) {
+			// 	map.setView([trackPosition.lat, trackPosition.lng], map.getZoom());
+			// }
 		}
 	}
 

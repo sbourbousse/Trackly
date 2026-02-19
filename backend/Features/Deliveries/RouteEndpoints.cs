@@ -154,17 +154,19 @@ public static class RouteEndpoints
         var orders = await dbContext.Orders
             .AsNoTracking()
             .Where(o => orderIds.Contains(o.Id) && o.DeletedAt == null)
-            .ToDictionaryAsync(o => o.Id, o => new { o.CustomerName, o.Address }, cancellationToken);
+            .ToDictionaryAsync(o => o.Id, o => new { o.CustomerName, o.Address, o.OrderDate }, cancellationToken);
 
         var deliveryResponses = deliveries
             .Select(d =>
             {
                 string customerName = "Inconnu";
                 string address = "Adresse inconnue";
+                DateTimeOffset? orderDate = null;
                 if (orders.TryGetValue(d.OrderId, out var o))
                 {
                     customerName = o.CustomerName ?? customerName;
                     address = o.Address ?? address;
+                    orderDate = o.OrderDate;
                 }
                 return new DeliveryInRouteResponse(
                     d.Id,
@@ -174,7 +176,8 @@ public static class RouteEndpoints
                     d.CreatedAt,
                     d.CompletedAt,
                     customerName,
-                    address);
+                    address,
+                    orderDate);
             })
             .ToList();
 

@@ -1,7 +1,7 @@
 # PROJECT_STATE — Trackly
 
 > État actuel du projet — SaaS de gestion de livraisons pour TPE et artisans
-> Mis à jour : 2026-02-11 11:29
+> Mis à jour : 2026-02-19 16:20
 
 ---
 
@@ -38,6 +38,7 @@ Finaliser le core métier (import de commandes et gestion des tournées) puis d�
 - [x] Interface `ITenantIsolated` implémentée
 - [x] Initialisation SvelteKit Dashboard terminée
 - [x] Structure de gestion de projet créée (ROADMAP.md, PROJECT_STATE.md)
+- [x] Frontend tracking: correction du marker destination (coordonnées API réelles + fallback géocodage)
 
 ---
 

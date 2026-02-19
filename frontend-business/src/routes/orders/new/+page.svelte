@@ -439,7 +439,7 @@
 						<div class="overflow-hidden rounded-md border">
 							<Map
 								center={mapCenter}
-								zoom={headquarters ? 11 : geocodeResult ? 15 : 11}
+								zoom={headquarters ? 11 : 11}
 								height="220px"
 								deliveryMarkers={mapMarkers}
 								headquarters={headquarters}

@@ -3,7 +3,6 @@
 	import MoreVerticalIcon from '@lucide/svelte/icons/more-vertical';
 	import Trash2Icon from '@lucide/svelte/icons/trash-2';
 	import XIcon from '@lucide/svelte/icons/x';
-	import PageHeader from '$lib/components/PageHeader.svelte';
 	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
 	import { dateRangeState } from '$lib/stores/dateRange.svelte';
@@ -238,7 +237,6 @@
 </script>
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6 relative">
-	<PageHeader title="Commandes" icon={ClipboardListIcon} />
 	<PeriodBadge />
 
 	<Card>

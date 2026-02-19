@@ -863,4 +863,92 @@ PORT=3004
 
 ---
 
+## 2026-02-19 | Correctif marker destination frontend-tracking
+
+**Tâche** : Corriger l'absence et le mauvais positionnement du marker destination sur la page de suivi client.
+
+**Causes identifiées** :
+- La destination dans `frontend-tracking` utilisait des coordonnées statiques (`43.6101, 3.8764`) au lieu des coordonnées réelles de la commande.
+- Le marker destination reposait sur des assets PNG Leaflet (`marker-icon.png`) pouvant être absents selon l'environnement.
+
+**Backend** :
+- `backend/Features/Deliveries/DeliveryEndpoints.cs` (`GetPublicTracking`) enrichi avec :
+  - `lat = order?.Lat`
+  - `lng = order?.Lng`
+
+**Frontend-tracking** :
+- `src/lib/api.ts` : ajout des champs optionnels `lat` et `lng` dans `DeliveryDetail`.
+- `src/app/tracking/[deliveryId]/page.tsx` :
+  - lecture de `lat/lng` renvoyés par l'API publique,
+  - fallback de géocodage via Nominatim si la commande ne contient pas de coordonnées,
+  - affichage d'un message explicite si la position destination reste indisponible.
+- `src/components/TrackingMap.tsx` :
+  - remplacement du marker destination basé sur PNG par un `divIcon` (fiable en Next.js),
+  - conservation du marker livreur et du cadrage automatique.
+
+**Résultat** :
+- Le marker destination réapparaît.
+- La position cible correspond à la vraie adresse/livraison (ou au géocodage fallback), au lieu d'une position fixe.
+
+---
+
+## 2026-02-19 | Stabilisation dev frontend-tracking (erreur module .next)
+
+**Symptôme** :
+- Erreurs intermittentes en développement :
+  - `Cannot find module './778.js'`
+  - `Could not find module ... segment-explorer-node.js#SegmentViewNode in the React Client Manifest`
+  - `ENOENT ... .next/prerender-manifest.json`
+
+**Cause probable** :
+- Incohérence du cache `.next` + bug de bundler/HMR en mode dev.
+
+**Correctif appliqué** :
+- Nettoyage du cache `.next` et redémarrage du serveur de dev.
+- `frontend-tracking/package.json` conservé en script standard :
+  - `dev: next dev`
+
+**Note** :
+- Le flag `--webpack` n'est pas supporté dans la version Next utilisée dans ce projet (erreur `unknown option '--webpack'`), il ne doit pas être utilisé ici.
+
+**Action locale nécessaire** :
+- Stopper le serveur dev en cours, supprimer `.next`, puis relancer `npm run dev`.
+
+---
+
+## 2026-02-19 | Ouverture app livreur en fenêtre intégrée depuis Business
+
+**Tâche** : Permettre une ouverture "intégrée" de l'app chauffeur depuis la liste des livreurs, similaire à une mini-fenêtre.
+
+**Implémentation** :
+- `frontend-business/src/routes/drivers/+page.svelte`
+  - ajout de `openDriverAppPopup(driverId)` :
+    - ouvre une popup centrée (format mobile 430x820),
+    - réutilise l'URL de login direct (`?driverId=...`),
+    - fallback automatique vers un onglet si la popup est bloquée.
+  - nouvelle action dans le menu contextuel :
+    - `Ouvrir en fenêtre intégrée`
+
+**Résultat** :
+- Depuis Business, on peut ouvrir rapidement l'app chauffeur dans une fenêtre dédiée sans quitter la page courante.
+
+---
+
+## 2026-02-19 | Suivi client en fenêtre intégrée depuis Business
+
+**Tâche** : Proposer la même expérience "fenêtre intégrée" pour l'ouverture du suivi client.
+
+**Implémentation** :
+- `frontend-business/src/routes/deliveries/+page.svelte`
+  - ajout de `openClientTrackingPopup(deliveryId)` :
+    - popup centrée format mobile (430x820),
+    - fallback vers un onglet si popup bloquée.
+  - ajout d'une action de menu :
+    - `Ouvrir suivi client (fenêtre)`
+
+**Résultat** :
+- Depuis la liste des livraisons, le suivi client peut s'ouvrir dans une fenêtre dédiée sans quitter l'interface Business.
+
+---
+
 _Continuer à documenter les modifications importantes au fur et à mesure..._

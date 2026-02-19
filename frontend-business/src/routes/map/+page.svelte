@@ -429,7 +429,7 @@
 			</Alert>
 		</div>
 	{:else}
-	<PeriodBadge />
+	<PeriodBadge absolute={true} />
 	{#if ordersState.error || deliveriesState.error || trackingState.lastError}
 		<div class="absolute left-2 right-2 top-16 z-[40] min-w-0 max-w-[calc(100%-1rem)] sm:left-4 sm:right-4">
 			{#if ordersState.error}
@@ -467,6 +467,8 @@
 	<div class="relative flex flex-1 min-h-0 min-w-0">
 		<Map
 			height="100%"
+			center={settingsState.headquarters ? [settingsState.headquarters.lat, settingsState.headquarters.lng] : undefined}
+			zoom={settingsState.headquarters ? 11 : 13}
 			markers={markersList}
 			headquarters={settingsState.headquarters}
 			routePolylines={mapFilters.filters.showRoutePolylines ? routePolylines : []}

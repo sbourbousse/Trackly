@@ -246,14 +246,21 @@
 		submitting = true;
 		error = null;
 		try {
-			await createDeliveriesBatch({
+			const response = await createDeliveriesBatch({
 				driverId: selectedDriverId,
 				orderIds: Array.from(selectedOrderIds),
 				name: routeName.trim() || undefined,
 				plannedStartAt: plannedStartAtIso
 			});
 			success = true;
-			setTimeout(() => goto('/deliveries'), 1500);
+			// Récupérer le routeId de la première livraison créée pour rediriger vers le détail de la tournée
+			const routeId = response.deliveries?.[0]?.routeId;
+			if (routeId) {
+				setTimeout(() => goto(`/deliveries/routes/${encodeURIComponent(routeId)}`), 1500);
+			} else {
+				// Fallback vers la liste si pas de routeId (ne devrait pas arriver normalement)
+				setTimeout(() => goto('/deliveries'), 1500);
+			}
 		} catch (err) {
 			error = err instanceof Error ? err.message : 'Erreur lors de la création de la tournée';
 		} finally {

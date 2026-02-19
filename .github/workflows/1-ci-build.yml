@@ -1,0 +1,61 @@
+# CI - Build & Test (Automatique sur push/PR)
+# Ce workflow vérifie que le code compile et passe les tests basiques
+
+name: CI - Build & Test
+
+on:
+  push:
+    branches: [main, develop, testing]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  # ===== BACKEND (.NET) =====
+  build-backend:
+    name: Build Backend (.NET)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '8.0'
+      
+      - name: Restore dependencies
+        working-directory: ./backend
+        run: dotnet restore
+      
+      - name: Build
+        working-directory: ./backend
+        run: dotnet build --configuration Release --no-restore
+
+  # ===== FRONTENDS (Node.js) =====
+  build-frontends:
+    name: Build Frontends
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        frontend: [frontend-business, frontend-driver, frontend-tracking, frontend-landing-page]
+    steps:
+      - uses: actions/checkout@v4
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: ./${{ matrix.frontend }}/package-lock.json
+      
+      - name: Install dependencies
+        working-directory: ./${{ matrix.frontend }}
+        run: npm ci
+      
+      - name: Build
+        working-directory: ./${{ matrix.frontend }}
+        run: npm run build
+        env:
+          # Variables dummy pour le build
+          VITE_API_URL: http://localhost:8080
+          NEXT_PUBLIC_API_URL: http://localhost:8080

@@ -1,5 +1,8 @@
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
+using System.Net.Http;
 using Trackly.Backend.Features.Billing;
+using Trackly.Backend.Features.Mapbox;
 using Trackly.Backend.Features.Orders;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
@@ -19,6 +22,7 @@ public static class DeliveryEndpoints
         group.MapPost("/batch", CreateDeliveriesBatch);
         group.MapPatch("/{id:guid}/start", StartDelivery);
         group.MapPatch("/{id:guid}/complete", CompleteDelivery);
+        group.MapPatch("/{id:guid}/fail", FailDelivery);
         group.MapDelete("/{id:guid}", DeleteDelivery);
         group.MapPost("/batch/delete", DeleteDeliveriesBatch);
         group.MapGet("/{id:guid}/tracking", GetTracking);
@@ -82,9 +86,17 @@ public static class DeliveryEndpoints
             ? query.OrderBy(d => d.RouteId ?? Guid.Empty).ThenBy(d => d.Sequence ?? int.MaxValue).ThenBy(d => d.CreatedAt)
             : query.OrderByDescending(d => d.CreatedAt);
 
-        var deliveries = await orderedQuery
-            .Select(d => ToResponse(d))
+        var deliveriesWithOrders = await orderedQuery
+            .Join(
+                dbContext.Orders,
+                d => d.OrderId,
+                o => o.Id,
+                (d, o) => new { Delivery = d, OrderDate = o.OrderDate })
             .ToListAsync(cancellationToken);
+
+        var deliveries = deliveriesWithOrders
+            .Select(x => ToResponse(x.Delivery, x.OrderDate))
+            .ToList();
 
         return Results.Ok(deliveries);
     }
@@ -239,7 +251,8 @@ public static class DeliveryEndpoints
             delivery.CompletedAt,
             order?.CustomerName ?? "Inconnu",
             order?.Address ?? "Adresse inconnue",
-            driver?.Name ?? "Non assigné"
+            driver?.Name ?? "Non assigné",
+            order?.OrderDate
         ));
     }
 
@@ -300,7 +313,11 @@ public static class DeliveryEndpoints
             dbContext,
             cancellationToken);
 
-        return Results.Created($"/api/deliveries/{delivery.Id}", ToResponse(delivery));
+        var order = await dbContext.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == request.OrderId && o.DeletedAt == null, cancellationToken);
+
+        return Results.Created($"/api/deliveries/{delivery.Id}", ToResponse(delivery, order?.OrderDate));
     }
 
     private static async Task<IResult> CreateDeliveriesBatch(
@@ -308,6 +325,9 @@ public static class DeliveryEndpoints
         TracklyDbContext dbContext,
         TenantContext tenantContext,
         IBillingService billingService,
+        IHttpClientFactory httpClientFactory,
+        IMemoryCache cache,
+        IMapboxService routingService,
         CancellationToken cancellationToken)
     {
         if (tenantContext.TenantId == Guid.Empty)
@@ -415,7 +435,35 @@ public static class DeliveryEndpoints
                 cancellationToken);
         }
 
-        createdDeliveries = deliveries.Select(ToResponse).ToList();
+        // Calculer et stocker la géométrie de l'itinéraire (en arrière-plan, non bloquant)
+        try
+        {
+            await RouteEndpoints.ComputeAndStoreRouteGeometryAsync(
+                route.Id,
+                dbContext,
+                tenantContext,
+                httpClientFactory,
+                cache,
+                routingService,
+                cancellationToken);
+        }
+        catch
+        {
+            // Ignorer les erreurs de calcul de géométrie (non bloquant pour la création)
+        }
+
+        // Récupérer les orderDates pour toutes les commandes
+        var deliveryOrderIds = deliveries.Select(d => d.OrderId).Distinct().ToList();
+        var orderDatesByOrderId = await dbContext.Orders
+            .AsNoTracking()
+            .Where(o => deliveryOrderIds.Contains(o.Id) && o.DeletedAt == null)
+            .ToDictionaryAsync(o => o.Id, o => o.OrderDate, cancellationToken);
+
+        createdDeliveries = deliveries
+            .Select(d => ToResponse(
+                d,
+                orderDatesByOrderId.TryGetValue(d.OrderId, out var deliveryOrderDate) ? deliveryOrderDate : null))
+            .ToList();
 
         return Results.Ok(new CreateDeliveriesBatchResponse
         {
@@ -453,7 +501,11 @@ public static class DeliveryEndpoints
             await OrderStatusService.UpdateOrderStatusAsync(delivery.OrderId, dbContext, cancellationToken);
         }
 
-        return Results.Ok(ToResponse(delivery));
+        var order = await dbContext.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == delivery.OrderId && o.DeletedAt == null, cancellationToken);
+
+        return Results.Ok(ToResponse(delivery, order?.OrderDate));
     }
 
     private static async Task<IResult> CompleteDelivery(
@@ -475,6 +527,11 @@ public static class DeliveryEndpoints
             return Results.NotFound("Livraison introuvable.");
         }
 
+        if (delivery.Status == DeliveryStatus.Failed)
+        {
+            return Results.BadRequest("Cette livraison est marquée comme non livrée et ne peut plus être validée comme livrée.");
+        }
+
         delivery.Status = DeliveryStatus.Completed;
         delivery.CompletedAt = DateTimeOffset.UtcNow;
 
@@ -486,7 +543,53 @@ public static class DeliveryEndpoints
             dbContext,
             cancellationToken);
 
-        return Results.Ok(ToResponse(delivery));
+        var order = await dbContext.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == delivery.OrderId && o.DeletedAt == null, cancellationToken);
+
+        return Results.Ok(ToResponse(delivery, order?.OrderDate));
+    }
+
+    private static async Task<IResult> FailDelivery(
+        Guid id,
+        TracklyDbContext dbContext,
+        TenantContext tenantContext,
+        CancellationToken cancellationToken)
+    {
+        if (tenantContext.TenantId == Guid.Empty)
+        {
+            return Results.BadRequest("TenantId manquant.");
+        }
+
+        var delivery = await dbContext.Deliveries
+            .FirstOrDefaultAsync(current => current.Id == id && current.TenantId == tenantContext.TenantId && current.DeletedAt == null, cancellationToken);
+
+        if (delivery == null)
+        {
+            return Results.NotFound("Livraison introuvable.");
+        }
+
+        if (delivery.Status == DeliveryStatus.Completed)
+        {
+            return Results.BadRequest("Cette livraison est déjà marquée comme livrée.");
+        }
+
+        delivery.Status = DeliveryStatus.Failed;
+        delivery.CompletedAt = DateTimeOffset.UtcNow;
+
+        await dbContext.SaveChangesAsync(cancellationToken);
+
+        // Mettre à jour automatiquement le statut de la commande associée
+        await OrderStatusService.UpdateOrderStatusAsync(
+            delivery.OrderId,
+            dbContext,
+            cancellationToken);
+
+        var order = await dbContext.Orders
+            .AsNoTracking()
+            .FirstOrDefaultAsync(o => o.Id == delivery.OrderId && o.DeletedAt == null, cancellationToken);
+
+        return Results.Ok(ToResponse(delivery, order?.OrderDate));
     }
 
     private static async Task<IResult> DeleteDelivery(
@@ -597,7 +700,7 @@ public static class DeliveryEndpoints
         return Results.Ok(new DeliveryTrackingResponse(delivery.Id, delivery.Status, delivery.CompletedAt));
     }
 
-    private static DeliveryResponse ToResponse(Delivery delivery) =>
+    private static DeliveryResponse ToResponse(Delivery delivery, DateTimeOffset? orderDate = null) =>
         new(
             delivery.Id,
             delivery.OrderId,
@@ -606,7 +709,8 @@ public static class DeliveryEndpoints
             delivery.Sequence,
             delivery.Status,
             delivery.CreatedAt,
-            delivery.CompletedAt);
+            delivery.CompletedAt,
+            orderDate);
 
     /// <summary>
     /// Endpoint PUBLIC pour le tracking client (sans authentification tenant).
@@ -647,6 +751,8 @@ public static class DeliveryEndpoints
             completedAt = delivery.CompletedAt,
             customerName = order?.CustomerName ?? "Client",
             address = order?.Address ?? "Adresse non disponible",
+            lat = order?.Lat,
+            lng = order?.Lng,
             driverName = driver?.Name ?? "Livreur",
             driverPhone = driver?.Phone,
             sequence = delivery.Sequence,

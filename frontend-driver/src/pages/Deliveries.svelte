@@ -10,8 +10,11 @@
 	let loading = $state(false);
 	let error = $state<string | null>(null);
 
-	const completedCount = $derived(deliveries.filter(d => d.status === 'Completed' || d.status === 'Livree').length);
-	const totalCount = $derived(deliveries.length);
+	const visibleDeliveries = $derived(deliveries.filter((d) => isPrevueStatus(d.status)));
+	const completedCount = $derived(
+		visibleDeliveries.filter((d) => d.status === 'Completed' || d.status === 'Livree').length
+	);
+	const totalCount = $derived(visibleDeliveries.length);
 	const progressPercent = $derived(totalCount > 0 ? Math.round((completedCount / totalCount) * 100) : 0);
 
 	onMount(() => {
@@ -24,11 +27,19 @@
 
 		try {
 			const data = await getDeliveries(driverId ?? undefined);
-			// Tri par tournée puis sequence (ordre des arrêts)
+			// Tri par tournée, puis tranche horaire, puis sequence (ordre des arrêts)
 			deliveries = [...data].sort((a, b) => {
+				// 1. Par tournée (routeId)
 				const routeA = a.routeId ?? '';
 				const routeB = b.routeId ?? '';
 				if (routeA !== routeB) return routeA.localeCompare(routeB);
+				
+				// 2. Par tranche horaire (orderDate)
+				const timeSlotA = getTimeSlotIndex(a.orderDate);
+				const timeSlotB = getTimeSlotIndex(b.orderDate);
+				if (timeSlotA !== timeSlotB) return timeSlotA - timeSlotB;
+				
+				// 3. Par sequence (ordre d'arrêt)
 				return (a.sequence ?? 999) - (b.sequence ?? 999);
 			});
 		} catch (err) {
@@ -36,6 +47,47 @@
 		} finally {
 			loading = false;
 		}
+	}
+
+	/** Retourne l'index de la tranche horaire (0-5) pour le tri */
+	function getTimeSlotIndex(orderDate: string | null | undefined): number {
+		if (!orderDate) return 999; // Sans date, mettre à la fin
+		try {
+			const date = new Date(orderDate);
+			if (Number.isNaN(date.getTime())) return 999;
+			const hour = date.getHours();
+			return Math.floor(hour / 4); // 0-5 pour les tranches de 4h
+		} catch {
+			return 999;
+		}
+	}
+
+	/** Retourne la tranche horaire formatée (ex: "8h-12h") */
+	function getTimeSlot(orderDate: string | null | undefined): string {
+		if (!orderDate) return '';
+		try {
+			const date = new Date(orderDate);
+			if (Number.isNaN(date.getTime())) return '';
+			const hour = date.getHours();
+			const slotStart = Math.floor(hour / 4) * 4;
+			const slotEnd = slotStart + 4;
+			return `${slotStart}h-${slotEnd}h`;
+		} catch {
+			return '';
+		}
+	}
+
+	function isPrevueStatus(status: string): boolean {
+		const normalized = (status ?? '').toLowerCase();
+		return normalized === 'pending' || normalized === 'prevue' || normalized === 'prévue';
+	}
+
+	function getRouteDateLabel(delivery: ApiDelivery): string {
+		const source = delivery.orderDate ?? delivery.createdAt;
+		if (!source) return 'Date non renseignée';
+		const date = new Date(source);
+		if (Number.isNaN(date.getTime())) return 'Date non renseignée';
+		return date.toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 	}
 
 	function stopLabel(delivery: ApiDelivery): string {
@@ -85,17 +137,17 @@
 		</button>
 	</div>
 
-	{#if loading && deliveries.length === 0}
+	{#if loading && visibleDeliveries.length === 0}
 		<div class="loading">Chargement des livraisons...</div>
 	{:else if error}
 		<div class="error">{error}</div>
 		<button class="btn btn-primary" onclick={loadDeliveries} style="width: 100%; margin-top: 1rem;">
 			Réessayer
 		</button>
-	{:else if deliveries.length === 0}
+	{:else if visibleDeliveries.length === 0}
 		<div class="card" style="text-align: center; padding: 3rem 1.5rem;">
 			<p style="color: var(--text-muted); font-size: 1.125rem;">
-				Aucune livraison pour le moment
+				Aucune tournée prévue pour le moment
 			</p>
 		</div>
 	{:else}
@@ -111,7 +163,35 @@
 			</div>
 		{/if}
 		<div class="delivery-list">
-			{#each deliveries as delivery}
+			{#each visibleDeliveries as delivery, index}
+				{@const prevDelivery = index > 0 ? visibleDeliveries[index - 1] : null}
+				{@const showTimeSlotHeader = !prevDelivery || 
+					prevDelivery.routeId !== delivery.routeId || 
+					getTimeSlotIndex(prevDelivery.orderDate) !== getTimeSlotIndex(delivery.orderDate)}
+				{@const showRouteHeader = !prevDelivery || prevDelivery.routeId !== delivery.routeId}
+				
+				{#if showRouteHeader || showTimeSlotHeader}
+					<div style="margin-top: {index === 0 ? '0' : '1.5rem'}; margin-bottom: 0.75rem;">
+						{#if showRouteHeader}
+							<h2 style="font-size: 1.125rem; font-weight: 600; color: var(--text); margin-bottom: 0.5rem;">
+								{#if delivery.routeId}
+									Tournée {delivery.routeId.slice(0, 8).toUpperCase()}
+								{:else}
+									Livraison individuelle
+								{/if}
+							</h2>
+							<p style="font-size: 0.8rem; color: var(--text-muted); margin-bottom: 0.5rem;">
+								Date tournée : {getRouteDateLabel(delivery)}
+							</p>
+						{/if}
+						{#if showTimeSlotHeader && delivery.orderDate}
+							<div style="display: inline-block; padding: 0.375rem 0.75rem; background: var(--primary); color: white; border-radius: 8px; font-size: 0.875rem; font-weight: 500; margin-bottom: 0.5rem;">
+								{getTimeSlot(delivery.orderDate)}
+							</div>
+						{/if}
+					</div>
+				{/if}
+				
 				<button
 					type="button"
 					class="delivery-item"
@@ -129,9 +209,16 @@
 					"
 				>
 					<div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 0.5rem;">
-						<div>
+						<div style="flex: 1;">
 							<h3>{stopLabel(delivery)} — {delivery.id.slice(0, 8).toUpperCase()}</h3>
-							<p>Commande: {delivery.orderId.slice(0, 8).toUpperCase()}</p>
+							{#if delivery.orderDate}
+								<p style="margin-top: 0.25rem; color: var(--primary); font-size: 0.875rem; font-weight: 500;">
+									{getTimeSlot(delivery.orderDate)}
+								</p>
+							{/if}
+							<p style="margin-top: 0.25rem; color: var(--text-muted); font-size: 0.875rem;">
+								Commande: {delivery.orderId.slice(0, 8).toUpperCase()}
+							</p>
 						</div>
 						<span class="badge {getStatusBadge(delivery.status)}">
 							{getStatusLabel(delivery.status)}

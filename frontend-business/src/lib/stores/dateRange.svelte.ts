@@ -46,6 +46,9 @@ export let dateRangeState = $state(getDefaultState());
 /** Objet réactif : ready = true une fois la période restaurée depuis localStorage (côté client). Évite d'afficher brièvement la valeur par défaut. */
 export const dateRangeUI = $state({ ready: false });
 
+/** Index du raccourci sélectionné dans PRESETS (pour mettre en évidence dans la sidebar) */
+export const selectedPresetState = $state({ index: null as number | null });
+
 export const dateRangeActions = {
 	setDateRange(value: DateRange) {
 		dateRangeState.dateRange = value;
@@ -97,6 +100,9 @@ export const dateRangeActions = {
 			dateRangeState.timeRange = { start: '08:00', end: '20:00' };
 		}
 	},
+	setSelectedPresetIndex(value: number | null) {
+		selectedPresetState.index = value;
+	},
 	setDateFilter(value: DateFilterType) {
 		dateRangeState.dateFilter = value;
 	},
@@ -134,6 +140,22 @@ export const dateRangeActions = {
 				start: new CalendarDate(ys, ms, ds),
 				end: new CalendarDate(ye, me, de)
 			};
+		}
+	},
+	/** Réinitialise la plage et vide le localStorage. À appeler au logout. */
+	reset() {
+		dateRangeState.dateRange = getDefaultState().dateRange;
+		dateRangeState.timeRange = getDefaultState().timeRange;
+		dateRangeState.timePreset = getDefaultState().timePreset;
+		dateRangeState.useManualTime = getDefaultState().useManualTime;
+		dateRangeState.dateFilter = getDefaultState().dateFilter;
+		dateRangeUI.ready = false;
+		if (typeof window !== 'undefined') {
+			try {
+				localStorage.removeItem(STORAGE_KEY);
+			} catch {
+				// ignore
+			}
 		}
 	},
 	/** Restaure la période depuis localStorage (à appeler au chargement, côté client). */

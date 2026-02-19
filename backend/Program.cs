@@ -377,7 +377,7 @@ app.MapGet("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, Te
     });
 });
 
-app.MapPut("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, TenantContext tenantContext, HeadquartersRequest request, CancellationToken cancellationToken) =>
+app.MapPut("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, TenantContext tenantContext, IMapboxService routingService, HeadquartersRequest request, CancellationToken cancellationToken) =>
 {
     if (tenantContext.TenantId == Guid.Empty)
         return Results.BadRequest("Tenant manquant.");
@@ -389,6 +389,42 @@ app.MapPut("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, Te
     tenant.HeadquartersLat = request.Lat;
     tenant.HeadquartersLng = request.Lng;
     await dbContext.SaveChangesAsync(cancellationToken);
+
+    // Enregistrer les isochrones en base si siège social et Stadia Maps configurés
+    if (tenant.HeadquartersLat.HasValue && tenant.HeadquartersLng.HasValue && routingService.IsConfigured)
+    {
+        var minutesList = new List<int> { 10, 20, 30 };
+        var result = await routingService.GetIsochronesAsync(tenant.HeadquartersLng.Value, tenant.HeadquartersLat.Value, minutesList, "auto", cancellationToken);
+        if (result != null && result.Contours.Count > 0)
+        {
+            var existing = await dbContext.TenantIsochrones
+                .Where(t => t.TenantId == tenantContext.TenantId)
+                .ToListAsync(cancellationToken);
+            dbContext.TenantIsochrones.RemoveRange(existing);
+            foreach (var c in result.Contours)
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(c.Coordinates);
+                dbContext.TenantIsochrones.Add(new TenantIsochrone
+                {
+                    Id = Guid.NewGuid(),
+                    TenantId = tenantContext.TenantId,
+                    Minutes = c.Minutes,
+                    CoordinatesJson = json
+                });
+            }
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
+    }
+    else
+    {
+        // Si plus de siège ou Stadia non configuré, supprimer les isochrones stockés
+        var toRemove = await dbContext.TenantIsochrones
+            .Where(t => t.TenantId == tenantContext.TenantId)
+            .ToListAsync(cancellationToken);
+        dbContext.TenantIsochrones.RemoveRange(toRemove);
+        await dbContext.SaveChangesAsync(cancellationToken);
+    }
+
     return Results.Ok(new
     {
         address = tenant.HeadquartersAddress,
@@ -397,12 +433,10 @@ app.MapPut("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, Te
     });
 });
 
-// Isochrones autour du siège social (Stadia Maps) — requiert X-Tenant-Id (cache 1 h)
+// Isochrones autour du siège social — affichés uniquement s'ils sont stockés en base (calcul exclusif à l'enregistrement du siège)
 app.MapGet("/api/tenants/me/isochrones", async (
     TracklyDbContext dbContext,
     TenantContext tenantContext,
-    IMemoryCache cache,
-    IMapboxService routingService,
     string? minutes,
     CancellationToken cancellationToken) =>
 {
@@ -413,8 +447,7 @@ app.MapGet("/api/tenants/me/isochrones", async (
         .FirstOrDefaultAsync(t => t.Id == tenantContext.TenantId, cancellationToken);
     if (tenant == null || !tenant.HeadquartersLat.HasValue || !tenant.HeadquartersLng.HasValue)
         return Results.NotFound("Siège social non configuré. Définissez une adresse et des coordonnées dans les paramètres.");
-    if (!routingService.IsConfigured)
-        return Results.Json(new { contours = Array.Empty<object>(), message = "Stadia Maps non configuré (STADIA_MAPS_API_KEY)." });
+
     List<int> minutesList = string.IsNullOrWhiteSpace(minutes)
         ? new List<int> { 10, 20, 30 }
         : minutes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
@@ -426,23 +459,44 @@ app.MapGet("/api/tenants/me/isochrones", async (
             .ToList();
     if (minutesList.Count == 0)
         return Results.BadRequest("Paramètre minutes invalide (entiers 1–60, séparés par des virgules).");
-    var lat = tenant.HeadquartersLat.Value;
-    var lng = tenant.HeadquartersLng.Value;
-    var minutesKey = string.Join(",", minutesList);
-    var cacheKey = $"stadia:isochrones:{tenantContext.TenantId}:{lat:F5}:{lng:F5}:{minutesKey}";
-    var result = await cache.GetOrCreateAsync(cacheKey, async entry =>
+
+    // Lire les isochrones depuis la base (enregistrés lors du PUT headquarters)
+    var stored = await dbContext.TenantIsochrones
+        .AsNoTracking()
+        .Where(t => t.TenantId == tenantContext.TenantId && minutesList.Contains(t.Minutes))
+        .OrderBy(t => t.Minutes)
+        .ToListAsync(cancellationToken);
+
+    if (stored.Count > 0)
     {
-        entry!.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
-        return await routingService.GetIsochronesAsync(lng, lat, minutesList, "auto", cancellationToken);
+        var contours = stored.Select(s =>
+        {
+            var coords = System.Text.Json.JsonSerializer.Deserialize<List<List<double>>>(s.CoordinatesJson) ?? new List<List<double>>();
+            return new { minutes = s.Minutes, coordinates = coords };
+        }).ToList();
+        return Results.Ok(new { contours });
+    }
+
+    // Aucun isochrone en base : le calcul est fait uniquement à l'enregistrement du siège social
+    return Results.Ok(new { contours = Array.Empty<object>(), message = "Aucune zone isochrone enregistrée. Enregistrez la position du siège social (paramètres) pour générer les zones 10, 20 et 30 min." });
+});
+
+// Configuration des tuiles de carte (Stadia Maps) — requiert X-Tenant-Id
+app.MapGet("/api/tenants/me/map-tiles-config", (IConfiguration configuration) =>
+{
+    var apiKey = configuration["STADIA_MAPS_API_KEY"]
+        ?? Environment.GetEnvironmentVariable("STADIA_MAPS_API_KEY");
+    
+    // Pour les tuiles, on peut utiliser la même clé API que pour le routing
+    // Note: En production, vous pourriez vouloir une clé publique séparée pour les tuiles
+    return Results.Ok(new
+    {
+        tileTheme = "stadia-alidade-smooth-dark",
+        tileUrl = !string.IsNullOrWhiteSpace(apiKey)
+            ? $"https://tiles.stadiamaps.com/tiles/alidade_smooth_dark/{{z}}/{{x}}/{{y}}{{r}}.png?api_key={Uri.EscapeDataString(apiKey)}"
+            : null,
+        hasApiKey = !string.IsNullOrWhiteSpace(apiKey)
     });
-    if (result == null)
-        return Results.Ok(new { contours = Array.Empty<object>(), message = "Impossible de calculer les isochrones. Vérifiez les coordonnées du siège et la configuration Stadia Maps." });
-    var contours = result.Contours.Select(c => new
-    {
-        minutes = c.Minutes,
-        coordinates = c.Coordinates
-    }).ToList();
-    return Results.Ok(new { contours });
 });
 
 app.MapOrderEndpoints();

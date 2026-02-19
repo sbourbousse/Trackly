@@ -10,7 +10,8 @@ public sealed record DeliveryResponse(
     int? Sequence,
     DeliveryStatus Status,
     DateTimeOffset CreatedAt,
-    DateTimeOffset? CompletedAt);
+    DateTimeOffset? CompletedAt,
+    DateTimeOffset? OrderDate = null);
 
 public sealed record DeliveryTrackingResponse(
     Guid DeliveryId,
@@ -44,7 +45,8 @@ public sealed record DeliveryDetailResponse(
     DateTimeOffset? CompletedAt,
     string CustomerName,
     string Address,
-    string DriverName);
+    string DriverName,
+    DateTimeOffset? OrderDate = null);
 
 /// <summary>
 /// Agrégation livraisons pour le graphique : par jour ou par heure selon la plage.
@@ -101,7 +103,8 @@ public sealed record DeliveryInRouteResponse(
     DateTimeOffset CreatedAt,
     DateTimeOffset? CompletedAt,
     string CustomerName,
-    string Address);
+    string Address,
+    DateTimeOffset? OrderDate = null);
 
 /// <summary>Body pour réordonner les livraisons d'une tournée.</summary>
 public sealed record ReorderRouteDeliveriesRequest(List<Guid> DeliveryIds);

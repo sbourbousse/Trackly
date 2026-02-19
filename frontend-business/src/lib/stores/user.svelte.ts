@@ -3,6 +3,12 @@ import { goto } from '$app/navigation';
 import { clearAuthCache } from '$lib/api/client';
 import { clearAuthCookie } from '$lib/auth-cookie';
 import { authActions } from '$lib/stores/auth.svelte';
+import { settingsActions } from '$lib/stores/settings.svelte';
+import { ordersActions } from '$lib/stores/orders.svelte';
+import { deliveriesActions } from '$lib/stores/deliveries.svelte';
+import { dateRangeActions } from '$lib/stores/dateRange.svelte';
+import { mapFilters } from '$lib/stores/mapFilters.svelte';
+import { clearGeocodeCache } from '$lib/utils/geocoding';
 
 interface User {
 	id: string;
@@ -75,10 +81,19 @@ export const userState = {
 			localStorage.removeItem('trackly_user');
 			localStorage.removeItem('trackly_tenant');
 			localStorage.removeItem('trackly_tenant_id');
+			localStorage.removeItem('trackly-settings');
+			localStorage.removeItem('trackly-date-range');
+			localStorage.removeItem('trackly_map_filters');
 			sessionStorage.removeItem('trackly_auth_token');
 			sessionStorage.removeItem('trackly_tenant_id');
 			clearAuthCookie();
 			clearAuthCache();
+			clearGeocodeCache();
+			settingsActions.reset();
+			ordersActions.reset();
+			deliveriesActions.reset();
+			dateRangeActions.reset();
+			mapFilters.reset();
 		}
 		authActions.logout();
 		goto('/login');

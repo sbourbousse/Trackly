@@ -21,6 +21,12 @@ export let ordersState = $state({
 });
 
 export const ordersActions = {
+	/** Vide la liste des commandes. À appeler au logout. */
+	reset() {
+		ordersState.items = [];
+		ordersState.lastSyncAt = '--:--';
+		ordersState.error = null;
+	},
 	setOrders(items: OrderItem[]) {
 		ordersState.items = items;
 	},

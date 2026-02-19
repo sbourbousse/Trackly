@@ -28,6 +28,14 @@ export let deliveriesState = $state({
 });
 
 export const deliveriesActions = {
+	/** Vide les tournées et arrêts. À appeler au logout. */
+	reset() {
+		deliveriesState.routes = [];
+		deliveriesState.activeRouteId = null;
+		deliveriesState.stops = [];
+		deliveriesState.lastUpdateAt = '--:--';
+		deliveriesState.error = null;
+	},
 	setRoutes(routes: DeliveryRoute[]) {
 		deliveriesState.routes = routes;
 	},

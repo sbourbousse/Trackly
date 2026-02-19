@@ -33,6 +33,7 @@ export default function TrackingPage({ params }: TrackingPageProps) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [delivery, setDelivery] = useState<DeliveryDetail | null>(null);
+  const [destinationCoords, setDestinationCoords] = useState<{ lat: number; lng: number } | null>(null);
   
   const {
     isConnected,
@@ -45,10 +46,35 @@ export default function TrackingPage({ params }: TrackingPageProps) {
 
   // Charge les détails de la livraison
   useEffect(() => {
+    async function geocodeAddress(address: string): Promise<{ lat: number; lng: number } | null> {
+      try {
+        const q = encodeURIComponent(address.trim());
+        const res = await fetch(`https://nominatim.openstreetmap.org/search?q=${q}&format=json&limit=1`);
+        if (!res.ok) return null;
+        const data = await res.json() as Array<{ lat: string; lon: string }>;
+        if (!data?.length) return null;
+        const lat = parseFloat(data[0].lat);
+        const lng = parseFloat(data[0].lon);
+        if (Number.isNaN(lat) || Number.isNaN(lng)) return null;
+        return { lat, lng };
+      } catch {
+        return null;
+      }
+    }
+
     async function loadDelivery() {
       try {
         const data = await getDeliveryPublic(deliveryId);
         setDelivery(data);
+
+        if (typeof data.lat === 'number' && typeof data.lng === 'number') {
+          setDestinationCoords({ lat: data.lat, lng: data.lng });
+        } else if (data.address) {
+          const geocoded = await geocodeAddress(data.address);
+          setDestinationCoords(geocoded);
+        } else {
+          setDestinationCoords(null);
+        }
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Erreur de chargement');
       } finally {
@@ -163,18 +189,25 @@ export default function TrackingPage({ params }: TrackingPageProps) {
         
         {/* Map */}
         <div className="bg-white rounded-lg shadow-sm overflow-hidden" style={{ height: '400px' }}>
-          <TrackingMap
-            destination={{ 
-              lat: 43.6101, 
-              lng: 3.8764, 
-              label: delivery?.address || 'Destination' 
-            }}
-            driverPosition={driverPosition ? {
-              lat: driverPosition.lat,
-              lng: driverPosition.lng,
-              label: delivery?.driverName || 'Livreur',
-            } : undefined}
-          />
+          {destinationCoords ? (
+            <TrackingMap
+              key={`tracking-map-${deliveryId}`}
+              destination={{
+                lat: destinationCoords.lat,
+                lng: destinationCoords.lng,
+                label: delivery?.address || 'Destination'
+              }}
+              driverPosition={driverPosition ? {
+                lat: driverPosition.lat,
+                lng: driverPosition.lng,
+                label: delivery?.driverName || 'Livreur',
+              } : undefined}
+            />
+          ) : (
+            <div className="h-full flex items-center justify-center text-sm text-gray-500 px-6 text-center">
+              Position de destination indisponible pour cette livraison.
+            </div>
+          )}
         </div>
         
         {/* Error Message */}

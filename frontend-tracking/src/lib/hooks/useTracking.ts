@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { HubConnectionBuilder, LogLevel, HubConnectionState } from '@microsoft/signalr';
 import { getRuntimeConfig } from '@/lib/config';
 
@@ -32,18 +32,32 @@ export function useTracking(deliveryId: string, tenantId?: string) {
     estimatedArrival: null,
   });
 
-  const [connection, setConnection] = useState<ReturnType<typeof HubConnectionBuilder.prototype.build> | null>(null);
+  const connectionRef = useRef<ReturnType<typeof HubConnectionBuilder.prototype.build> | null>(null);
 
   const connect = useCallback(async () => {
     if (!deliveryId) return;
+    if (!tenantId) {
+      setState(prev => ({
+        ...prev,
+        isConnecting: false,
+        isConnected: false,
+        error: "Lien de suivi invalide (tenant manquant)."
+      }));
+      return;
+    }
+    if (
+      connectionRef.current &&
+      (connectionRef.current.state === HubConnectionState.Connected ||
+        connectionRef.current.state === HubConnectionState.Connecting)
+    ) {
+      return;
+    }
 
     setState(prev => ({ ...prev, isConnecting: true, error: null }));
 
     try {
       // Construit l'URL avec le tenantId si fourni
-      const hubUrl = tenantId 
-        ? `${baseHubUrl}?tenantId=${encodeURIComponent(tenantId)}`
-        : baseHubUrl;
+      const hubUrl = `${baseHubUrl}?tenantId=${encodeURIComponent(tenantId)}`;
 
       const conn = new HubConnectionBuilder()
         .withUrl(hubUrl)
@@ -97,7 +111,7 @@ export function useTracking(deliveryId: string, tenantId?: string) {
       await conn.invoke('JoinDeliveryGroup', deliveryId);
       
       setState(prev => ({ ...prev, isConnected: true, isConnecting: false }));
-      setConnection(conn);
+      connectionRef.current = conn;
       
       console.info(`[Tracking] Connecté au suivi de la livraison ${deliveryId}`);
     } catch (err) {
@@ -108,16 +122,16 @@ export function useTracking(deliveryId: string, tenantId?: string) {
   }, [deliveryId, tenantId]);
 
   const disconnect = useCallback(async () => {
-    if (connection) {
+    if (connectionRef.current) {
       try {
-        await connection.stop();
+        await connectionRef.current.stop();
       } catch (err) {
         console.error('[Tracking] Erreur lors de la déconnexion:', err);
       }
-      setConnection(null);
+      connectionRef.current = null;
       setState(prev => ({ ...prev, isConnected: false }));
     }
-  }, [connection]);
+  }, []);
 
   useEffect(() => {
     connect();

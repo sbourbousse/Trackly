@@ -15,6 +15,7 @@
 		getCurrentFourHourSlotIndex,
 		getTodayKey,
 		isSingleDay,
+		selectedPresetState,
 		type DateFilterType,
 		type TimePreset,
 		TIME_PRESET_RANGES
@@ -42,13 +43,14 @@
 		{ value: 'journee', label: 'Journée entière' }
 	];
 
-	const PRESETS: { label: string; getRange?: () => DateRange; allPeriod?: boolean }[] = [
-		{ label: 'Toute période', allPeriod: true },
+	// Ordre correspondant à la navigation du widget : 7 derniers jours, Hier, Aujourd'hui, Demain, 7 prochains jours, Personnalisé
+	const PRESETS: { label: string; getRange?: () => DateRange; allPeriod?: boolean; isCustom?: boolean }[] = [
+		{ label: '7 derniers jours', getRange: () => { const end = today(getLocalTimeZone()); const start = end.subtract({ days: 6 }); return { start, end }; } },
+		{ label: 'Hier', getRange: () => { const t = today(getLocalTimeZone()).subtract({ days: 1 }); return { start: t, end: t }; } },
 		{ label: "Aujourd'hui", getRange: () => { const t = today(getLocalTimeZone()); return { start: t, end: t }; } },
 		{ label: 'Demain', getRange: () => { const t = today(getLocalTimeZone()).add({ days: 1 }); return { start: t, end: t }; } },
-		{ label: '7 derniers jours', getRange: () => { const end = today(getLocalTimeZone()); const start = end.subtract({ days: 6 }); return { start, end }; } },
 		{ label: '7 prochains jours', getRange: () => { const start = today(getLocalTimeZone()); const end = start.add({ days: 6 }); return { start, end }; } },
-		{ label: 'Ce mois', getRange: () => { const t = today(getLocalTimeZone()); const start = t.set({ day: 1 }); const end = start.add({ months: 1 }).subtract({ days: 1 }); return { start, end }; } }
+		{ label: 'Personnalisé', isCustom: true }
 	];
 
 	interface Props {
@@ -103,25 +105,45 @@
 	function formatRangeLabel(): string {
 		if (!dateRangeUI.ready) return '…';
 		const { start, end } = dateRangeState.dateRange;
-		if (!start || !end) return 'Toute période';
+		if (!start || !end) return '…';
 		const same = start.year === end.year && start.month === end.month && start.day === end.day;
 		const fmt = (d: DateValue) =>
 			d.toDate(getLocalTimeZone()).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-		const t = dateRangeState.timeRange;
-		const timeLabel = t
-			? dateRangeState.timePreset === 'nuit'
-				? `${t.start} – ${t.end} (lendemain)`
-				: `${t.start} – ${t.end}`
-			: null;
-		if (same && timeLabel) return `${fmt(start)} · ${timeLabel}`;
+		// Ne plus afficher les heures puisque la plage horaire est désactivée
 		if (same) return fmt(start);
-		if (timeLabel) return `${fmt(start)} – ${fmt(end)} · ${timeLabel}`;
 		return `${fmt(start)} – ${fmt(end)}`;
 	}
 
-	function applyPreset(preset: (typeof PRESETS)[0]) {
-		if (preset.allPeriod) dateRangeActions.setAllPeriod();
-		else if (preset.getRange) dateRangeActions.setDateRange(preset.getRange());
+	function applyPreset(preset: (typeof PRESETS)[0], index: number) {
+		dateRangeActions.setSelectedPresetIndex(index);
+		if (preset.isCustom) {
+			// Raccourci "Personnalisé" : ne rien faire, l'utilisateur sélectionnera via le calendrier
+		} else if (preset.getRange) {
+			// Désactiver la plage horaire lors de la sélection d'un raccourci
+			dateRangeActions.setTimeRange(null);
+			dateRangeActions.setTimePreset('journee');
+			dateRangeActions.setUseManualTime(false);
+			dateRangeActions.setDateRange(preset.getRange());
+		}
+	}
+
+	function handleCalendarDateChange(value: DateRange | undefined) {
+		if (!value || (value.start === undefined && value.end === undefined)) {
+			dateRangeActions.setAllPeriod();
+			dateRangeActions.setSelectedPresetIndex(null);
+			return;
+		}
+		
+		// Limiter la sélection à 1 jour : utiliser la date de début comme date de fin
+		const singleDate = value.start ?? value.end;
+		if (singleDate) {
+			const singleDayRange: DateRange = { start: singleDate, end: singleDate };
+			dateRangeActions.setSelectedPresetIndex(6); // Index du raccourci "Personnalisé"
+			dateRangeActions.setTimeRange(null);
+			dateRangeActions.setTimePreset('journee');
+			dateRangeActions.setUseManualTime(false);
+			dateRangeActions.setDateRange(singleDayRange);
+		}
 	}
 
 	async function handleDateFilterChange(e: Event) {
@@ -134,13 +156,6 @@
 		await onDateFilterChange?.(dateRangeState.dateFilter);
 	}
 
-	function onDateRangeChange(value: DateRange | undefined) {
-		if (!value || (value.start === undefined && value.end === undefined)) {
-			dateRangeActions.setAllPeriod();
-		} else {
-			dateRangeActions.setDateRange(value);
-		}
-	}
 </script>
 
 {#if collapsed && onToggle}
@@ -239,8 +254,13 @@
 				<div>
 					<p class="text-muted-foreground mb-2 text-xs font-medium uppercase">Raccourcis</p>
 					<div class="flex flex-col gap-1">
-						{#each PRESETS as preset}
-							<Button variant="ghost" size="sm" class="justify-start font-normal h-9" onclick={() => applyPreset(preset)}>
+						{#each PRESETS as preset, index}
+							<Button 
+								variant={selectedPresetState.index === index ? "secondary" : "ghost"} 
+								size="sm" 
+								class="justify-start font-normal h-9" 
+								onclick={() => applyPreset(preset, index)}
+							>
 								{preset.label}
 							</Button>
 						{/each}
@@ -252,67 +272,9 @@
 						numberOfMonths={1}
 						value={dateRangeState.dateRange}
 						placeholder={dateRangeState.dateRange.start ?? today(getLocalTimeZone())}
-						onValueChange={onDateRangeChange}
+						onValueChange={handleCalendarDateChange}
 					/>
 				</div>
-				{#if isSingleDay()}
-					<div class="border-t pt-4 space-y-3">
-						<p class="text-muted-foreground text-xs font-medium uppercase">Plage horaire</p>
-						<label class="flex items-center gap-2 text-sm">
-							<Checkbox
-								checked={dateRangeState.useManualTime}
-								onCheckedChange={(v) => {
-									dateRangeActions.setUseManualTime(v === true);
-									handleTimeChange();
-								}}
-							/>
-							Heures personnalisées
-						</label>
-						{#if dateRangeState.useManualTime}
-							<div class="flex items-center gap-1">
-								<select
-									class="border-input bg-background flex h-9 w-20 rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-									value={dateRangeState.timeRange?.start ?? '08:00'}
-									onchange={(e) => {
-										dateRangeActions.setTimeRange({ ...dateRangeState.timeRange!, start: (e.target as HTMLSelectElement).value });
-										handleTimeChange();
-									}}
-								>
-									{#each HOUR_OPTIONS as opt}
-										<option value={opt.value}>{opt.label}</option>
-									{/each}
-								</select>
-								<span class="text-muted-foreground text-sm">–</span>
-								<select
-									class="border-input bg-background flex h-9 w-20 rounded-md border px-2 text-sm outline-none focus-visible:ring-2"
-									value={dateRangeState.timeRange?.end ?? '20:00'}
-									onchange={(e) => {
-										dateRangeActions.setTimeRange({ ...dateRangeState.timeRange!, end: (e.target as HTMLSelectElement).value });
-										handleTimeChange();
-									}}
-								>
-									{#each HOUR_OPTIONS as opt}
-										<option value={opt.value}>{opt.label}</option>
-									{/each}
-								</select>
-							</div>
-						{:else}
-							<select
-								class="border-input bg-background flex h-9 w-full rounded-md border px-3 text-sm outline-none focus-visible:ring-2"
-								value={dateRangeState.timePreset}
-								onchange={(e) => {
-									dateRangeActions.setTimePreset((e.target as HTMLSelectElement).value as TimePreset);
-									handleTimeChange();
-								}}
-								aria-label="Créneau horaire"
-							>
-								{#each TIME_PRESET_OPTIONS as opt}
-									<option value={opt.value}>{opt.label}</option>
-								{/each}
-							</select>
-						{/if}
-					</div>
-				{/if}
 				<div class="border-t pt-4">
 					<label class="text-muted-foreground flex flex-col gap-1.5 text-xs">
 						<span>Filtrer par</span>

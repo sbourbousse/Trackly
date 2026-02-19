@@ -79,6 +79,18 @@ export const settingsActions = {
 		settingsState.headquartersAddress = null;
 		persistToStorage();
 	},
+	/** Réinitialise le state (siège social à null). À appeler au logout. */
+	reset() {
+		settingsState.headquarters = null;
+		settingsState.headquartersAddress = null;
+		if (browser) {
+			try {
+				localStorage.removeItem(STORAGE_KEY);
+			} catch {
+				// ignore
+			}
+		}
+	},
 	/** Restaure depuis le serveur (ou localStorage en démo). */
 	async restoreFromStorage() {
 		if (!browser) return;

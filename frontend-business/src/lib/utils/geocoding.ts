@@ -98,6 +98,19 @@ const memoryCache = new Map<string, GeocodingResult>();
 /** Cache persistant (localStorage), chargé au premier usage. */
 let persistentCache: Map<string, CacheEntry> | null = null;
 
+/** Vide le cache géocode (localStorage + mémoire). À appeler au logout pour ne pas garder les données du tenant précédent. */
+export function clearGeocodeCache(): void {
+	memoryCache.clear();
+	persistentCache = null;
+	if (typeof window !== 'undefined') {
+		try {
+			localStorage.removeItem(CACHE_KEY);
+		} catch {
+			// ignore
+		}
+	}
+}
+
 function getPersistentCache(): Map<string, CacheEntry> {
 	if (persistentCache === null) {
 		persistentCache = loadPersistentCache();

@@ -1,20 +1,38 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { useEffect, useRef } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { MapMarker } from '@/lib/types';
 
-// Fix pour les icônes Leaflet dans Next.js
-const defaultIcon = L.icon({
-  iconUrl: '/marker-icon.png',
-  iconRetinaUrl: '/marker-icon-2x.png',
-  shadowUrl: '/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
+// Icône destination (divIcon pour éviter la dépendance aux assets PNG)
+const destinationIcon = L.divIcon({
+  className: 'custom-destination-marker',
+  html: `
+    <div style="position: relative; width: 24px; height: 24px;">
+      <div style="
+        position: absolute;
+        inset: 0;
+        background: #ef4444;
+        border: 3px solid #ffffff;
+        border-radius: 50% 50% 50% 0;
+        transform: rotate(-45deg);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.35);
+      "></div>
+      <div style="
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        width: 8px;
+        height: 8px;
+        background: #ffffff;
+        border-radius: 50%;
+      "></div>
+    </div>
+  `,
+  iconSize: [24, 24],
+  iconAnchor: [12, 24],
+  popupAnchor: [0, -22],
 });
 
 // Icône du livreur avec pulse
@@ -60,125 +78,76 @@ interface TrackingMapProps {
   driverPosition?: MapMarker;
 }
 
-// Composant pour centrer la carte sur les marqueurs
-function MapBounds({ markers }: { markers: [number, number][] }) {
-  const map = useMap();
-  
+export default function TrackingMap({ destination, driverPosition }: TrackingMapProps) {
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const destinationMarkerRef = useRef<L.Marker | null>(null);
+  const driverMarkerRef = useRef<L.Marker | null>(null);
+
+  // Initialisation de la carte (une seule fois)
   useEffect(() => {
-    if (markers.length > 0) {
-      const bounds = L.latLngBounds(markers.map(m => L.latLng(m[0], m[1])));
-      map.fitBounds(bounds, { padding: [50, 50] });
+    const container = containerRef.current;
+    if (!container || mapRef.current) return;
+
+    // Protection supplémentaire contre les remounts React DEV
+    if ((container as unknown as { _leaflet_id?: number })._leaflet_id) {
+      delete (container as unknown as { _leaflet_id?: number })._leaflet_id;
     }
-  }, [map, markers]);
-  
-  return null;
-}
 
-// Composant pour animer le déplacement du marqueur
-function AnimatedMarker({ 
-  position, 
-  icon, 
-  label 
-}: { 
-  position: [number, number]; 
-  icon: L.DivIcon | L.Icon; 
-  label: string;
-}) {
-  const map = useMap();
-  const markerRef = useRef<L.Marker | null>(null);
-  const [currentPosition, setCurrentPosition] = useState(position);
+    const map = L.map(container, {
+      zoomControl: true,
+      scrollWheelZoom: true
+    }).setView([destination.lat, destination.lng], 13);
 
-  useEffect(() => {
-    if (!markerRef.current) {
-      // Création initiale du marqueur
-      markerRef.current = L.marker(position, { icon }).addTo(map);
-      markerRef.current.bindPopup(`<div class="text-sm"><strong>${label}</strong></div>`);
-      setCurrentPosition(position);
-    } else {
-      // Animation fluide vers la nouvelle position
-      const startPos = currentPosition;
-      const endPos = position;
-      const duration = 1000; // 1 seconde d'animation
-      const startTime = performance.now();
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+    }).addTo(map);
 
-      const animate = (currentTime: number) => {
-        const elapsed = currentTime - startTime;
-        const progress = Math.min(elapsed / duration, 1);
-        
-        // Easing fonction easeOutCubic
-        const easeProgress = 1 - Math.pow(1 - progress, 3);
-        
-        const newLat = startPos[0] + (endPos[0] - startPos[0]) * easeProgress;
-        const newLng = startPos[1] + (endPos[1] - startPos[1]) * easeProgress;
-        
-        markerRef.current?.setLatLng([newLat, newLng]);
-        
-        if (progress < 1) {
-          requestAnimationFrame(animate);
-        } else {
-          setCurrentPosition(position);
-        }
-      };
-
-      requestAnimationFrame(animate);
-    }
+    mapRef.current = map;
 
     return () => {
-      // Cleanup: ne supprime pas le marqueur, juste pour le unmount du composant
+      destinationMarkerRef.current = null;
+      driverMarkerRef.current = null;
+      map.remove();
+      mapRef.current = null;
     };
-  }, [position, icon, label, map]);
+  }, [destination.lat, destination.lng]);
 
-  // Mise à jour du popup quand le label change
+  // Mise à jour des marqueurs + cadrage
   useEffect(() => {
-    if (markerRef.current) {
-      markerRef.current.setPopupContent(`<div class="text-sm"><strong>${label}</strong></div>`);
+    const map = mapRef.current;
+    if (!map) return;
+
+    const destinationLatLng: [number, number] = [destination.lat, destination.lng];
+
+    if (!destinationMarkerRef.current) {
+      destinationMarkerRef.current = L.marker(destinationLatLng, { icon: destinationIcon }).addTo(map);
+    } else {
+      destinationMarkerRef.current.setLatLng(destinationLatLng);
     }
-  }, [label]);
+    destinationMarkerRef.current.bindPopup(
+      `<div class="text-sm"><strong>Destination</strong><p class="mt-1">${destination.label}</p></div>`
+    );
 
-  return null;
-}
+    if (driverPosition) {
+      const driverLatLng: [number, number] = [driverPosition.lat, driverPosition.lng];
+      if (!driverMarkerRef.current) {
+        driverMarkerRef.current = L.marker(driverLatLng, { icon: driverIcon }).addTo(map);
+      } else {
+        driverMarkerRef.current.setLatLng(driverLatLng);
+      }
+      driverMarkerRef.current.bindPopup(`<div class="text-sm"><strong>${driverPosition.label}</strong></div>`);
 
-export default function TrackingMap({ destination, driverPosition }: TrackingMapProps) {
-  const markers: [number, number][] = [
-    [destination.lat, destination.lng],
-  ];
-  
-  if (driverPosition) {
-    markers.push([driverPosition.lat, driverPosition.lng]);
-  }
+      const bounds = L.latLngBounds([destinationLatLng, driverLatLng]);
+      map.fitBounds(bounds, { padding: [50, 50] });
+    } else {
+      if (driverMarkerRef.current) {
+        map.removeLayer(driverMarkerRef.current);
+        driverMarkerRef.current = null;
+      }
+      map.setView(destinationLatLng, Math.max(map.getZoom(), 13));
+    }
+  }, [destination.lat, destination.lng, destination.label, driverPosition]);
 
-  return (
-    <MapContainer
-      center={[destination.lat, destination.lng]}
-      zoom={13}
-      scrollWheelZoom={true}
-      style={{ height: '100%', width: '100%' }}
-    >
-      <TileLayer
-        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-      />
-      
-      {/* Marqueur destination (statique) */}
-      <Marker position={[destination.lat, destination.lng]} icon={defaultIcon}>
-        <Popup>
-          <div className="text-sm">
-            <strong>Destination</strong>
-            <p className="mt-1">{destination.label}</p>
-          </div>
-        </Popup>
-      </Marker>
-      
-      {/* Marqueur livreur (animé) */}
-      {driverPosition && (
-        <AnimatedMarker 
-          position={[driverPosition.lat, driverPosition.lng]} 
-          icon={driverIcon}
-          label={driverPosition.label}
-        />
-      )}
-      
-      <MapBounds markers={markers} />
-    </MapContainer>
-  );
+  return <div ref={containerRef} style={{ height: '100%', width: '100%' }} />;
 }

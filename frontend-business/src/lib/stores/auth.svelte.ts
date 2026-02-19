@@ -34,6 +34,10 @@ export const authActions = {
 			localStorage.removeItem('trackly_tenant_id');
 			localStorage.removeItem('trackly_user');
 			localStorage.removeItem('trackly_tenant');
+			localStorage.removeItem('trackly-settings');
+			localStorage.removeItem('trackly-date-range');
+			localStorage.removeItem('trackly_map_filters');
+			localStorage.removeItem('trackly-geocode-cache');
 		}
 		if (typeof sessionStorage !== 'undefined') {
 			sessionStorage.removeItem('trackly_auth_token');

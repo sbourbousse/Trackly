@@ -14,15 +14,20 @@
 	import { settingsState } from '$lib/stores/settings.svelte';
 	import MapFilters from '$lib/components/map/MapFilters.svelte';
 	import { getDelivery } from '$lib/api/deliveries';
-	import { getRoutes, getRouteGeometry, getIsochrones } from '$lib/api/routes';
+	import { getRoutes, getRouteGeometry, getIsochrones, type ApiRoute } from '$lib/api/routes';
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
 	import { isOfflineMode } from '$lib/offline/config';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
+	import { Checkbox } from '$lib/components/ui/checkbox';
+	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
+	import { Badge } from '$lib/components/ui/badge';
+	import { Button } from '$lib/components/ui/button';
+	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
+	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import PeriodBadge from '$lib/components/PeriodBadge.svelte';
 	import type { TypedMapMarker } from '$lib/components/Map.svelte';
 
 	const MAX_ORDER_MARKERS = 30;
-	const MAX_DELIVERY_MARKERS = 20;
-	const MAX_ROUTE_POLYLINES = 5;
 
 	const layerParam = $derived(page.url.searchParams.get('layer'));
 	const hasPeriod = $derived(!!getListFilters().dateFrom && !!getListFilters().dateTo);
@@ -30,6 +35,13 @@
 	let showOrders = $state(true);
 	let showDeliveries = $state(true);
 	let showDrivers = $state(true);
+
+	/** Couleurs des tracés par statut de tournée (pastilles). */
+	const ROUTE_TRACE_COLORS: Record<string, string> = {
+		planned: '#3b82f6',
+		inProgress: '#f59e0b',
+		completed: '#10b981'
+	};
 
 	let lastAppliedLayer = $state<string | null | undefined>(undefined);
 	$effect(() => {
@@ -56,18 +68,17 @@
 	});
 
 	let orderMarkersData = $state<Array<{ lat: number; lng: number; label: string; status: string }>>([]);
-	let deliveryMarkersData = $state<Array<{ lat: number; lng: number; label: string; status: string; id: string }>>([]);
 	let driverLabels = $state<Record<string, string>>({});
 	let geocodingOrders = $state(false);
-	let geocodingDeliveries = $state(false);
 	let lastOrdersKey = $state('');
-	let lastDeliveriesKey = $state('');
-	let routePolylines = $state<{ coordinates: [number, number][]; color?: string }[]>([]);
+	let routePolylines = $state<{ coordinates: [number, number][]; color?: string; status?: string; routeId?: string }[]>([]);
 	let isochronePolygons = $state<{ coordinates: [number, number][]; minutes?: number }[]>([]);
-	let showRoutePolylines = $state(true);
-	let showIsochrones = $state(false);
 	let isochronesLoading = $state(false);
 	let isochronesMessage = $state<string | null>(null);
+	let routesList = $state<ApiRoute[]>([]);
+	let selectedRouteIds = $state<Set<string>>(new Set());
+	let routesLoading = $state(false);
+	let routesPanelOpen = $state(false);
 
 	const isInProgress = (s: string) => s === 'InProgress' || s === 'En cours';
 	const inProgressIds = $derived(
@@ -96,19 +107,6 @@
 					label: m.label,
 					type: 'order',
 					status: m.status
-				});
-			}
-		}
-		// Apply filters to deliveries
-		for (const m of deliveryMarkersData) {
-			if (isMarkerVisible('delivery', m.status, mapFilters.filters)) {
-				list.push({
-					lat: m.lat,
-					lng: m.lng,
-					label: m.label,
-					type: 'delivery',
-					status: m.status,
-					id: m.id
 				});
 			}
 		}
@@ -148,10 +146,111 @@
 			slice.map(async (order) => {
 				const coords = await geocodeAddressCached(order.address);
 				if (!coords) return null;
+				
+				// Fonctions utilitaires pour le tooltip
+				function getTimeSlot(orderDate: string | null | undefined): string {
+					if (!orderDate) return '—';
+					try {
+						const date = new Date(orderDate);
+						if (Number.isNaN(date.getTime())) return '—';
+						const hour = date.getHours();
+						const slotStart = Math.floor(hour / 4) * 4;
+						const slotEnd = slotStart + 4;
+						return `${slotStart}h-${slotEnd}h`;
+					} catch {
+						return '—';
+					}
+				}
+				
+				function formatOrderDate(orderDate: string | null | undefined): string {
+					if (!orderDate) return 'Non planifiée';
+					try {
+						const date = new Date(orderDate);
+						if (Number.isNaN(date.getTime())) return 'Date invalide';
+						return date.toLocaleDateString('fr-FR', {
+							weekday: 'short',
+							day: 'numeric',
+							month: 'short',
+							year: 'numeric',
+							hour: '2-digit',
+							minute: '2-digit'
+						});
+					} catch {
+						return 'Date invalide';
+					}
+				}
+				
+				function getStatusLabel(status: string): string {
+					const lower = (status ?? '').toLowerCase();
+					if (lower === 'pending' || lower === 'en attente' || lower === '0') return 'En attente';
+					if (lower === 'planned' || lower === 'planifiée' || lower === '1') return 'Planifiée';
+					if (lower === 'intransit' || lower === 'en transit' || lower === 'en cours' || lower === '2') return 'En transit';
+					if (lower === 'delivered' || lower === 'livrée' || lower === 'livree' || lower === '3') return 'Livrée';
+					if (lower === 'cancelled' || lower === 'annulée' || lower === '4') return 'Annulée';
+					return 'Inconnu';
+				}
+				
+				const timeSlot = getTimeSlot(order.orderDate);
+				const formattedDate = formatOrderDate(order.orderDate);
+				const statusLabel = getStatusLabel(order.status);
+				
+				// Déterminer la couleur du statut pour le badge
+				function getStatusColor(status: string): string {
+					const lower = (status ?? '').toLowerCase();
+					if (lower === 'pending' || lower === 'en attente' || lower === '0') return '#6b7280';
+					if (lower === 'planned' || lower === 'planifiée' || lower === '1') return '#3b82f6';
+					if (lower === 'intransit' || lower === 'en transit' || lower === 'en cours' || lower === '2') return '#f59e0b';
+					if (lower === 'delivered' || lower === 'livrée' || lower === 'livree' || lower === '3') return '#10b981';
+					if (lower === 'cancelled' || lower === 'annulée' || lower === '4') return '#ef4444';
+					return '#6b7280';
+				}
+				
+				const statusColor = getStatusColor(order.status);
+				
+				const label = `
+					<div style="min-width: 220px; max-width: 320px; font-family: system-ui, -apple-system, sans-serif;">
+						<div style="font-weight: 600; font-size: 15px; margin-bottom: 6px; color: #111827;">
+							${order.client}
+						</div>
+						${order.ref ? `<div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">Ref: ${order.ref}</div>` : ''}
+						<div style="font-size: 12px; color: #374151; margin-bottom: 10px; line-height: 1.5;">
+							${order.address}
+						</div>
+						<div style="border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 8px;">
+							<div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+								<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${statusColor};"></span>
+								<span style="font-size: 11px; color: #374151;">
+									<strong>Statut:</strong> <span style="color: #6b7280;">${statusLabel}</span>
+								</span>
+							</div>
+							<div style="font-size: 11px; color: #374151; margin-bottom: 6px;">
+								<strong>Date:</strong> <span style="color: #6b7280;">${formattedDate}</span>
+							</div>
+							${timeSlot !== '—' ? `<div style="font-size: 11px; color: #374151; margin-bottom: 6px;">
+								<strong>Tranche:</strong> <span style="color: #6b7280;">${timeSlot}</span>
+							</div>` : ''}
+							${order.phoneNumber ? `<div style="font-size: 11px; color: #374151; margin-bottom: 6px;">
+								<strong>Tél:</strong> <a href="tel:${order.phoneNumber}" style="color: #3b82f6; text-decoration: none;">${order.phoneNumber}</a>
+							</div>` : ''}
+							${order.deliveries > 0 ? `<div style="font-size: 11px; color: #374151; margin-bottom: 6px;">
+								<strong>Livraisons:</strong> <span style="color: #6b7280;">${order.deliveries}</span>
+							</div>` : ''}
+							${order.internalComment ? `<div style="font-size: 11px; color: #374151; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f3f4f6;">
+								<strong>Note:</strong> <span style="color: #6b7280; font-style: italic;">${order.internalComment}</span>
+							</div>` : ''}
+						</div>
+						<div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+							<a href="/orders/${order.id}" style="color: #3b82f6; text-decoration: none; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+								Voir la commande <span style="font-size: 14px;">→</span>
+							</a>
+						</div>
+					</div>
+				`;
+				
 				return {
 					lat: coords.lat,
 					lng: coords.lng,
-					label: `<b>${order.client}</b><br/>${order.address}<br/><a href="/orders/${order.id}">Voir la commande</a>`,
+					label,
 					status: order.status
 				};
 			})
@@ -159,39 +258,6 @@
 			orderMarkersData = results.filter((r): r is NonNullable<typeof r> => r != null);
 		}).finally(() => {
 			geocodingOrders = false;
-		});
-	});
-
-	$effect(() => {
-		if (!showDeliveries || !deliveriesState.routes.length || !hasPeriod) {
-			deliveryMarkersData = [];
-			lastDeliveriesKey = '';
-			return;
-		}
-		const key = deliveriesState.routes.slice(0, MAX_DELIVERY_MARKERS).map((r) => r.id).join(',');
-		if (key === lastDeliveriesKey) return;
-		lastDeliveriesKey = key;
-		geocodingDeliveries = true;
-		const slice = deliveriesState.routes.slice(0, MAX_DELIVERY_MARKERS);
-		Promise.all(slice.map((r) => getDelivery(r.id).catch(() => null))).then((details) => {
-			const withAddress = details.filter((d): d is NonNullable<typeof d> => d != null && !!d.address);
-			Promise.all(
-				withAddress.map(async (d) => {
-					const c = await geocodeAddressCached(d.address);
-					if (!c) return null;
-					return {
-						lat: c.lat,
-						lng: c.lng,
-						label: `<b>${d.customerName}</b><br/>${d.address}<br/><a href="/deliveries/${d.id}">Voir la tournée</a>`,
-						status: d.status,
-						id: d.id
-					};
-				})
-			).then((coords) => {
-				deliveryMarkersData = coords.filter((r): r is NonNullable<typeof r> => r != null);
-			}).finally(() => {
-				geocodingDeliveries = false;
-			});
 		});
 	});
 
@@ -222,33 +288,102 @@
 		}
 	});
 
+	/** Détermine le statut d'affichage d'une tournée : planned | inProgress | completed. */
+	function getRouteTraceStatus(route: {
+		statusSummary: { pending: number; inProgress: number; completed: number };
+		deliveryCount: number;
+	}): 'planned' | 'inProgress' | 'completed' {
+		const { statusSummary, deliveryCount } = route;
+		if (statusSummary.inProgress > 0) return 'inProgress';
+		if (deliveryCount > 0 && statusSummary.completed === deliveryCount) return 'completed';
+		return 'planned';
+	}
+
+	// Charger la liste des routes pour le panneau de sélection
 	$effect(() => {
-		if (!showRoutePolylines || !hasPeriod || !showDeliveries) {
+		if (!hasPeriod) {
+			routesList = [];
+			selectedRouteIds = new Set();
+			return;
+		}
+		const filters = getListFilters();
+		if (!filters.dateFrom || !filters.dateTo) return;
+		routesLoading = true;
+		getRoutes({ dateFrom: filters.dateFrom, dateTo: filters.dateTo })
+			.then((routes) => {
+				routesList = routes;
+				// Sélectionner toutes les routes par défaut
+				if (selectedRouteIds.size === 0 && routes.length > 0) {
+					selectedRouteIds = new Set(routes.map((r) => r.id));
+				}
+			})
+			.catch(() => {
+				routesList = [];
+			})
+			.finally(() => {
+				routesLoading = false;
+			});
+	});
+
+	// Charger les géométries des routes sélectionnées
+	$effect(() => {
+		const showTraces = mapFilters.filters.showRoutePolylines;
+		const routeTraces = { ...mapFilters.filters.routeTraces };
+		if (!showTraces || !hasPeriod || selectedRouteIds.size === 0) {
 			routePolylines = [];
 			return;
 		}
-		dateRangeState.dateRange;
-		dateRangeState.dateFilter;
 		const filters = getListFilters();
 		if (!filters.dateFrom || !filters.dateTo) return;
-		getRoutes({ dateFrom: filters.dateFrom, dateTo: filters.dateTo })
-			.then((routes) => {
-				const ids = routes.slice(0, MAX_ROUTE_POLYLINES).map((r) => r.id);
-				return Promise.all(ids.map((id) => getRouteGeometry(id)));
+		const toLoad = routesList
+			.filter((r) => selectedRouteIds.has(r.id))
+			.map((r) => ({
+				id: r.id,
+				status: getRouteTraceStatus(r)
+			}))
+			.filter((r) => routeTraces[r.status]);
+		Promise.all(
+			toLoad.map(async (r) => {
+				const geom = await getRouteGeometry(r.id);
+				if (!geom?.coordinates?.length) return null;
+				return {
+					coordinates: geom.coordinates,
+					status: r.status,
+					color: ROUTE_TRACE_COLORS[r.status] ?? ROUTE_TRACE_COLORS.planned,
+					routeId: r.id
+				};
 			})
+		)
 			.then((results) => {
-				const colors = ['#0d9488', '#7c3aed', '#ea580c', '#2563eb', '#059669'];
-				routePolylines = results
-					.filter((r): r is NonNullable<typeof r> => r != null && r.coordinates?.length > 0)
-					.map((r, i) => ({ coordinates: r.coordinates, color: colors[i % colors.length] }));
+				routePolylines = results.filter(
+					(r): r is NonNullable<typeof r> => r != null && r.coordinates?.length > 0
+				);
 			})
 			.catch(() => {
 				routePolylines = [];
 			});
 	});
 
+	function toggleRoute(routeId: string) {
+		const newSet = new Set(selectedRouteIds);
+		if (newSet.has(routeId)) {
+			newSet.delete(routeId);
+		} else {
+			newSet.add(routeId);
+		}
+		selectedRouteIds = newSet;
+	}
+
+	function selectAllRoutes() {
+		selectedRouteIds = new Set(routesList.map((r) => r.id));
+	}
+
+	function deselectAllRoutes() {
+		selectedRouteIds = new Set();
+	}
+
 	$effect(() => {
-		if (!showIsochrones) {
+		if (!mapFilters.filters.showIsochrones) {
 			isochronePolygons = [];
 			isochronesMessage = null;
 			return;
@@ -294,6 +429,7 @@
 			</Alert>
 		</div>
 	{:else}
+	<PeriodBadge absolute={true} />
 	{#if ordersState.error || deliveriesState.error || trackingState.lastError}
 		<div class="absolute left-2 right-2 top-16 z-[40] min-w-0 max-w-[calc(100%-1rem)] sm:left-4 sm:right-4">
 			{#if ordersState.error}
@@ -331,32 +467,126 @@
 	<div class="relative flex flex-1 min-h-0 min-w-0">
 		<Map
 			height="100%"
+			center={settingsState.headquarters ? [settingsState.headquarters.lat, settingsState.headquarters.lng] : undefined}
+			zoom={settingsState.headquarters ? 11 : 13}
 			markers={markersList}
 			headquarters={settingsState.headquarters}
-			routePolylines={showRoutePolylines ? routePolylines : []}
-			isochronePolygons={showIsochrones ? isochronePolygons : []}
+			routePolylines={mapFilters.filters.showRoutePolylines ? routePolylines : []}
+			isochronePolygons={mapFilters.filters.showIsochrones ? isochronePolygons : []}
 			lockView={true}
 			fitBoundsMaxZoom={11}
+			tileTheme="stadia-alidade-smooth-dark"
 		/>
 		<div class="absolute bottom-4 left-4 z-[1100] flex flex-col gap-2 max-w-[calc(100%-2rem)]">
-			<div class="flex flex-wrap items-center gap-2">
-				<label class="flex items-center gap-2 rounded-md border bg-background/95 px-2 py-1.5 text-sm">
-					<input type="checkbox" bind:checked={showRoutePolylines} class="rounded" />
-					<span>Itinéraires</span>
-				</label>
-				<label class="flex items-center gap-2 rounded-md border bg-background/95 px-2 py-1.5 text-sm">
-					<input type="checkbox" bind:checked={showIsochrones} class="rounded" />
-					<span>Isochrones</span>
-					{#if isochronesLoading}
-						<span class="text-muted-foreground text-xs">…</span>
-					{/if}
-				</label>
-				{#if showIsochrones && isochronesMessage && !isochronesLoading}
-					<p class="text-xs text-muted-foreground max-w-[220px]">{isochronesMessage}</p>
-				{/if}
-			</div>
+			{#if mapFilters.filters.showIsochrones && isochronesMessage && !isochronesLoading}
+				<p class="text-xs text-muted-foreground max-w-[220px] rounded-md border bg-background/95 px-2 py-1.5">
+					{isochronesMessage}
+				</p>
+			{/if}
 			<MapFilters />
 		</div>
+		{#if mapFilters.filters.showRoutePolylines && hasPeriod}
+			<div class="absolute bottom-4 right-4 z-[1100] flex flex-col items-end gap-2">
+				{#if routesPanelOpen}
+					<Card class="pb-6 w-80 max-w-[calc(100vw-2rem)]">
+						<CardHeader class="pb-3">
+							<div class="flex items-center justify-between">
+								<CardTitle class="text-base">Tournées</CardTitle>
+								<div class="flex gap-1">
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-7 text-xs"
+										onclick={selectAllRoutes}
+										disabled={routesLoading || routesList.length === 0}
+									>
+										Tout
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-7 text-xs"
+										onclick={deselectAllRoutes}
+										disabled={routesLoading || selectedRouteIds.size === 0}
+									>
+										Rien
+									</Button>
+									<Button
+										variant="ghost"
+										size="sm"
+										class="h-7 w-7 p-0"
+										onclick={() => (routesPanelOpen = false)}
+										aria-label="Réduire"
+									>
+										<ChevronRightIcon class="size-4" />
+									</Button>
+								</div>
+							</div>
+						</CardHeader>
+						<CardContent class="pt-0">
+						{#if routesLoading}
+							<div class="py-4 text-center text-sm text-muted-foreground">Chargement...</div>
+						{:else if routesList.length === 0}
+							<div class="py-4 text-center text-sm text-muted-foreground">Aucune tournée</div>
+						{:else}
+							<div class="max-h-[400px] overflow-y-auto space-y-2">
+								{#each routesList as route}
+									<div
+										class="flex items-start gap-2 rounded-md border p-2 hover:bg-muted/50 cursor-pointer transition-colors"
+										onclick={() => toggleRoute(route.id)}
+									>
+										<Checkbox
+											checked={selectedRouteIds.has(route.id)}
+											onCheckedChange={() => toggleRoute(route.id)}
+											onclick={(e) => e.stopPropagation()}
+											class="mt-0.5"
+										/>
+										<div class="flex-1 min-w-0">
+											<div class="flex items-center gap-2 mb-1">
+												<span class="font-medium text-sm truncate">
+													{route.name || `Tournée ${route.driverName}`}
+												</span>
+											</div>
+											<div class="flex items-center gap-2 flex-wrap text-xs text-muted-foreground">
+												{#if route.statusSummary.pending > 0}
+													<Badge variant="outline" class="h-5 text-xs">
+														{route.statusSummary.pending} en attente
+													</Badge>
+												{/if}
+												{#if route.statusSummary.completed > 0}
+													<Badge variant="outline" class="h-5 text-xs bg-green-50 text-green-700 border-green-200 dark:bg-green-950 dark:text-green-300 dark:border-green-800">
+														{route.statusSummary.completed} livrée{route.statusSummary.completed > 1 ? 's' : ''}
+													</Badge>
+												{/if}
+												{#if route.statusSummary.inProgress > 0}
+													<Badge variant="outline" class="h-5 text-xs bg-orange-50 text-orange-700 border-orange-200 dark:bg-orange-950 dark:text-orange-300 dark:border-orange-800">
+														{route.statusSummary.inProgress} en cours
+													</Badge>
+												{/if}
+												{#if route.deliveryCount === 0}
+													<span class="text-muted-foreground">Aucune commande</span>
+												{/if}
+											</div>
+										</div>
+									</div>
+								{/each}
+							</div>
+						{/if}
+						</CardContent>
+					</Card>
+				{:else}
+					<Button
+						variant="outline"
+						size="sm"
+						class="h-9"
+						onclick={() => (routesPanelOpen = true)}
+					>
+						<ChevronLeftIcon class="size-4 mr-2" />
+						Tournées ({selectedRouteIds.size}/{routesList.length})
+					</Button>
+				{/if}
+			</div>
+		{/if}
 	</div>
 	{/if}
 </div>

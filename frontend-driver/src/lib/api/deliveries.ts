@@ -11,6 +11,7 @@ export type ApiDelivery = {
 	status: string;
 	createdAt?: string;
 	completedAt: string | null;
+	orderDate?: string | null;
 };
 
 export type ApiDeliveryDetail = {
@@ -25,6 +26,7 @@ export type ApiDeliveryDetail = {
 	customerName: string;
 	address: string;
 	driverName: string;
+	orderDate?: string | null;
 };
 
 /** Livraisons du chauffeur (optionnel driverId pour filtrer côté API). */

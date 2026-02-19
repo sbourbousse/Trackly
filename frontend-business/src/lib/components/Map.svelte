@@ -63,6 +63,10 @@
 		lockView?: boolean;
 		/** En vue verrouillée : zoom max (min = plus dézoomé) lors du fitBounds. Ex. 11 = ne pas dézoomer au-delà du niveau 11 (commande dans une autre ville). */
 		fitBoundsMaxZoom?: number;
+		/** Afficher la barre de progression de zoom même sans lockView. */
+		showZoomProgress?: boolean;
+		/** Thème des tuiles de la carte : 'openstreetmap' ou 'stadia-alidade-smooth-dark'. */
+		tileTheme?: 'openstreetmap' | 'stadia-alidade-smooth-dark';
 	}
 
 	let {
@@ -79,23 +83,84 @@
 		isochronePolygons = [],
 		routeConnectors = [],
 		lockView = false,
-		fitBoundsMaxZoom
+		fitBoundsMaxZoom,
+		showZoomProgress = false,
+		tileTheme = 'openstreetmap'
 	}: Props = $props();
 
 	let DefaultIcon: any = null;
 	let createTrackingIcon: ((color?: string) => any) | null = null;
+	let tileLayer: any = null;
 
-	/** Zoom piloté par le slider en vue verrouillée (entre min et max). */
-	const zoomSliderMin = $derived(fitBoundsMaxZoom ?? 11);
+	/** Zoom piloté par le slider en vue verrouillée ou avec showZoomProgress (entre min et max). */
+	const zoomSliderMin = $derived(fitBoundsMaxZoom ?? (showZoomProgress ? 1 : 11));
 	const zoomSliderMax = 18;
 	let zoomSliderValue = $state(13);
+	let currentZoom = $state(zoom ?? 13);
 
 	/** Marqueurs effectifs : typés si fournis, sinon legacy. */
 	const effectiveMarkers = $derived(
 		typedMarkers.length > 0
 			? typedMarkers.map((m) => ({ ...m, _typed: true as const }))
-			: deliveryMarkers.map((m) => ({ ...m, _typed: false as const }))
+			: Array.isArray(deliveryMarkers) && deliveryMarkers.length > 0
+				? deliveryMarkers.map((m) => ({ ...m, _typed: false as const }))
+				: []
 	);
+
+	/** Crée le tileLayer selon le thème choisi. */
+	async function createTileLayer() {
+		if (!L || !map) return;
+
+		// Supprimer l'ancien tileLayer s'il existe
+		if (tileLayer) {
+			map.removeLayer(tileLayer);
+			tileLayer = null;
+		}
+
+		if (tileTheme === 'stadia-alidade-smooth-dark') {
+			// Stadia Maps Alidade Smooth Dark theme
+			// Récupère la configuration depuis le backend
+			try {
+				const { apiFetch } = await import('$lib/api/client');
+				const config = await apiFetch<{ tileUrl: string | null; hasApiKey: boolean }>('/api/tenants/me/map-tiles-config');
+				
+				if (config.hasApiKey && config.tileUrl) {
+					tileLayer = L.tileLayer(config.tileUrl, {
+						attribution: '© <a href="https://stadiamaps.com/">Stadia Maps</a>, © <a href="https://openmaptiles.org/">OpenMapTiles</a> © <a href="http://openstreetmap.org">OpenStreetMap</a> contributors',
+						maxZoom: 20,
+						subdomains: ['a', 'b', 'c'],
+						keepBuffer: 2
+					}).addTo(map);
+				} else {
+					// Fallback vers OpenStreetMap si pas de clé API
+					console.warn('[Map] Stadia Maps non configuré, utilisation d\'OpenStreetMap');
+					tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+						attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+						maxZoom: 19,
+						subdomains: ['a', 'b', 'c'],
+						keepBuffer: 2
+					}).addTo(map);
+				}
+			} catch (error) {
+				console.error('[Map] Erreur lors de la récupération de la config des tuiles:', error);
+				// Fallback vers OpenStreetMap en cas d'erreur
+				tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+					attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+					maxZoom: 19,
+					subdomains: ['a', 'b', 'c'],
+					keepBuffer: 2
+				}).addTo(map);
+			}
+		} else {
+			// OpenStreetMap par défaut
+			tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+				attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+				maxZoom: 19,
+				subdomains: ['a', 'b', 'c'],
+				keepBuffer: 2
+			}).addTo(map);
+		}
+	}
 
 	onMount(async () => {
 		if (!browser) return;
@@ -136,21 +201,32 @@
 			});
 		};
 
+		// Si on a un siège social, toujours centrer dessus
+		const initialCenter = headquarters 
+			? [headquarters.lat, headquarters.lng] as [number, number]
+			: center;
+		const initialZoom = headquarters ? (zoom ?? 11) : (zoom ?? 13);
+		
 		map = L.map(mapContainer, {
 			zoomControl: false,
 			attributionControl: true
-		}).setView(center, zoom);
+		}).setView(initialCenter, initialZoom);
+		currentZoom = initialZoom;
+
+		// Écouter les changements de zoom pour mettre à jour la progress bar
+		map.on('zoomend', () => {
+			if (map) {
+				currentZoom = map.getZoom();
+				zoomSliderValue = Math.round(currentZoom);
+			}
+		});
 
 		if (!lockView) {
 			L.control.zoom({ position: 'topleft' }).addTo(map);
 		}
 
-		L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-			attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-			maxZoom: 19,
-			subdomains: ['a', 'b', 'c'],
-			keepBuffer: 2
-		}).addTo(map);
+		// Créer le tileLayer selon le thème choisi
+		await createTileLayer();
 
 		updateMarkers();
 		updateHeadquartersMarker();
@@ -164,9 +240,21 @@
 		}
 	});
 
+	// Ne pas repositionner automatiquement quand center ou zoom change
+	// Le zoom doit rester fixe sur le siège social
+	// $effect(() => {
+	// 	if (map && center && zoom != null && !lockView && !headquarters) {
+	// 		map.setView(center, zoom);
+	// 		currentZoom = zoom;
+	// 		zoomSliderValue = Math.round(zoom);
+	// 	}
+	// });
+
+	/** Mettre à jour le tileLayer si le thème change. */
 	$effect(() => {
-		if (map && center && zoom != null && !lockView) {
-			map.setView(center, zoom);
+		if (map && L) {
+			const _ = tileTheme;
+			createTileLayer().catch((err) => console.error('[Map] Erreur lors de la mise à jour du tileLayer:', err));
 		}
 	});
 
@@ -242,7 +330,10 @@
 			markers.push(marker);
 		});
 
-		if (markers.length > 0 && map && L && !lockView) {
+		// Ne jamais recentrer automatiquement si on a un siège social ou en lockView
+		// Le zoom doit toujours rester centré sur le siège social
+		if (markers.length > 0 && map && L && !lockView && !headquarters) {
+			// Seulement si pas de siège social et pas de lockView, on peut recentrer
 			if (markers.length === 1) {
 				const pos = markers[0].getLatLng();
 				map.setView([pos.lat, pos.lng], map.getZoom());
@@ -253,13 +344,16 @@
 		}
 	}
 
-	/** Bounds englobant marqueurs, siège, polylignes et connecteurs (pour cadrage en vue verrouillée). */
+	/** Bounds englobant marqueurs, siège, numéros d'étape, polylignes et connecteurs (pour cadrage en vue verrouillée). */
 	function getContentBounds(): any {
 		if (!L || !map) return null;
 		const latLngs: [number, number][] = [];
 		effectiveMarkers.forEach((m) => latLngs.push([m.lat, m.lng]));
 		if (headquarters?.lat != null && headquarters?.lng != null) {
 			latLngs.push([headquarters.lat, headquarters.lng]);
+		}
+		for (const point of routeStepLabels) {
+			latLngs.push([point.lat, point.lng]);
 		}
 		for (const route of routePolylines) {
 			for (const [lng, lat] of route.coordinates ?? []) {
@@ -284,7 +378,7 @@
 		return bounds.pad(0.2);
 	}
 
-	/** Désactive déplacement et zoom, puis centre sur tout le contenu. */
+	/** Désactive déplacement et zoom, puis centre sur le siège social ou le contenu. */
 	function applyLockView() {
 		if (!map || !L) return;
 		map.dragging.disable();
@@ -293,6 +387,17 @@
 		map.touchZoom.disable();
 		map.boxZoom.disable();
 		map.keyboard.disable();
+		
+		// Si on a un siège social, toujours centrer dessus avec le zoom actuel
+		if (headquarters) {
+			map.setView([headquarters.lat, headquarters.lng], map.getZoom());
+			zoomSliderValue = Math.round(
+				Math.max(zoomSliderMin, Math.min(zoomSliderMax, map.getZoom()))
+			);
+			return;
+		}
+		
+		// Sinon, utiliser fitBounds pour centrer sur tout le contenu
 		const bounds = getContentBounds();
 		if (bounds) {
 			const options: { maxZoom?: number } = {};
@@ -307,6 +412,7 @@
 	function onZoomSliderInput(e: Event) {
 		const v = Number((e.target as HTMLInputElement).value);
 		zoomSliderValue = v;
+		currentZoom = v;
 		if (map) map.setZoom(v);
 	}
 
@@ -379,17 +485,45 @@
 		if (!L || !map) return;
 		isochronePolygonsLayer.forEach((layer) => layer.remove());
 		isochronePolygonsLayer = [];
-		const colors = ['#3b82f6', '#22c55e', '#eab308', '#ef4444'];
-		for (let i = 0; i < isochronePolygons.length; i++) {
-			const contour = isochronePolygons[i];
+		
+		// Trier les isochrones par minutes (du plus petit au plus grand)
+		const sorted = [...isochronePolygons].sort((a, b) => (a.minutes ?? 0) - (b.minutes ?? 0));
+		
+		// Couleurs de plus en plus prononcées : vert clair -> vert -> jaune -> orange -> rouge
+		// Plus la zone est éloignée (plus de minutes), plus la couleur est prononcée
+		const colorMap: Record<number, string> = {
+			10: '#22c55e',   // Vert clair (zone proche)
+			20: '#eab308',   // Jaune (zone moyenne)
+			30: '#f97316',   // Orange (zone éloignée)
+			40: '#ef4444',   // Rouge (zone très éloignée)
+			50: '#dc2626',   // Rouge foncé
+			60: '#b91c1c'    // Rouge très foncé
+		};
+		
+		for (const contour of sorted) {
 			if (!contour.coordinates?.length) continue;
 			const latLngs = toLeafletLatLngs(contour.coordinates);
-			const color = colors[i % colors.length];
+			const minutes = contour.minutes ?? 0;
+			// Utiliser la couleur correspondante ou une couleur par défaut basée sur les minutes
+			let color = colorMap[minutes];
+			if (!color) {
+				// Pour les minutes non définies, calculer une couleur progressive
+				if (minutes <= 10) color = '#22c55e';      // Vert clair
+				else if (minutes <= 20) color = '#eab308';  // Jaune
+				else if (minutes <= 30) color = '#f97316';  // Orange
+				else if (minutes <= 40) color = '#ef4444';  // Rouge
+				else if (minutes <= 50) color = '#dc2626';  // Rouge foncé
+				else color = '#b91c1c';                     // Rouge très foncé
+			}
+			
+			// Augmenter l'épaisseur pour les zones plus éloignées
+			const weight = Math.min(2 + Math.floor(minutes / 20), 4);
+			
 			const polygon = L.polygon(latLngs, {
 				color,
 				fillColor: color,
-				fillOpacity: 0.2,
-				weight: 2
+				fillOpacity: 0.12,
+				weight
 			}).addTo(map);
 			if (contour.minutes != null) {
 				polygon.bindPopup(`${contour.minutes} min`);
@@ -426,9 +560,11 @@
 				}).addTo(map);
 			}
 
-			if (followTracking && !lockView) {
-				map.setView([trackPosition.lat, trackPosition.lng], map.getZoom());
-			}
+			// Ne pas repositionner automatiquement sur la position de tracking
+			// Le zoom doit rester centré sur le siège social
+			// if (followTracking && !lockView) {
+			// 	map.setView([trackPosition.lat, trackPosition.lng], map.getZoom());
+			// }
 		}
 	}
 
@@ -478,10 +614,10 @@
 		}
 	});
 
-	/** En vue verrouillée, recadrer dès que le contenu change (ex. itinéraire chargé, isochrones). */
+	/** En vue verrouillée, recadrer dès que le contenu change (ex. itinéraire chargé, étapes, isochrones). */
 	$effect(() => {
 		if (!map || !L || !lockView) return;
-		const _ = [effectiveMarkers, headquarters, routePolylines, routeConnectors, isochronePolygons, trackPosition];
+		const _ = [effectiveMarkers, headquarters, routeStepLabels, routePolylines, routeConnectors, isochronePolygons, trackPosition];
 		applyLockView();
 	});
 
@@ -505,9 +641,9 @@
 	});
 </script>
 
-<div class="map-wrap">
+<div class="map-wrap" class:dark-theme={tileTheme === 'stadia-alidade-smooth-dark'}>
 	<div bind:this={mapContainer} class="map-root" style="width: 100%; height: {height}; border-radius: 8px; overflow: hidden;"></div>
-	{#if lockView}
+	{#if lockView || showZoomProgress}
 		<div class="zoom-slider-wrap" title="Zoom">
 			<input
 				type="range"
@@ -523,6 +659,9 @@
 				<div class="zoom-slider-fill" style="height: {((zoomSliderValue - zoomSliderMin) / (zoomSliderMax - zoomSliderMin)) * 100}%"></div>
 			</div>
 		</div>
+	{/if}
+	{#if tileTheme === 'stadia-alidade-smooth-dark'}
+		<div class="map-dark-mask"></div>
 	{/if}
 </div>
 
@@ -623,5 +762,76 @@
 		background: white;
 		box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
 		cursor: grab;
+	}
+
+	/* Mask pour le dark theme Stadia Maps */
+	.map-dark-mask {
+		position: absolute;
+		top: 0;
+		left: 0;
+		right: 0;
+		bottom: 0;
+		pointer-events: none;
+		background: linear-gradient(
+			to bottom,
+			rgba(0, 0, 0, 0.05) 0%,
+			transparent 20%,
+			transparent 80%,
+			rgba(0, 0, 0, 0.05) 100%
+		);
+		border-radius: 8px;
+		z-index: 100;
+	}
+
+	.dark-theme .map-dark-mask {
+		background: linear-gradient(
+			to bottom,
+			rgba(0, 0, 0, 0.1) 0%,
+			transparent 15%,
+			transparent 85%,
+			rgba(0, 0, 0, 0.1) 100%
+		);
+	}
+
+	/* Ajustements pour le dark theme */
+	.dark-theme :global(.leaflet-container) {
+		background-color: #1a1a1a;
+	}
+
+	.dark-theme .zoom-slider-track {
+		background: rgba(255, 255, 255, 0.15);
+	}
+
+	.dark-theme .zoom-slider-fill {
+		background: rgba(255, 255, 255, 0.6);
+	}
+
+	/* Styles pour les popups Leaflet en thème sombre */
+	:global(.dark .leaflet-popup-content-wrapper) {
+		background-color: oklch(0.216 0.006 56.043);
+		color: oklch(0.985 0.001 106.423);
+		border: 1px solid oklch(1 0 0 / 10%);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+	}
+
+	:global(.dark .leaflet-popup-content) {
+		color: oklch(0.985 0.001 106.423);
+	}
+
+	:global(.dark .leaflet-popup-tip) {
+		background-color: oklch(0.216 0.006 56.043);
+		border: 1px solid oklch(1 0 0 / 10%);
+		border-top: none;
+		border-left: none;
+	}
+
+	:global(.dark .leaflet-popup-close-button) {
+		color: oklch(0.985 0.001 106.423);
+		opacity: 0.8;
+	}
+
+	:global(.dark .leaflet-popup-close-button:hover) {
+		opacity: 1;
+		color: oklch(0.985 0.001 106.423);
 	}
 </style>

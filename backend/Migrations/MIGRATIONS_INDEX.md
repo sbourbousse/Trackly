@@ -15,6 +15,8 @@ Liste des migrations dans l’ordre d’application. À comparer avec la table `
 | 9 | 20260204201825_AddSequenceToDelivery | Sequence sur Delivery |
 | 10 | 20260215000000_AddHeadquartersToTenant | HeadquartersAddress, Lat, Lng sur Tenants |
 | 11 | 20260215190346_AddLatLngToOrder | Lat, Lng sur Order (géocodage / Mapbox) |
+| 12 | 20260216000000_AddPlannedStartAtToRoute | PlannedStartAt sur Route |
+| 13 | 20260216120000_AddTenantIsochrones | Table TenantIsochrones (isochrones en JSONB) |
 
 **Comment EF gère les versions**
 

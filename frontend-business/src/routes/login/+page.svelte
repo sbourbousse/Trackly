@@ -1,7 +1,9 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
 	import { authActions } from '$lib/stores/auth.svelte';
+	import { userState } from '$lib/stores/user.svelte';
 	import { loginAccount, registerAccount } from '$lib/api/client';
+	import { setAuthCookie } from '$lib/auth-cookie';
 	import { setOfflineModeReactive } from '$lib/stores/offline.svelte';
 	import { DEMO_TENANT_ID } from '$lib/offline/mockData';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
@@ -56,6 +58,7 @@
 				sessionStorage.setItem('trackly_auth_token', response.token);
 				sessionStorage.setItem('trackly_tenant_id', response.tenantId);
 			}
+			setAuthCookie(response.token, remember);
 
 			authActions.setTenantId(response.tenantId);
 			authActions.setToken(response.token);
@@ -64,6 +67,17 @@
 				name: response.name,
 				email: response.email,
 				plan: 'Starter'
+			});
+
+			// Sauvegarder dans userState pour la sidebar
+			userState.setUser({
+				id: response.userId,
+				name: response.name,
+				email: response.email
+			});
+			userState.setTenant({
+				id: response.tenantId,
+				name: companyName || 'Mon Entreprise'
 			});
 
 			createdTenantId = response.tenantId;
@@ -85,6 +99,7 @@
 			const demoToken = 'demo-token-' + Date.now();
 			localStorage.setItem('trackly_auth_token', demoToken);
 			localStorage.setItem('trackly_tenant_id', DEMO_TENANT_ID);
+			setAuthCookie(demoToken, true);
 
 			// Authentifier avec les données de démo
 			authActions.setTenantId(DEMO_TENANT_ID);
@@ -94,6 +109,17 @@
 				name: 'Utilisateur Démo',
 				email: 'demo@trackly.com',
 				plan: 'Starter'
+			});
+
+			// Sauvegarder dans userState
+			userState.setUser({
+				id: 'demo-user-001',
+				name: 'Utilisateur Démo',
+				email: 'demo@trackly.com'
+			});
+			userState.setTenant({
+				id: DEMO_TENANT_ID,
+				name: 'Entreprise Démo'
 			});
 
 			console.log('[Demo] Mode démo activé avec tenantId:', DEMO_TENANT_ID);

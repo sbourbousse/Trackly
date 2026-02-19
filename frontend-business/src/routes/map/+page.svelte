@@ -2,43 +2,27 @@
 	import { onDestroy } from 'svelte';
 	import { page } from '$app/state';
 	import Map from '$lib/components/Map.svelte';
-	import { Button } from '$lib/components/ui/button';
-	import { Switch } from '$lib/components/ui/switch';
-	import { Label } from '$lib/components/ui/label';
-	import { Root as PopoverRoot, Content as PopoverContent, Trigger as PopoverTrigger } from '$lib/components/ui/popover';
-	import { RangeCalendar } from '$lib/components/ui/range-calendar';
 	import {
 		dateRangeActions,
 		dateRangeState,
-		dateRangeUI,
 		getListFilters
 	} from '$lib/stores/dateRange.svelte';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
 	import { deliveriesActions, deliveriesState } from '$lib/stores/deliveries.svelte';
 	import { trackingActions, trackingState } from '$lib/realtime/tracking.svelte';
+	import { mapFilters, isMarkerVisible } from '$lib/stores/mapFilters.svelte';
+	import { settingsState } from '$lib/stores/settings.svelte';
+	import MapFilters from '$lib/components/map/MapFilters.svelte';
 	import { getDelivery } from '$lib/api/deliveries';
+	import { getRoutes, getRouteGeometry, getIsochrones } from '$lib/api/routes';
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
+	import { isOfflineMode } from '$lib/offline/config';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import type { TypedMapMarker } from '$lib/components/Map.svelte';
-	import CalendarIcon from '@lucide/svelte/icons/calendar';
-	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
-	import ChevronUpIcon from '@lucide/svelte/icons/chevron-up';
-	import PackageIcon from '@lucide/svelte/icons/package';
-	import TruckIcon from '@lucide/svelte/icons/truck';
-	import UsersIcon from '@lucide/svelte/icons/users';
-	import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date';
-	import type { DateRange } from 'bits-ui';
 
 	const MAX_ORDER_MARKERS = 30;
 	const MAX_DELIVERY_MARKERS = 20;
-
-	const PRESETS: { label: string; getRange?: () => DateRange; allPeriod?: boolean }[] = [
-		{ label: 'Toute période', allPeriod: true },
-		{ label: "Aujourd'hui", getRange: () => { const t = today(getLocalTimeZone()); return { start: t, end: t }; } },
-		{ label: 'Demain', getRange: () => { const t = today(getLocalTimeZone()).add({ days: 1 }); return { start: t, end: t }; } },
-		{ label: '7 derniers jours', getRange: () => { const end = today(getLocalTimeZone()); const start = end.subtract({ days: 6 }); return { start, end }; } },
-		{ label: '7 prochains jours', getRange: () => { const start = today(getLocalTimeZone()); const end = start.add({ days: 6 }); return { start, end }; } }
-	];
+	const MAX_ROUTE_POLYLINES = 5;
 
 	const layerParam = $derived(page.url.searchParams.get('layer'));
 	const hasPeriod = $derived(!!getListFilters().dateFrom && !!getListFilters().dateTo);
@@ -46,8 +30,6 @@
 	let showOrders = $state(true);
 	let showDeliveries = $state(true);
 	let showDrivers = $state(true);
-	let periodOpen = $state(false);
-	let actionsBarExpanded = $state(true);
 
 	let lastAppliedLayer = $state<string | null | undefined>(undefined);
 	$effect(() => {
@@ -80,6 +62,12 @@
 	let geocodingDeliveries = $state(false);
 	let lastOrdersKey = $state('');
 	let lastDeliveriesKey = $state('');
+	let routePolylines = $state<{ coordinates: [number, number][]; color?: string }[]>([]);
+	let isochronePolygons = $state<{ coordinates: [number, number][]; minutes?: number }[]>([]);
+	let showRoutePolylines = $state(true);
+	let showIsochrones = $state(false);
+	let isochronesLoading = $state(false);
+	let isochronesMessage = $state<string | null>(null);
 
 	const isInProgress = (s: string) => s === 'InProgress' || s === 'En cours';
 	const inProgressIds = $derived(
@@ -99,8 +87,9 @@
 
 	const markersList = $derived.by(() => {
 		const list: TypedMapMarker[] = [];
-		if (showOrders) {
-			for (const m of orderMarkersData) {
+		// Apply filters to orders
+		for (const m of orderMarkersData) {
+			if (isMarkerVisible('order', m.status, mapFilters.filters)) {
 				list.push({
 					lat: m.lat,
 					lng: m.lng,
@@ -110,8 +99,9 @@
 				});
 			}
 		}
-		if (showDeliveries) {
-			for (const m of deliveryMarkersData) {
+		// Apply filters to deliveries
+		for (const m of deliveryMarkersData) {
+			if (isMarkerVisible('delivery', m.status, mapFilters.filters)) {
 				list.push({
 					lat: m.lat,
 					lng: m.lng,
@@ -122,7 +112,8 @@
 				});
 			}
 		}
-		if (showDrivers) {
+		// Apply drivers filter
+		if (mapFilters.filters.showDrivers) {
 			for (const p of driverPoints) {
 				list.push({
 					lat: p.lat,
@@ -231,139 +222,80 @@
 		}
 	});
 
+	$effect(() => {
+		if (!showRoutePolylines || !hasPeriod || !showDeliveries) {
+			routePolylines = [];
+			return;
+		}
+		dateRangeState.dateRange;
+		dateRangeState.dateFilter;
+		const filters = getListFilters();
+		if (!filters.dateFrom || !filters.dateTo) return;
+		getRoutes({ dateFrom: filters.dateFrom, dateTo: filters.dateTo })
+			.then((routes) => {
+				const ids = routes.slice(0, MAX_ROUTE_POLYLINES).map((r) => r.id);
+				return Promise.all(ids.map((id) => getRouteGeometry(id)));
+			})
+			.then((results) => {
+				const colors = ['#0d9488', '#7c3aed', '#ea580c', '#2563eb', '#059669'];
+				routePolylines = results
+					.filter((r): r is NonNullable<typeof r> => r != null && r.coordinates?.length > 0)
+					.map((r, i) => ({ coordinates: r.coordinates, color: colors[i % colors.length] }));
+			})
+			.catch(() => {
+				routePolylines = [];
+			});
+	});
+
+	$effect(() => {
+		if (!showIsochrones) {
+			isochronePolygons = [];
+			isochronesMessage = null;
+			return;
+		}
+		isochronesLoading = true;
+		isochronesMessage = null;
+		getIsochrones('10,20,30')
+			.then((res) => {
+				if (res?.contours?.length) {
+					isochronePolygons = res.contours.map((c) => ({
+						coordinates: c.coordinates,
+						minutes: c.minutes
+					}));
+					isochronesMessage = null;
+				} else {
+					isochronePolygons = [];
+					isochronesMessage = res?.message ?? 'Aucun isochrone disponible. Vérifiez le siège social (paramètres).';
+				}
+			})
+			.catch(() => {
+				isochronePolygons = [];
+				isochronesMessage = 'Erreur lors du chargement des isochrones.';
+			})
+			.finally(() => {
+				isochronesLoading = false;
+			});
+	});
+
 	onDestroy(() => {
 		trackingActions.disconnect();
 	});
 
-	function formatRangeLabel(): string {
-		if (!dateRangeUI.ready) return '…';
-		const { start, end } = dateRangeState.dateRange;
-		if (!start || !end) return 'Toute période';
-		const same = start.year === end.year && start.month === end.month && start.day === end.day;
-		const fmt = (d: DateValue) =>
-			d.toDate(getLocalTimeZone()).toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });
-		if (same) return fmt(start);
-		return `${fmt(start)} – ${fmt(end)}`;
-	}
-
-	function applyPreset(preset: (typeof PRESETS)[0]) {
-		if (preset.allPeriod) {
-			dateRangeActions.setAllPeriod();
-		} else if (preset.getRange) {
-			dateRangeActions.setDateRange(preset.getRange());
-		}
-		periodOpen = false;
-	}
-
-	function onDateRangeChange(value: DateRange | undefined) {
-		if (!value || (value.start === undefined && value.end === undefined)) {
-			dateRangeActions.setAllPeriod();
-		} else {
-			dateRangeActions.setDateRange(value);
-		}
-	}
 </script>
 
 <div class="relative flex h-full min-h-0 flex-col">
-	<!-- Barre d'actions en overlay : repliable, flex-wrap pour mobile -->
-	<div
-		class="map-actions-bar absolute left-2 right-2 top-4 z-[40] flex min-w-0 max-w-[calc(100%-1rem)] flex-wrap items-center gap-2 rounded-lg border bg-background/95 px-3 py-2 shadow-md backdrop-blur supports-[backdrop-filter]:bg-background/80 sm:left-4 sm:right-4 sm:gap-3 sm:px-4 sm:py-3"
-	>
-		{#if actionsBarExpanded}
-			<div class="flex w-full flex-wrap items-center gap-2 sm:flex-initial sm:w-auto sm:gap-3">
-				<PopoverRoot bind:open={periodOpen}>
-					<PopoverTrigger>
-						{#snippet child({ props }: { props: Record<string, unknown> })}
-							<Button variant="outline" size="sm" class="min-w-0 shrink-0 gap-2 font-normal" {...props}>
-								<CalendarIcon class="size-4 shrink-0" />
-								<span class="truncate">{formatRangeLabel()}</span>
-								<ChevronDownIcon class="size-4 shrink-0 opacity-50" />
-							</Button>
-						{/snippet}
-					</PopoverTrigger>
-					<PopoverContent class="w-auto p-0" align="start" sideOffset={6}>
-						<div class="flex flex-col p-3">
-							<p class="text-muted-foreground mb-2 text-xs font-medium uppercase">Raccourcis</p>
-							{#each PRESETS as preset}
-								<Button variant="ghost" size="sm" class="justify-start font-normal" onclick={() => applyPreset(preset)}>
-									{preset.label}
-								</Button>
-							{/each}
-							<div class="mt-3 border-t pt-3">
-								<RangeCalendar
-									numberOfMonths={1}
-									value={dateRangeState.dateRange}
-									placeholder={dateRangeState.dateRange.start ?? today(getLocalTimeZone())}
-									onValueChange={onDateRangeChange}
-								/>
-							</div>
-						</div>
-					</PopoverContent>
-				</PopoverRoot>
-				<Button
-					variant="ghost"
-					size="sm"
-					class="shrink-0"
-					onclick={() => (actionsBarExpanded = false)}
-					aria-label="Réduire le menu d'actions"
-				>
-					<ChevronUpIcon class="size-4" />
-					<span class="sr-only sm:not-sr-only sm:ms-1">Réduire</span>
-				</Button>
-			</div>
-
-			<div class="flex min-w-0 flex-wrap items-center gap-2 sm:gap-4">
-				<div class="flex shrink-0 items-center gap-2">
-					<Switch id="layer-orders" checked={showOrders} onCheckedChange={(v) => (showOrders = v === true)} />
-					<Label for="layer-orders" class="cursor-pointer shrink-0 text-sm">Commandes</Label>
-				</div>
-				<div class="flex shrink-0 items-center gap-2">
-					<Switch id="layer-deliveries" checked={showDeliveries} onCheckedChange={(v) => (showDeliveries = v === true)} />
-					<Label for="layer-deliveries" class="cursor-pointer shrink-0 text-sm">Tournées</Label>
-				</div>
-				<div class="flex shrink-0 items-center gap-2">
-					<Switch id="layer-drivers" checked={showDrivers} onCheckedChange={(v) => (showDrivers = v === true)} />
-					<Label for="layer-drivers" class="cursor-pointer shrink-0 text-sm">Suivi livreurs</Label>
-				</div>
-			</div>
-
-			<div class="text-muted-foreground flex min-w-0 flex-wrap items-center gap-2 text-xs sm:gap-3">
-				<span class="flex shrink-0 items-center gap-1.5">
-					<span class="inline-block size-3 rounded-full bg-sky-500" aria-hidden="true"></span>
-					En attente / Prévue
-				</span>
-				<span class="flex shrink-0 items-center gap-1.5">
-					<span class="inline-block size-3 rounded-full bg-amber-500" aria-hidden="true"></span>
-					En cours / En transit
-				</span>
-				<span class="flex shrink-0 items-center gap-1.5">
-					<span class="inline-block size-3 rounded-full bg-emerald-500" aria-hidden="true"></span>
-					Livrée
-				</span>
-				<span class="flex shrink-0 items-center gap-1.5">
-					<span class="inline-block size-3 rounded-full bg-destructive" aria-hidden="true"></span>
-					Annulée / Échouée
-				</span>
-				{#if showDrivers && trackingState.isConnected}
-					<span class="shrink-0 text-emerald-600 dark:text-emerald-400">● Connecté</span>
-				{/if}
-			</div>
-		{:else}
-			<Button
-				variant="outline"
-				size="sm"
-				class="gap-2"
-				onclick={() => (actionsBarExpanded = true)}
-				aria-label="Ouvrir le menu d'actions"
-			>
-				<ChevronDownIcon class="size-4" />
-				<span>Actions</span>
-			</Button>
-		{/if}
-	</div>
-
+	{#if isOfflineMode()}
+		<div class="flex flex-1 flex-col items-center justify-center gap-4 p-6 text-center">
+			<Alert class="max-w-md">
+				<AlertTitle>Mode démo</AlertTitle>
+				<AlertDescription>
+					La carte n'est pas disponible en mode démo. Connectez-vous avec un compte pour voir la carte et le suivi en temps réel.
+				</AlertDescription>
+			</Alert>
+		</div>
+	{:else}
 	{#if ordersState.error || deliveriesState.error || trackingState.lastError}
-		<div class="absolute left-2 right-2 top-24 z-[40] min-w-0 max-w-[calc(100%-1rem)] sm:left-4 sm:right-4">
+		<div class="absolute left-2 right-2 top-16 z-[40] min-w-0 max-w-[calc(100%-1rem)] sm:left-4 sm:right-4">
 			{#if ordersState.error}
 				<Alert variant="destructive">
 					<AlertTitle>Commandes</AlertTitle>
@@ -390,16 +322,41 @@
 			<Alert class="max-w-md">
 				<AlertTitle>Période requise</AlertTitle>
 				<AlertDescription>
-					Sélectionnez une période dans la barre ci-dessus pour afficher les commandes et tournées sur la carte.
+					Utilisez le panneau « Période » à droite pour sélectionner une plage et afficher les commandes et tournées sur la carte.
 				</AlertDescription>
 			</Alert>
 		</div>
 	{/if}
 
-	<div class="relative flex-1 min-h-0">
+	<div class="relative flex flex-1 min-h-0 min-w-0">
 		<Map
 			height="100%"
 			markers={markersList}
+			headquarters={settingsState.headquarters}
+			routePolylines={showRoutePolylines ? routePolylines : []}
+			isochronePolygons={showIsochrones ? isochronePolygons : []}
+			lockView={true}
+			fitBoundsMaxZoom={11}
 		/>
+		<div class="absolute bottom-4 left-4 z-[1100] flex flex-col gap-2 max-w-[calc(100%-2rem)]">
+			<div class="flex flex-wrap items-center gap-2">
+				<label class="flex items-center gap-2 rounded-md border bg-background/95 px-2 py-1.5 text-sm">
+					<input type="checkbox" bind:checked={showRoutePolylines} class="rounded" />
+					<span>Itinéraires</span>
+				</label>
+				<label class="flex items-center gap-2 rounded-md border bg-background/95 px-2 py-1.5 text-sm">
+					<input type="checkbox" bind:checked={showIsochrones} class="rounded" />
+					<span>Isochrones</span>
+					{#if isochronesLoading}
+						<span class="text-muted-foreground text-xs">…</span>
+					{/if}
+				</label>
+				{#if showIsochrones && isochronesMessage && !isochronesLoading}
+					<p class="text-xs text-muted-foreground max-w-[220px]">{isochronesMessage}</p>
+				{/if}
+			</div>
+			<MapFilters />
+		</div>
 	</div>
+	{/if}
 </div>

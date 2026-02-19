@@ -55,6 +55,8 @@ public static class OrderEndpoints
             TenantId = tenantContext.TenantId,
             CustomerName = request.CustomerName.Trim(),
             Address = request.Address.Trim(),
+            Lat = request.Lat,
+            Lng = request.Lng,
             PhoneNumber = string.IsNullOrWhiteSpace(request.PhoneNumber) ? null : request.PhoneNumber.Trim(),
             InternalComment = string.IsNullOrWhiteSpace(request.InternalComment) ? null : request.InternalComment.Trim(),
             OrderDate = orderDate,
@@ -120,6 +122,8 @@ public static class OrderEndpoints
                 TenantId = tenantContext.TenantId,
                 CustomerName = orderRequest.CustomerName.Trim(),
                 Address = orderRequest.Address.Trim(),
+                Lat = orderRequest.Lat,
+                Lng = orderRequest.Lng,
                 PhoneNumber = string.IsNullOrWhiteSpace(orderRequest.PhoneNumber) ? null : orderRequest.PhoneNumber.Trim(),
                 InternalComment = string.IsNullOrWhiteSpace(orderRequest.InternalComment) ? null : orderRequest.InternalComment.Trim(),
                 OrderDate = orderDate,
@@ -341,6 +345,8 @@ public static class OrderEndpoints
             order.Id,
             order.CustomerName,
             order.Address,
+            order.Lat,
+            order.Lng,
             order.PhoneNumber,
             order.InternalComment,
             order.OrderDate,
@@ -495,7 +501,7 @@ public static class OrderEndpoints
     }
 
     private static OrderResponse ToResponse(Order order, int deliveryCount = 0) =>
-        new(order.Id, order.CustomerName, order.Address, order.PhoneNumber, order.InternalComment, order.OrderDate, order.Status, order.CreatedAt, deliveryCount);
+        new(order.Id, order.CustomerName, order.Address, order.Lat, order.Lng, order.PhoneNumber, order.InternalComment, order.OrderDate, order.Status, order.CreatedAt, deliveryCount);
 
     /// <summary>
     /// Parse la date/heure et retourne toujours un DateTimeOffset en UTC (requis par Npgsql).

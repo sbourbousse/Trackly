@@ -362,6 +362,7 @@ public static class DeliveryEndpoints
             TenantId = tenantContext.TenantId,
             DriverId = request.DriverId,
             Name = string.IsNullOrWhiteSpace(request.Name) ? null : request.Name.Trim(),
+            PlannedStartAt = request.PlannedStartAt,
             CreatedAt = DateTimeOffset.UtcNow
         };
         dbContext.Routes.Add(route);

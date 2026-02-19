@@ -17,7 +17,7 @@ public sealed record DeliveryTrackingResponse(
     DeliveryStatus Status,
     DateTimeOffset? CompletedAt);
 
-public sealed record CreateDeliveriesBatchRequest(Guid DriverId, List<Guid> OrderIds, string? Name = null);
+public sealed record CreateDeliveriesBatchRequest(Guid DriverId, List<Guid> OrderIds, string? Name = null, DateTimeOffset? PlannedStartAt = null);
 
 public sealed record CreateDeliveriesBatchResponse
 {
@@ -72,6 +72,7 @@ public sealed record RouteResponse(
     Guid DriverId,
     string? Name,
     DateTimeOffset CreatedAt,
+    DateTimeOffset? PlannedStartAt,
     int DeliveryCount,
     string DriverName,
     DeliveryStatusSummary StatusSummary);
@@ -87,6 +88,7 @@ public sealed record RouteDetailResponse(
     Guid DriverId,
     string? Name,
     DateTimeOffset CreatedAt,
+    DateTimeOffset? PlannedStartAt,
     string DriverName,
     List<DeliveryInRouteResponse> Deliveries);
 
@@ -103,3 +105,6 @@ public sealed record DeliveryInRouteResponse(
 
 /// <summary>Body pour réordonner les livraisons d'une tournée.</summary>
 public sealed record ReorderRouteDeliveriesRequest(List<Guid> DeliveryIds);
+
+/// <summary>Body pour mettre à jour une tournée (nom, heure de début prévue).</summary>
+public sealed record UpdateRouteRequest(string? Name = null, DateTimeOffset? PlannedStartAt = null);

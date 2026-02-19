@@ -23,16 +23,17 @@ export function parsePeriodKey(periodKey: string): Date | null {
 
 /**
  * Nombre de jours entre deux dates (dates à minuit, différence en jours entiers).
+ * diff = today - date : positif = date dans le passé, négatif = date dans le futur.
  */
-function daysDiff(a: Date, b: Date): number {
-	const d0 = new Date(a.getFullYear(), a.getMonth(), a.getDate());
-	const d1 = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+function daysDiff(date: Date, today: Date): number {
+	const d0 = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+	const d1 = new Date(today.getFullYear(), today.getMonth(), today.getDate());
 	return Math.round((d1.getTime() - d0.getTime()) / 86400000);
 }
 
 /**
  * Retourne un libellé relatif pour une date : "Aujourd'hui", "Hier", "Il y a 2 jours", "Demain", etc.
- * Utilisé dans les tooltips du graphique commandes (évolutif pour switch absolu/relatif plus tard).
+ * diff = today - date : positif = date dans le passé, négatif = date dans le futur.
  */
 export function getRelativeDateLabel(periodKey: string, todayRef: Date = new Date()): string {
 	const date = parsePeriodKey(periodKey);
@@ -42,14 +43,14 @@ export function getRelativeDateLabel(periodKey: string, todayRef: Date = new Dat
 	const diff = daysDiff(date, today);
 
 	if (diff === 0) return "Aujourd'hui";
-	if (diff === 1) return 'Demain';
-	if (diff === -1) return 'Hier';
-	if (diff > 1 && diff <= 7) return `Dans ${diff} jours`;
-	if (diff < -1 && diff >= -7) return `Il y a ${-diff} jours`;
-	if (diff > 7 && diff <= 14) return 'Dans 2 semaines';
-	if (diff < -7 && diff >= -14) return 'Il y a 2 semaines';
-	if (diff > 14 && diff <= 31) return `Dans ${Math.round(diff / 7)} semaines`;
-	if (diff < -14 && diff >= -31) return `Il y a ${Math.round(-diff / 7)} semaines`;
+	if (diff === 1) return 'Hier';
+	if (diff === -1) return 'Demain';
+	if (diff > 1 && diff <= 7) return `Il y a ${diff} jours`;
+	if (diff < -1 && diff >= -7) return `Dans ${-diff} jours`;
+	if (diff > 7 && diff <= 14) return 'Il y a 2 semaines';
+	if (diff < -7 && diff >= -14) return 'Dans 2 semaines';
+	if (diff > 14 && diff <= 31) return `Il y a ${Math.round(diff / 7)} semaines`;
+	if (diff < -14 && diff >= -31) return `Dans ${Math.round(-diff / 7)} semaines`;
 
 	// Fallback : date formatée
 	return date.toLocaleDateString('fr-FR', { day: 'numeric', month: 'short', year: 'numeric' });

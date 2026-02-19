@@ -4,12 +4,18 @@ import { isOfflineMode } from '../offline/config';
 import { mockTenantApi } from '../offline/mockApi';
 
 // URL par défaut: Railway en prod, localhost en dev
-const defaultBaseUrl = dev ? 'http://localhost:5257' : 'https://trackly-backend-production.up.railway.app';
+const defaultBaseUrl = dev ? 'http://localhost:5257' : 'https://backend-production-050e.up.railway.app';
 const baseUrl = env.PUBLIC_API_BASE_URL || defaultBaseUrl;
 
 // Récupère ou récupère le TenantId depuis le backend
 let cachedTenantId: string | null = null;
 let cachedAuthToken: string | null = null;
+
+/** À appeler au logout pour ne plus réutiliser token/tenant en mémoire */
+export function clearAuthCache(): void {
+	cachedTenantId = null;
+	cachedAuthToken = null;
+}
 
 export const getTenantId = async (): Promise<string | null> => {
 	if (!browser) return null;

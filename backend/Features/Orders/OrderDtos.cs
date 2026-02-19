@@ -5,6 +5,8 @@ namespace Trackly.Backend.Features.Orders;
 public sealed record CreateOrderRequest(
     string CustomerName,
     string Address,
+    double? Lat = null,
+    double? Lng = null,
     string? PhoneNumber = null,
     string? InternalComment = null,
     string? OrderDate = null);
@@ -32,6 +34,8 @@ public sealed record OrderResponse(
     Guid Id,
     string CustomerName,
     string Address,
+    double? Lat,
+    double? Lng,
     string? PhoneNumber,
     string? InternalComment,
     DateTimeOffset? OrderDate,
@@ -51,6 +55,8 @@ public sealed record OrderDetailResponse(
     Guid Id,
     string CustomerName,
     string Address,
+    double? Lat,
+    double? Lng,
     string? PhoneNumber,
     string? InternalComment,
     DateTimeOffset? OrderDate,

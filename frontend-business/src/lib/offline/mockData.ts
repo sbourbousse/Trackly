@@ -530,6 +530,7 @@ export function getMockRoutes(filters?: { dateFrom?: string; dateTo?: string; dr
       name: routeName,
       driverId: driver.id,
       createdAt: firstDelivery.createdAt,
+      plannedStartAt: null,
       deliveryCount: deliveries.length,
       driverName: driver.name,
       statusSummary
@@ -591,6 +592,7 @@ export function getMockRouteById(id: string): ApiRouteDetail | null {
     driverId: route.driverId,
     driverName: route.driverName,
     createdAt: route.createdAt,
+    plannedStartAt: route.plannedStartAt ?? null,
     deliveries: deliveries.map((d, index) => {
       // Trouver la commande correspondante pour avoir les infos client
       const order = mockOrdersState.find(o => o.id === d.orderId);

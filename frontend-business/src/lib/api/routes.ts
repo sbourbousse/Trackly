@@ -14,6 +14,7 @@ export type ApiRoute = {
 	driverId: string;
 	name: string | null;
 	createdAt: string;
+	plannedStartAt: string | null;
 	deliveryCount: number;
 	driverName: string;
 	statusSummary: DeliveryStatusSummary;
@@ -37,6 +38,7 @@ export type ApiRouteDetail = {
 	driverId: string;
 	name: string | null;
 	createdAt: string;
+	plannedStartAt: string | null;
 	driverName: string;
 	deliveries: ApiDeliveryInRoute[];
 };
@@ -73,6 +75,24 @@ export const getRoute = async (routeId: string): Promise<ApiRouteDetail> => {
 	return await apiFetch<ApiRouteDetail>(`/api/routes/${routeId}`);
 };
 
+export type UpdateRouteRequest = {
+	name?: string;
+	plannedStartAt?: string | null;
+};
+
+export const updateRoute = async (
+	routeId: string,
+	request: UpdateRouteRequest
+): Promise<{ message: string }> => {
+	if (browser && isOfflineMode()) {
+		return { message: 'OK' };
+	}
+	return await apiFetch<{ message: string }>(`/api/routes/${routeId}`, {
+		method: 'PATCH',
+		body: JSON.stringify(request)
+	});
+};
+
 export const reorderRouteDeliveries = async (
 	routeId: string,
 	deliveryIds: string[]
@@ -85,4 +105,81 @@ export const reorderRouteDeliveries = async (
 		method: 'PATCH',
 		body: JSON.stringify({ deliveryIds })
 	});
+};
+
+/** Géométrie d'un itinéraire (polyligne) pour la carte. Coordonnées [lng, lat]. */
+export type ApiRouteGeometry = {
+	coordinates: [number, number][];
+	durationSeconds: number;
+	distanceMeters: number;
+	/** Segments (legs) entre étapes pour affichage par tronçon coloré. */
+	legs?: { coordinates: [number, number][] }[];
+};
+
+export const getRouteGeometry = async (routeId: string): Promise<ApiRouteGeometry | null> => {
+	if (browser && isOfflineMode()) return null;
+	try {
+		return await apiFetch<ApiRouteGeometry>(`/api/routes/${routeId}/route-geometry`);
+	} catch {
+		return null;
+	}
+};
+
+/** Temps de trajet par segment + total. */
+export type ApiRouteTravelTimes = {
+	legs: { fromIndex: number; toIndex: number; durationSeconds: number; distanceMeters: number }[];
+	totalDurationSeconds: number;
+	totalDistanceMeters?: number;
+};
+
+/**
+ * Matrice des temps entre tous les points (pointIds[0] = "depot", puis ids des livraisons).
+ * Permet de calculer les temps pour n'importe quel ordre sans rappel API.
+ */
+export type ApiRouteTravelTimesMatrix = {
+	pointIds: string[];
+	durations: number[][];
+	distances?: number[][];
+	message?: string;
+};
+
+export const getRouteTravelTimesMatrix = async (
+	routeId: string
+): Promise<ApiRouteTravelTimesMatrix | null> => {
+	if (browser && isOfflineMode()) return null;
+	try {
+		return await apiFetch<ApiRouteTravelTimesMatrix>(`/api/routes/${routeId}/travel-times-matrix`);
+	} catch {
+		return null;
+	}
+};
+
+export const getRouteTravelTimes = async (routeId: string): Promise<ApiRouteTravelTimes | null> => {
+	if (browser && isOfflineMode()) return null;
+	try {
+		return await apiFetch<ApiRouteTravelTimes>(`/api/routes/${routeId}/travel-times`);
+	} catch {
+		return null;
+	}
+};
+
+/** Contour isochrone (minutes + polygone [lng, lat][]). */
+export type ApiIsochroneContour = {
+	minutes: number;
+	coordinates: [number, number][];
+};
+
+export type ApiIsochronesResponse = {
+	contours: ApiIsochroneContour[];
+	message?: string;
+};
+
+export const getIsochrones = async (minutes?: string): Promise<ApiIsochronesResponse | null> => {
+	if (browser && isOfflineMode()) return null;
+	try {
+		const path = minutes ? `/api/tenants/me/isochrones?minutes=${encodeURIComponent(minutes)}` : '/api/tenants/me/isochrones';
+		return await apiFetch<ApiIsochronesResponse>(path);
+	} catch {
+		return null;
+	}
 };

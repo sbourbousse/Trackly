@@ -37,13 +37,13 @@ jobs:
 
       # Deploy frontend-business
       - name: Deploy frontend-business
+        working-directory: ./frontend-business
         run: |
-          cd frontend-business
           npm install
           if [ "${{ github.event.inputs.environment }}" == "production" ]; then
-            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }} --cwd .
           else
-            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }} 2>&1 | tee deploy.log
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }} --cwd . 2>&1 | tee deploy.log
             echo "URL: $(grep -o 'https://[^[:space:]]*\.vercel\.app' deploy.log | tail -1)"
           fi
         env:
@@ -52,33 +52,38 @@ jobs:
 
       # Deploy frontend-tracking
       - name: Deploy frontend-tracking
+        working-directory: ./frontend-tracking
         run: |
-          cd frontend-tracking
           npm install
           if [ "${{ github.event.inputs.environment }}" == "production" ]; then
-            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }} --cwd .
           else
-            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }} 2>&1 | tee deploy.log
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }} --cwd . 2>&1 | tee deploy.log
             echo "URL: $(grep -o 'https://[^[:space:]]*\.vercel\.app' deploy.log | tail -1)"
           fi
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_TRACKING }}
 
-      # Deploy frontend-landing-page
+      # Deploy frontend-landing-page (si configuré)
       - name: Deploy frontend-landing-page
+        if: ${{ secrets.VERCEL_PROJECT_ID_LANDING != '' }}
+        working-directory: ./frontend-landing-page
         run: |
-          cd frontend-landing-page
           npm install
           if [ "${{ github.event.inputs.environment }}" == "production" ]; then
-            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }}
+            npx vercel deploy --prod --yes --token ${{ secrets.VERCEL_TOKEN }} --cwd .
           else
-            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }} 2>&1 | tee deploy.log
+            npx vercel deploy --yes --token ${{ secrets.VERCEL_TOKEN }} --cwd . 2>&1 | tee deploy.log
             echo "URL: $(grep -o 'https://[^[:space:]]*\.vercel\.app' deploy.log | tail -1)"
           fi
         env:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID_LANDING }}
+
+      - name: Skip landing page (not configured)
+        if: ${{ secrets.VERCEL_PROJECT_ID_LANDING == '' }}
+        run: echo "⚠️ VERCEL_PROJECT_ID_LANDING not set, skipping landing page deployment"
 
       - name: Notify Deployment
         run: |

@@ -7,10 +7,7 @@
 	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
 	import { dateRangeState } from '$lib/stores/dateRange.svelte';
-	import { getListFilters, getDateRangeDayCount } from '$lib/stores/dateRange.svelte';
-	import { deleteOrdersBatch, getOrdersStats, type OrderStatsResponse } from '$lib/api/orders';
-	import DateFilterCard from '$lib/components/DateFilterCard.svelte';
-	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
+	import { deleteOrdersBatch } from '$lib/api/orders';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
@@ -35,11 +32,7 @@
 	let deleteError = $state<string | null>(null);
 	let showCascadeWarning = $state(false);
 	let forceDeleteDeliveries = $state(false);
-	let orderStats = $state<OrderStatsResponse | null>(null);
-	let orderStatsLoading = $state(false);
 	let statusFilter = $state<string | null>(null);
-
-	const MONTH_LABELS = ['janv.', 'févr.', 'mars', 'avr.', 'mai', 'juin', 'juil.', 'août', 'sept.', 'oct.', 'nov.', 'déc.'];
 
 	function statusToKey(s: string): string {
 		const lower = (s ?? '').toLowerCase();
@@ -72,68 +65,11 @@
 		statusFilter = null;
 	}
 
-	const chartData = $derived.by(() => {
-		if (!orderStats) return { labels: [] as string[], values: [] as number[], periodKeys: [] as string[], byHour: false, byMonth: false };
-		if (orderStats.byHour.length > 0) {
-			return {
-				labels: orderStats.byHour.map((x) => x.hour),
-				values: orderStats.byHour.map((x) => x.count),
-				periodKeys: [] as string[],
-				byHour: true,
-				byMonth: false
-			};
-		}
-		const dayCount = getDateRangeDayCount();
-		if (dayCount > 30 && orderStats.byDay.length > 0) {
-			const byMonthMap = new Map<string, number>();
-			for (const { date, count } of orderStats.byDay) {
-				const [y, m] = date.split('-');
-				const key = `${y}-${m}`;
-				byMonthMap.set(key, (byMonthMap.get(key) ?? 0) + count);
-			}
-			const sorted = [...byMonthMap.entries()].sort((a, b) => a[0].localeCompare(b[0]));
-			return {
-				labels: sorted.map(([key]) => {
-					const [, m] = key.split('-');
-					return `${MONTH_LABELS[Number(m) - 1]} ${key.slice(0, 4)}`;
-				}),
-				values: sorted.map(([, count]) => count),
-				periodKeys: sorted.map(([key]) => key),
-				byHour: false,
-				byMonth: true
-			};
-		}
-		return {
-			labels: orderStats.byDay.map((x) => x.date),
-			values: orderStats.byDay.map((x) => x.count),
-			periodKeys: orderStats.byDay.map((x) => x.date),
-			byHour: false,
-			byMonth: false
-		};
-	});
-
-	async function loadOrderStats() {
-		const filters = getListFilters();
-		if (!filters.dateFrom || !filters.dateTo) {
-			orderStats = null;
-			return;
-		}
-		orderStatsLoading = true;
-		try {
-			orderStats = await getOrdersStats(filters);
-		} catch {
-			orderStats = null;
-		} finally {
-			orderStatsLoading = false;
-		}
-	}
-
 	$effect(() => {
 		const _ = dateRangeState.dateRange;
 		const __ = dateRangeState.dateFilter;
 		const ___ = dateRangeState.timeRange;
 		ordersActions.loadOrders();
-		loadOrderStats();
 	});
 
 	$effect(() => {
@@ -192,28 +128,6 @@
 
 <div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
 	<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." icon={ClipboardListIcon} />
-
-	<DateFilterCard
-		chartTitle={chartData.byHour ? 'Commandes par heure' : chartData.byMonth ? 'Commandes par mois' : 'Commandes par jour'}
-		chartDescription="Répartition par statut pour la planification des tournées."
-		chartDefaultOpen={false}
-		onDateFilterChange={async () => { await ordersActions.loadOrders(); }}
-	>
-		{#snippet chart()}
-			<OrdersChartContent
-				loading={orderStatsLoading}
-				labels={chartData.labels}
-				values={chartData.values}
-				orders={ordersState.items}
-				periodKeys={chartData.periodKeys}
-				byHour={chartData.byHour}
-				byMonth={chartData.byMonth}
-				emptyMessage="Sélectionnez une plage pour afficher le graphique."
-				selectedStatus={statusFilter}
-				onStatusClick={handleStatusClick}
-			/>
-		{/snippet}
-	</DateFilterCard>
 
 	<Card>
 			<CardHeader class="space-y-1">

@@ -3,6 +3,7 @@ using System.Text.Json.Serialization;
 using System.Text.RegularExpressions;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
 using Trackly.Backend.Features.Auth;
@@ -12,12 +13,15 @@ using Trackly.Backend.Features.Drivers;
 using Trackly.Backend.Features.Geocode;
 using Trackly.Backend.Features.Orders;
 using Trackly.Backend.Features.Tenants;
+using Trackly.Backend.Features.Mapbox;
+using Trackly.Backend.Features.StadiaMaps;
 using Trackly.Backend.Features.Tracking;
 using Trackly.Backend.Infrastructure.Data;
 using Trackly.Backend.Infrastructure.MultiTenancy;
 
 var builder = WebApplication.CreateBuilder(args);
 
+builder.Services.AddMemoryCache();
 builder.Services.AddScoped<TenantContext>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddSingleton<AuthService>();
@@ -63,8 +67,8 @@ builder.Services.AddCors(options =>
             var allowedPatterns = builder.Configuration.GetSection("Cors:AllowedPatterns").Get<string[]>() 
                 ?? Array.Empty<string>();
             
-            // Combine origines exactes et patterns pour la vérification
-            var allOrigins = allowedOrigins.ToList();
+            Console.WriteLine($"[CORS] Config - Origins: {string.Join(", ", allowedOrigins)}");
+            Console.WriteLine($"[CORS] Config - Patterns: {string.Join(", ", allowedPatterns)}");
             
             policy.SetIsOriginAllowed(origin =>
             {
@@ -146,6 +150,12 @@ builder.Services.AddHttpClient("Nominatim", client =>
     client.DefaultRequestHeaders.Add("User-Agent", "Trackly/1.0 (contact@trackly.app)");
 });
 
+// Stadia Maps : Directions, Matrix, Isochrone (clé via STADIA_MAPS_API_KEY ou config)
+builder.Services.AddHttpClient<IMapboxService, StadiaMapsService>(client =>
+{
+    client.BaseAddress = new Uri("https://api.stadiamaps.com/");
+});
+
 // Service de simulation GPS pour les démonstrations (TEMPORAIREMENT DÉSACTIVÉ)
 // builder.Services.AddSingleton<IGpsSimulationService, GpsSimulationService>();
 
@@ -157,6 +167,15 @@ var allowTenantBootstrap = builder.Configuration.GetValue<bool>("ALLOW_TENANT_BO
 app.UseCors();
 app.UseAuthentication();
 app.UseAuthorization();
+
+// Affiche l'hôte de la base utilisée (run + migrations)
+var rawConnectionString = Environment.GetEnvironmentVariable("DATABASE_URL")
+    ?? builder.Configuration.GetConnectionString("TracklyDb");
+if (!string.IsNullOrWhiteSpace(rawConnectionString))
+{
+    var displayDb = GetDatabaseDisplayString(NormalizeConnectionString(rawConnectionString));
+    Console.WriteLine($"[DB] Base utilisée : {displayDb}");
+}
 
 // Exécute les migrations en développement et production
 using (var scope = app.Services.CreateScope())
@@ -174,6 +193,22 @@ using (var scope = app.Services.CreateScope())
 // Endpoints publics (sans TenantMiddleware)
 app.MapGet("/", () => "Trackly API");
 app.MapGet("/health", () => Results.Ok(new { status = "ok" }));
+
+// Endpoint de diagnostic CORS
+app.MapGet("/debug/cors", () =>
+{
+    var allowedOrigins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? Array.Empty<string>();
+    var allowedPatterns = builder.Configuration.GetSection("Cors:AllowedPatterns").Get<string[]>() ?? Array.Empty<string>();
+    
+    return Results.Ok(new
+    {
+        environment = builder.Environment.EnvironmentName,
+        isDevelopment = builder.Environment.IsDevelopment(),
+        corsOrigins = allowedOrigins,
+        corsPatterns = allowedPatterns,
+        message = "CORS configuration diagnostic"
+    });
+});
 
 // Auth business (création de compte + login)
 app.MapPost("/api/auth/register", async (TracklyDbContext dbContext, AuthService authService, RegisterRequest request) =>
@@ -324,6 +359,92 @@ app.MapGet("/api/public/deliveries/{id:guid}/tracking",
 
 app.UseMiddleware<TenantMiddleware>();
 
+// Siège social du tenant (paramètres entreprise) — requiert X-Tenant-Id
+app.MapGet("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, TenantContext tenantContext, CancellationToken cancellationToken) =>
+{
+    if (tenantContext.TenantId == Guid.Empty)
+        return Results.BadRequest("Tenant manquant.");
+    var tenant = await dbContext.Tenants
+        .AsNoTracking()
+        .FirstOrDefaultAsync(t => t.Id == tenantContext.TenantId, cancellationToken);
+    if (tenant == null)
+        return Results.NotFound("Tenant non trouvé.");
+    return Results.Ok(new
+    {
+        address = tenant.HeadquartersAddress ?? (string?)null,
+        lat = tenant.HeadquartersLat,
+        lng = tenant.HeadquartersLng
+    });
+});
+
+app.MapPut("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, TenantContext tenantContext, HeadquartersRequest request, CancellationToken cancellationToken) =>
+{
+    if (tenantContext.TenantId == Guid.Empty)
+        return Results.BadRequest("Tenant manquant.");
+    var tenant = await dbContext.Tenants
+        .FirstOrDefaultAsync(t => t.Id == tenantContext.TenantId, cancellationToken);
+    if (tenant == null)
+        return Results.NotFound("Tenant non trouvé.");
+    tenant.HeadquartersAddress = string.IsNullOrWhiteSpace(request.Address) ? null : request.Address.Trim();
+    tenant.HeadquartersLat = request.Lat;
+    tenant.HeadquartersLng = request.Lng;
+    await dbContext.SaveChangesAsync(cancellationToken);
+    return Results.Ok(new
+    {
+        address = tenant.HeadquartersAddress,
+        lat = tenant.HeadquartersLat,
+        lng = tenant.HeadquartersLng
+    });
+});
+
+// Isochrones autour du siège social (Stadia Maps) — requiert X-Tenant-Id (cache 1 h)
+app.MapGet("/api/tenants/me/isochrones", async (
+    TracklyDbContext dbContext,
+    TenantContext tenantContext,
+    IMemoryCache cache,
+    IMapboxService routingService,
+    string? minutes,
+    CancellationToken cancellationToken) =>
+{
+    if (tenantContext.TenantId == Guid.Empty)
+        return Results.BadRequest("Tenant manquant.");
+    var tenant = await dbContext.Tenants
+        .AsNoTracking()
+        .FirstOrDefaultAsync(t => t.Id == tenantContext.TenantId, cancellationToken);
+    if (tenant == null || !tenant.HeadquartersLat.HasValue || !tenant.HeadquartersLng.HasValue)
+        return Results.NotFound("Siège social non configuré. Définissez une adresse et des coordonnées dans les paramètres.");
+    if (!routingService.IsConfigured)
+        return Results.Json(new { contours = Array.Empty<object>(), message = "Stadia Maps non configuré (STADIA_MAPS_API_KEY)." });
+    List<int> minutesList = string.IsNullOrWhiteSpace(minutes)
+        ? new List<int> { 10, 20, 30 }
+        : minutes.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)
+            .Select(s => int.TryParse(s, out var m) && m >= 1 && m <= 60 ? m : (int?)null)
+            .Where(m => m.HasValue)
+            .Select(m => m!.Value)
+            .OrderBy(x => x)
+            .Take(4)
+            .ToList();
+    if (minutesList.Count == 0)
+        return Results.BadRequest("Paramètre minutes invalide (entiers 1–60, séparés par des virgules).");
+    var lat = tenant.HeadquartersLat.Value;
+    var lng = tenant.HeadquartersLng.Value;
+    var minutesKey = string.Join(",", minutesList);
+    var cacheKey = $"stadia:isochrones:{tenantContext.TenantId}:{lat:F5}:{lng:F5}:{minutesKey}";
+    var result = await cache.GetOrCreateAsync(cacheKey, async entry =>
+    {
+        entry!.AbsoluteExpirationRelativeToNow = TimeSpan.FromHours(1);
+        return await routingService.GetIsochronesAsync(lng, lat, minutesList, "auto", cancellationToken);
+    });
+    if (result == null)
+        return Results.Ok(new { contours = Array.Empty<object>(), message = "Impossible de calculer les isochrones. Vérifiez les coordonnées du siège et la configuration Stadia Maps." });
+    var contours = result.Contours.Select(c => new
+    {
+        minutes = c.Minutes,
+        coordinates = c.Coordinates
+    }).ToList();
+    return Results.Ok(new { contours });
+});
+
 app.MapOrderEndpoints();
 app.MapDeliveryEndpoints();
 app.MapRouteEndpoints();
@@ -410,4 +531,21 @@ static string NormalizeConnectionString(string connectionString)
     }
 
     return connectionString;
+}
+
+/// <summary>Retourne une chaîne affichable (sans mot de passe) : Host:Port/Database</summary>
+static string GetDatabaseDisplayString(string connectionString)
+{
+    if (string.IsNullOrWhiteSpace(connectionString)) return "(non configurée)";
+    try
+    {
+        var builder = new NpgsqlConnectionStringBuilder(connectionString);
+        var port = builder.Port > 0 ? $":{builder.Port}" : "";
+        var db = string.IsNullOrEmpty(builder.Database) ? "" : $"/{builder.Database}";
+        return $"{builder.Host}{port}{db}";
+    }
+    catch
+    {
+        return "(chaîne non reconnue)";
+    }
 }

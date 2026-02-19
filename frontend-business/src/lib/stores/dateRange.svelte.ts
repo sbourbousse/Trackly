@@ -205,6 +205,47 @@ export function getDateRangeDayCount(): number {
 	return Math.max(0, Math.floor((endMs - startMs) / 86400000) + 1);
 }
 
+/** Liste des clés jour (yyyy-MM-dd) pour chaque jour de la plage (inclus). Vide si plage invalide. */
+export function getDateRangeDayKeys(): string[] {
+	const { start, end } = dateRangeState.dateRange;
+	if (!start || !end) return [];
+	const keys: string[] = [];
+	let d = start;
+	const endStr = `${end.year}-${String(end.month).padStart(2, '0')}-${String(end.day).padStart(2, '0')}`;
+	while (true) {
+		const key = `${d.year}-${String(d.month).padStart(2, '0')}-${String(d.day).padStart(2, '0')}`;
+		keys.push(key);
+		if (key === endStr) break;
+		d = d.add({ days: 1 });
+	}
+	return keys;
+}
+
+/** Clé jour (yyyy-MM-dd) pour aujourd’hui (fuseau local). */
+export function getTodayKey(): string {
+	const t = today(getLocalTimeZone());
+	return `${t.year}-${String(t.month).padStart(2, '0')}-${String(t.day).padStart(2, '0')}`;
+}
+
+/** Tranches 4h pour un jour : 6 clés yyyy-MM-dd-HH (00, 04, 08, 12, 16, 20) et libellés "0h–4h", etc. */
+export function getDateRangeFourHourSlotKeys(dayKey: string): { keys: string[]; labels: string[] } {
+	const slots = [0, 4, 8, 12, 16, 20];
+	const labels = ['0h–4h', '4h–8h', '8h–12h', '12h–16h', '16h–20h', '20h–24h'];
+	return {
+		keys: slots.map((h) => `${dayKey}-${String(h).padStart(2, '0')}`),
+		labels
+	};
+}
+
+/** Index de la tranche 4h courante (0–5) si dayKey est aujourd’hui, sinon null. */
+export function getCurrentFourHourSlotIndex(dayKey: string): number | null {
+	if (dayKey !== getTodayKey()) return null;
+	const now = new Date();
+	const hour = now.getHours();
+	const slot = Math.min(5, Math.floor(hour / 4));
+	return slot;
+}
+
 /** Début du jour (00:00:00) en UTC, puis ISO pour l'API. */
 function toStartOfDayISO(d: CalendarDate): string {
 	const dt = new Date(Date.UTC(d.year, d.month - 1, d.day, 0, 0, 0, 0));

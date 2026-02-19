@@ -15,6 +15,11 @@
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import CheckIcon from '@lucide/svelte/icons/check';
 	import { userState } from '$lib/stores/user.svelte';
+	import { settingsState, settingsActions } from '$lib/stores/settings.svelte';
+	import { geocodeAddressCached } from '$lib/utils/geocoding';
+	import MapPinIcon from '@lucide/svelte/icons/map-pin';
+	import Building2Icon from '@lucide/svelte/icons/building-2';
+	import SearchIcon from '@lucide/svelte/icons/search';
 
 	let activeTab = $state('profile');
 	let copiedTenantId = $state(false);
@@ -35,6 +40,137 @@
 
 	let passwordErrors = $state<string[]>([]);
 	let passwordSuccess = $state(false);
+
+	// Siège social
+	let headquartersForm = $state({
+		address: settingsState.headquartersAddress ?? '',
+		lat: settingsState.headquarters?.lat?.toString() ?? '',
+		lng: settingsState.headquarters?.lng?.toString() ?? ''
+	});
+	let headquartersSaving = $state(false);
+	let headquartersSuccess = $state(false);
+	let headquartersError = $state<string | null>(null);
+
+	// Synchroniser le formulaire avec le store à l’ouverture de l’onglet Entreprise
+	$effect(() => {
+		if (activeTab !== 'entreprise') return;
+		headquartersForm = {
+			address: settingsState.headquartersAddress ?? '',
+			lat: settingsState.headquarters?.lat?.toString() ?? '',
+			lng: settingsState.headquarters?.lng?.toString() ?? ''
+		};
+	});
+
+	async function saveHeadquarters() {
+		headquartersError = null;
+		const latStr = headquartersForm.lat.replace(',', '.');
+		const lngStr = headquartersForm.lng.replace(',', '.');
+		const lat = latStr ? parseFloat(latStr) : null;
+		const lng = lngStr ? parseFloat(lngStr) : null;
+		if (lat != null && (Number.isNaN(lat) || lat < -90 || lat > 90)) {
+			headquartersError = 'Latitude entre -90 et 90.';
+			return;
+		}
+		if (lng != null && (Number.isNaN(lng) || lng < -180 || lng > 180)) {
+			headquartersError = 'Longitude entre -180 et 180.';
+			return;
+		}
+		if (lat == null && lng == null && !headquartersForm.address?.trim()) {
+			headquartersError = 'Saisissez une adresse ou des coordonnées.';
+			return;
+		}
+		headquartersSaving = true;
+		try {
+			await settingsActions.setHeadquarters({
+				address: headquartersForm.address?.trim() || null,
+				lat: lat ?? undefined,
+				lng: lng ?? undefined
+			});
+			headquartersSuccess = true;
+			setTimeout(() => (headquartersSuccess = false), 3000);
+		} catch (e) {
+			headquartersError = e instanceof Error ? e.message : 'Erreur lors de l\'enregistrement.';
+		} finally {
+			headquartersSaving = false;
+		}
+	}
+
+	async function searchAddress() {
+		const address = headquartersForm.address?.trim();
+		if (!address) {
+			headquartersError = 'Saisissez une adresse à rechercher.';
+			return;
+		}
+		headquartersError = null;
+		headquartersSaving = true;
+		try {
+			const result = await geocodeAddressCached(address);
+			if (!result) {
+				headquartersError = 'Adresse introuvable. Essayez avec une formulation plus précise.';
+				return;
+			}
+			headquartersForm = {
+				address: result.displayName,
+				lat: result.lat.toFixed(6),
+				lng: result.lng.toFixed(6)
+			};
+			await settingsActions.setHeadquarters({
+				address: result.displayName,
+				lat: result.lat,
+				lng: result.lng
+			});
+			headquartersSuccess = true;
+			setTimeout(() => (headquartersSuccess = false), 3000);
+		} catch (e) {
+			headquartersError = e instanceof Error ? e.message : 'Erreur lors de la recherche.';
+		} finally {
+			headquartersSaving = false;
+		}
+	}
+
+	async function clearHeadquarters() {
+		headquartersError = null;
+		headquartersSaving = true;
+		try {
+			await settingsActions.clearHeadquarters();
+			headquartersForm = { address: '', lat: '', lng: '' };
+		} finally {
+			headquartersSaving = false;
+		}
+	}
+
+	async function useMyPosition() {
+		if (!navigator.geolocation) {
+			headquartersError = 'La géolocalisation n\'est pas disponible.';
+			return;
+		}
+		headquartersSaving = true;
+		headquartersError = null;
+		navigator.geolocation.getCurrentPosition(
+			async (pos) => {
+				try {
+					headquartersForm = {
+						address: headquartersForm.address,
+						lat: pos.coords.latitude.toFixed(6),
+						lng: pos.coords.longitude.toFixed(6)
+					};
+					await settingsActions.setHeadquarters({
+						address: headquartersForm.address || null,
+						lat: pos.coords.latitude,
+						lng: pos.coords.longitude
+					});
+					headquartersSuccess = true;
+					setTimeout(() => (headquartersSuccess = false), 3000);
+				} finally {
+					headquartersSaving = false;
+				}
+			},
+			() => {
+				headquartersError = 'Impossible d\'obtenir votre position.';
+				headquartersSaving = false;
+			}
+		);
+	}
 
 	function copyTenantId() {
 		if (userState.tenant?.id) {
@@ -79,10 +215,14 @@
 	/>
 
 	<Tabs bind:value={activeTab} class="w-full">
-		<TabsList class="grid w-full grid-cols-4 lg:w-auto">
+		<TabsList class="grid w-full grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 lg:w-auto">
 			<TabsTrigger value="profile" class="gap-2">
 				<UserIcon class="size-4" />
 				<span class="hidden sm:inline">Compte</span>
+			</TabsTrigger>
+			<TabsTrigger value="entreprise" class="gap-2">
+				<Building2Icon class="size-4" />
+				<span class="hidden sm:inline">Entreprise</span>
 			</TabsTrigger>
 			<TabsTrigger value="security" class="gap-2">
 				<LockIcon class="size-4" />
@@ -185,6 +325,93 @@
 							Enregistrer les modifications
 						</Button>
 					</div>
+				</CardContent>
+			</Card>
+		</TabsContent>
+
+		<!-- Entreprise Tab -->
+		<TabsContent value="entreprise" class="space-y-6">
+			<Card>
+				<CardHeader>
+					<CardTitle class="flex items-center gap-2">
+						<Building2Icon class="size-5" />
+						Siège social
+					</CardTitle>
+					<CardDescription>
+						Position de votre siège social sur la carte. Utilisée pour les zones de livraison (isochrones) et la planification des tournées.
+					</CardDescription>
+				</CardHeader>
+				<CardContent class="space-y-6">
+					<div class="space-y-4">
+						<div class="space-y-2">
+							<Label for="hq-address">Adresse</Label>
+							<Input
+								id="hq-address"
+								type="text"
+								placeholder="ex. 1 place de la Comédie, Montpellier"
+								bind:value={headquartersForm.address}
+							/>
+							<p class="text-muted-foreground text-xs">Saisissez une adresse puis cliquez sur « Rechercher l'adresse » pour remplir les coordonnées.</p>
+						</div>
+						<div class="grid gap-4 sm:grid-cols-2">
+							<div class="space-y-2">
+								<Label for="hq-lat">Latitude</Label>
+								<Input
+									id="hq-lat"
+									type="text"
+									inputmode="decimal"
+									placeholder="ex. 43.6108"
+									bind:value={headquartersForm.lat}
+								/>
+							</div>
+							<div class="space-y-2">
+								<Label for="hq-lng">Longitude</Label>
+								<Input
+									id="hq-lng"
+									type="text"
+									inputmode="decimal"
+									placeholder="ex. 3.8767"
+									bind:value={headquartersForm.lng}
+								/>
+							</div>
+						</div>
+						{#if headquartersError}
+							<p class="text-sm text-destructive">{headquartersError}</p>
+						{/if}
+						{#if headquartersSuccess}
+							<p class="text-sm text-green-600">Siège social enregistré côté serveur. Il apparaît sur la carte.</p>
+						{/if}
+						<div class="flex flex-wrap gap-2">
+							<Button onclick={searchAddress} disabled={headquartersSaving}>
+								<SearchIcon class="size-4 mr-2" />
+								Rechercher l'adresse
+							</Button>
+							<Button variant="outline" onclick={saveHeadquarters} disabled={headquartersSaving}>
+								{headquartersSaving ? 'Enregistrement…' : 'Enregistrer'}
+							</Button>
+							<Button variant="outline" onclick={useMyPosition} disabled={headquartersSaving}>
+								<MapPinIcon class="size-4 mr-2" />
+								Utiliser ma position
+							</Button>
+							{#if settingsState.headquarters || settingsState.headquartersAddress}
+								<Button variant="ghost" onclick={clearHeadquarters}>
+									Effacer
+								</Button>
+							{/if}
+						</div>
+					</div>
+					{#if settingsState.headquarters || settingsState.headquartersAddress}
+						<p class="text-muted-foreground text-sm">
+							{#if settingsState.headquartersAddress}
+								{settingsState.headquartersAddress}
+								{#if settingsState.headquarters}
+									<br />Coordonnées : {settingsState.headquarters.lat.toFixed(5)}, {settingsState.headquarters.lng.toFixed(5)}
+								{/if}
+							{:else if settingsState.headquarters}
+								Coordonnées : {settingsState.headquarters.lat.toFixed(5)}, {settingsState.headquarters.lng.toFixed(5)}
+							{/if}
+						</p>
+					{/if}
 				</CardContent>
 			</Card>
 		</TabsContent>

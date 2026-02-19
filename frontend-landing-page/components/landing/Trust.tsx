@@ -14,7 +14,7 @@ export function Trust() {
               Pensé pour les artisans et commerçants locaux
             </h2>
             <p className="mt-4 text-stone-600 leading-relaxed">
-              Trackly a été conçu pour les TPE et les artisans qui veulent une
+              Arrivo a été conçu pour les TPE et les artisans qui veulent une
               solution de livraison simple et abordable, sans engagement long.
             </p>
             <ul className="mt-6 space-y-3 text-left">

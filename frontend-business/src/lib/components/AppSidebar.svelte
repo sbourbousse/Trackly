@@ -40,9 +40,9 @@
 	<SidebarHeader class="border-b border-sidebar-border">
 		<a href="/dashboard" class="flex items-center gap-2 px-2 py-2 text-sidebar-foreground hover:text-sidebar-foreground">
 			<span class="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-semibold">
-				T
+				A
 			</span>
-			<span class="font-semibold truncate group-data-[collapsible=icon]:hidden">Trackly Business</span>
+			<span class="font-semibold truncate group-data-[collapsible=icon]:hidden">Arrivo Business</span>
 		</a>
 		{#if userState.user}
 			<div class="px-2 py-2 border-t border-sidebar-border mt-2 group-data-[collapsible=icon]:hidden">

@@ -1,7 +1,7 @@
 {
-  "name": "Trackly Driver",
-  "short_name": "Trackly",
-  "description": "Application livreur Trackly",
+  "name": "Arrivo Driver",
+  "short_name": "Arrivo",
+  "description": "Application livreur Arrivo",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",

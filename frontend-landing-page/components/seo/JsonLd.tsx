@@ -3,17 +3,17 @@ const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://trackly.fr";
 const organization = {
   "@context": "https://schema.org",
   "@type": "Organization",
-  name: "Trackly",
+  name: "Arrivo",
   url: SITE_URL,
   logo: `${SITE_URL}/logo.png`,
   description:
-    "Trackly — Gestion de livraisons et tournées pour TPE et artisans. Simple, abordable, sans engagement.",
+    "Arrivo — Gestion de livraisons et tournées pour TPE et artisans. Simple, abordable, sans engagement.",
 };
 
 const website = {
   "@context": "https://schema.org",
   "@type": "WebSite",
-  name: "Trackly",
+  name: "Arrivo",
   url: SITE_URL,
   description:
     "Gestion de livraisons pour TPE et artisans. Tournées, suivi colis en temps réel, app chauffeur.",
@@ -23,7 +23,7 @@ const website = {
 const softwareApplication = {
   "@context": "https://schema.org",
   "@type": "SoftwareApplication",
-  name: "Trackly",
+  name: "Arrivo",
   applicationCategory: "BusinessApplication",
   operatingSystem: "Web",
   description:

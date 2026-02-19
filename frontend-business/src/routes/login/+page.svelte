@@ -137,7 +137,7 @@
 <div class="flex min-h-screen items-center justify-center bg-background p-6">
 	<Card class="w-full max-w-md">
 		<CardHeader class="space-y-1">
-			<CardTitle class="text-2xl">Connexion à Trackly</CardTitle>
+			<CardTitle class="text-2xl">Connexion à Arrivo</CardTitle>
 			<CardDescription>Accède au tableau de bord pour suivre tes tournées.</CardDescription>
 		</CardHeader>
 		<CardContent>

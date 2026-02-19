@@ -46,7 +46,7 @@
 <div class="container" style="display: flex; align-items: center; justify-content: center; min-height: 100vh;">
 	<div class="card" style="max-width: 400px; width: 100%;">
 		<div class="header" style="border-bottom: none; padding-bottom: 0;">
-			<h1>Trackly Driver</h1>
+			<h1>Arrivo Driver</h1>
 			<p style="color: var(--text-muted); margin-top: 0.5rem;">Connexion livreur</p>
 		</div>
 

@@ -12,14 +12,14 @@ export function Hero() {
           id="hero-title"
           className="text-3xl font-bold tracking-tight text-stone-900 sm:text-4xl md:text-5xl"
         >
-          Trackly : La livraison de proximité simplifiée pour tous.
+          Arrivo : La livraison de proximité simplifiée pour tous.
         </h1>
         <p className="mt-4 text-lg text-stone-600 sm:text-xl">
           Gérez vos tournées, suivez vos colis et rassurez vos clients. Une
           solution fluide et sans engagement, pensée pour votre activité locale.
         </p>
 
-        {/* Illustration Hero - Écosystème Trackly */}
+        {/* Illustration Hero - Écosystème Arrivo */}
         <div className="mt-12 flex justify-center">
           <div className="relative w-full max-w-6xl">
             <div className="grid gap-6 md:grid-cols-3 md:gap-8">
@@ -27,7 +27,7 @@ export function Hero() {
               <div className="flex flex-col items-center rounded-xl bg-gradient-to-br from-teal-50 to-white p-6 shadow-[0_10px_30px_rgba(0,0,0,0.05)]">
                 <img
                   src="/undraw_on-the-way.svg"
-                  alt="Livreur utilisant l'application mobile Trackly pour gérer ses tournées"
+                  alt="Livreur utilisant l'application mobile Arrivo pour gérer ses tournées"
                   className="h-40 w-auto"
                   loading="lazy"
                   decoding="async"

@@ -2,7 +2,6 @@
 	import { page } from '$app/state';
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
-	import favicon from '$lib/assets/favicon.svg';
 	import AppSidebar from '$lib/components/AppSidebar.svelte';
 	import DemoBanner from '$lib/components/DemoBanner.svelte';
 	import DateFilterSidebar from '$lib/components/DateFilterSidebar.svelte';
@@ -87,11 +86,11 @@
 </script>
 
 <svelte:head>
-	<link rel="icon" href={favicon} />
-	<title>Trackly Business</title>
+	<link rel="icon" href="/favicon.svg" type="image/svg+xml" />
+	<title>Arrivo Business</title>
 	<meta
 		name="description"
-		content="Trackly Business: tableau de bord simple pour gerer les tournees et livraisons."
+		content="Arrivo Business: tableau de bord simple pour gerer les tournees et livraisons."
 	/>
 </svelte:head>
 

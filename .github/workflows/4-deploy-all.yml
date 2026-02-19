@@ -200,7 +200,6 @@ jobs:
 
   deploy-landing:
     name: Deploy Landing
-    if: secrets.VERCEL_PROJECT_ID_LANDING != ''
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

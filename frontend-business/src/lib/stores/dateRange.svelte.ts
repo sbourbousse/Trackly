@@ -46,6 +46,9 @@ export let dateRangeState = $state(getDefaultState());
 /** Objet réactif : ready = true une fois la période restaurée depuis localStorage (côté client). Évite d'afficher brièvement la valeur par défaut. */
 export const dateRangeUI = $state({ ready: false });
 
+/** Index du raccourci sélectionné dans PRESETS (pour mettre en évidence dans la sidebar) */
+export const selectedPresetState = $state({ index: null as number | null });
+
 export const dateRangeActions = {
 	setDateRange(value: DateRange) {
 		dateRangeState.dateRange = value;
@@ -96,6 +99,9 @@ export const dateRangeActions = {
 		if (value && !dateRangeState.timeRange) {
 			dateRangeState.timeRange = { start: '08:00', end: '20:00' };
 		}
+	},
+	setSelectedPresetIndex(value: number | null) {
+		selectedPresetState.index = value;
 	},
 	setDateFilter(value: DateFilterType) {
 		dateRangeState.dateFilter = value;

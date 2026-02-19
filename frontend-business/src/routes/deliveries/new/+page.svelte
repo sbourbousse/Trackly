@@ -31,6 +31,7 @@
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 	import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 	import TimeSlotSelector from '$lib/components/TimeSlotSelector.svelte';
+	import TimeSlotShortcuts from '$lib/components/TimeSlotShortcuts.svelte';
 
 	const MINUTE_OPTIONS = [0, 10, 20, 30, 40, 50].map((m) => ({
 		value: String(m).padStart(2, '0'),
@@ -305,16 +306,16 @@
 							<div class="space-y-2">
 								<Label>Heure de début prévue</Label>
 								<p class="text-xs text-muted-foreground">Filtre les commandes affichées (date/heure de livraison ≥ cette heure) et sert au calcul des heures d'arrivée estimées.</p>
-								<div class="space-y-2">
-									<div class="space-y-1">
-										<Label for="plannedStartDate" class="text-xs">Date</Label>
+								<div class="space-y-4">
+									<div class="space-y-2">
+										<Label for="plannedStartDate">Date</Label>
 										<PopoverRoot bind:open={plannedStartDateOpen}>
 											<PopoverTrigger id="plannedStartDate">
 												{#snippet child({ props }: { props: Record<string, unknown> })}
 													<Button
 														{...props}
 														variant="outline"
-														class="min-w-[180px] justify-between font-normal"
+														class="w-full justify-between font-normal"
 														disabled={submitting}
 													>
 														{formatPlannedStartDateLabel(plannedStartDateValue)}
@@ -322,7 +323,7 @@
 													</Button>
 												{/snippet}
 											</PopoverTrigger>
-											<PopoverContent class="w-auto overflow-hidden p-0" align="start">
+											<PopoverContent class="w-[280px] overflow-hidden p-0" align="start">
 												<Calendar
 													value={plannedStartDateValue}
 													minValue={orderDateMin}
@@ -347,13 +348,25 @@
 											</PopoverContent>
 										</PopoverRoot>
 									</div>
-									<TimeSlotSelector
-										selectedDate={plannedStartDateValue}
-										selectedSlot={selectedSlot}
-										onSlotChange={handleSlotChange}
-										onDateChange={(newDate) => { plannedStartDateValue = newDate; }}
-										disabled={submitting}
-									/>
+									<div class="space-y-2">
+										<TimeSlotShortcuts
+											selectedDate={plannedStartDateValue}
+											selectedSlot={selectedSlot}
+											onSlotChange={handleSlotChange}
+											onDateChange={(newDate) => { plannedStartDateValue = newDate; }}
+											disabled={submitting}
+										/>
+									</div>
+									<div class="space-y-2">
+										<TimeSlotSelector
+											selectedDate={plannedStartDateValue}
+											selectedSlot={selectedSlot}
+											onSlotChange={handleSlotChange}
+											onDateChange={(newDate) => { plannedStartDateValue = newDate; }}
+											disabled={submitting}
+											showShortcuts={false}
+										/>
+									</div>
 								</div>
 							</div>
 						<div class="space-y-2">

@@ -20,6 +20,7 @@
 	import ChevronDownIcon from '@lucide/svelte/icons/chevron-down';
 	import { CalendarDate, getLocalTimeZone, today, type DateValue } from '@internationalized/date';
 	import TimeSlotSelector from '$lib/components/TimeSlotSelector.svelte';
+	import TimeSlotShortcuts from '$lib/components/TimeSlotShortcuts.svelte';
 
 	const MINUTE_OPTIONS = [0, 10, 20, 30, 40, 50].map((m) => ({
 		value: String(m).padStart(2, '0'),
@@ -309,7 +310,7 @@
 							disabled={submitting}
 						/>
 					</div>
-					<div class="grid gap-4 sm:grid-cols-2">
+					<div class="space-y-4">
 						<div class="space-y-2">
 							<Label for="orderDate">Date de la commande</Label>
 							<PopoverRoot bind:open={orderDateOpen}>
@@ -326,7 +327,7 @@
 										</Button>
 									{/snippet}
 								</PopoverTrigger>
-								<PopoverContent class="w-auto overflow-hidden p-0" align="start">
+								<PopoverContent class="w-[280px] overflow-hidden p-0" align="start">
 									<Calendar
 										value={orderDateValue}
 										minValue={orderDateMin}
@@ -353,12 +354,22 @@
 							</PopoverRoot>
 						</div>
 						<div class="space-y-2">
+							<TimeSlotShortcuts
+								selectedDate={orderDateValue}
+								selectedSlot={selectedSlot}
+								onSlotChange={handleSlotChange}
+								onDateChange={(newDate) => { orderDateValue = newDate; }}
+								disabled={submitting}
+							/>
+						</div>
+						<div class="space-y-2">
 							<TimeSlotSelector
 								selectedDate={orderDateValue}
 								selectedSlot={selectedSlot}
 								onSlotChange={handleSlotChange}
 								onDateChange={(newDate) => { orderDateValue = newDate; }}
 								disabled={submitting}
+								showShortcuts={false}
 							/>
 						</div>
 					</div>
@@ -433,6 +444,7 @@
 								deliveryMarkers={mapMarkers}
 								headquarters={headquarters}
 								isochronePolygons={isochronePolygons}
+								lockView={true}
 								showZoomProgress={true}
 								tileTheme="stadia-alidade-smooth-dark"
 							/>

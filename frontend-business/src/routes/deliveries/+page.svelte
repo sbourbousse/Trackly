@@ -16,6 +16,7 @@
 	import { ordersActions } from '$lib/stores/orders.svelte';
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 	import RouteProgressIndicator from '$lib/components/RouteProgressIndicator.svelte';
+	import PeriodBadge from '$lib/components/PeriodBadge.svelte';
 
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
@@ -204,12 +205,12 @@
 	});
 </script>
 
-<div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
+<div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6 relative">
 	<PageHeader
 		title="Livraisons &amp; tournées"
-		subtitle="Liste des livraisons et des tournées, suivi temps réel chauffeur."
 		icon={PackageIcon}
 	/>
+	<PeriodBadge />
 
 	<Tabs value={activeTab} onValueChange={setTab} class="w-full">
 		<TabsList class="grid w-full max-w-[320px] grid-cols-2">

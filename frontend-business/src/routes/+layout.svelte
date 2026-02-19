@@ -13,6 +13,7 @@
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte';
 	import { initTheme } from '$lib/stores/theme.svelte';
 	import { dateRangeState, dateRangeActions, getDateRangeDayKeys, getDateRangeFourHourSlotKeys, getCurrentFourHourSlotIndex, getTodayKey, isSingleDay } from '$lib/stores/dateRange.svelte';
+	import { periodSidebarState, periodSidebarActions } from '$lib/stores/periodSidebar.svelte';
 	import { settingsActions } from '$lib/stores/settings.svelte';
 	import { userState } from '$lib/stores/user.svelte';
 	import { ordersState, ordersActions } from '$lib/stores/orders.svelte';
@@ -39,7 +40,7 @@
 
 	const isMobile = new IsMobile();
 	/** Ouvert = sidebar visible (desktop) ou Sheet ouvert (mobile). Contrôlé par le bouton en haut à droite. */
-	let periodSidebarOpen = $state(false);
+	const periodSidebarOpen = $derived(periodSidebarState.open);
 
 	let pathname = $derived(page.url.pathname);
 	let isPublic = $derived(isPublicRoute(pathname));
@@ -184,7 +185,7 @@
 						class="ml-auto size-7"
 						aria-label={periodSidebarOpen ? 'Fermer le panneau Période' : 'Ouvrir le panneau Période'}
 						title="Période"
-						onclick={() => (periodSidebarOpen = !periodSidebarOpen)}
+						onclick={() => periodSidebarActions.toggle()}
 					>
 						<CalendarIcon class="size-4" />
 					</Button>
@@ -197,13 +198,13 @@
 					</div>
 					{#if showPeriod}
 						{#if isMobile.current}
-							<Sheet bind:open={periodSidebarOpen}>
+							<Sheet bind:open={periodSidebarState.open}>
 								<SheetContent side="right" class="flex w-full max-w-[340px] flex-col p-0">
 									<div class="flex-1 overflow-auto">
 										<DateFilterSidebar
 											collapsed={false}
 											showCloseButton={true}
-											onToggle={() => (periodSidebarOpen = false)}
+											onToggle={() => periodSidebarActions.close()}
 										/>
 									</div>
 								</SheetContent>
@@ -213,7 +214,7 @@
 								<DateFilterSidebar
 									collapsed={false}
 									showCloseButton={true}
-									onToggle={() => (periodSidebarOpen = false)}
+									onToggle={() => periodSidebarActions.close()}
 								/>
 							</div>
 						{/if}

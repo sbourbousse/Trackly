@@ -24,6 +24,7 @@
 	import { Button } from '$lib/components/ui/button';
 	import ChevronLeftIcon from '@lucide/svelte/icons/chevron-left';
 	import ChevronRightIcon from '@lucide/svelte/icons/chevron-right';
+	import PeriodBadge from '$lib/components/PeriodBadge.svelte';
 	import type { TypedMapMarker } from '$lib/components/Map.svelte';
 
 	const MAX_ORDER_MARKERS = 30;
@@ -145,10 +146,111 @@
 			slice.map(async (order) => {
 				const coords = await geocodeAddressCached(order.address);
 				if (!coords) return null;
+				
+				// Fonctions utilitaires pour le tooltip
+				function getTimeSlot(orderDate: string | null | undefined): string {
+					if (!orderDate) return '—';
+					try {
+						const date = new Date(orderDate);
+						if (Number.isNaN(date.getTime())) return '—';
+						const hour = date.getHours();
+						const slotStart = Math.floor(hour / 4) * 4;
+						const slotEnd = slotStart + 4;
+						return `${slotStart}h-${slotEnd}h`;
+					} catch {
+						return '—';
+					}
+				}
+				
+				function formatOrderDate(orderDate: string | null | undefined): string {
+					if (!orderDate) return 'Non planifiée';
+					try {
+						const date = new Date(orderDate);
+						if (Number.isNaN(date.getTime())) return 'Date invalide';
+						return date.toLocaleDateString('fr-FR', {
+							weekday: 'short',
+							day: 'numeric',
+							month: 'short',
+							year: 'numeric',
+							hour: '2-digit',
+							minute: '2-digit'
+						});
+					} catch {
+						return 'Date invalide';
+					}
+				}
+				
+				function getStatusLabel(status: string): string {
+					const lower = (status ?? '').toLowerCase();
+					if (lower === 'pending' || lower === 'en attente' || lower === '0') return 'En attente';
+					if (lower === 'planned' || lower === 'planifiée' || lower === '1') return 'Planifiée';
+					if (lower === 'intransit' || lower === 'en transit' || lower === 'en cours' || lower === '2') return 'En transit';
+					if (lower === 'delivered' || lower === 'livrée' || lower === 'livree' || lower === '3') return 'Livrée';
+					if (lower === 'cancelled' || lower === 'annulée' || lower === '4') return 'Annulée';
+					return 'Inconnu';
+				}
+				
+				const timeSlot = getTimeSlot(order.orderDate);
+				const formattedDate = formatOrderDate(order.orderDate);
+				const statusLabel = getStatusLabel(order.status);
+				
+				// Déterminer la couleur du statut pour le badge
+				function getStatusColor(status: string): string {
+					const lower = (status ?? '').toLowerCase();
+					if (lower === 'pending' || lower === 'en attente' || lower === '0') return '#6b7280';
+					if (lower === 'planned' || lower === 'planifiée' || lower === '1') return '#3b82f6';
+					if (lower === 'intransit' || lower === 'en transit' || lower === 'en cours' || lower === '2') return '#f59e0b';
+					if (lower === 'delivered' || lower === 'livrée' || lower === 'livree' || lower === '3') return '#10b981';
+					if (lower === 'cancelled' || lower === 'annulée' || lower === '4') return '#ef4444';
+					return '#6b7280';
+				}
+				
+				const statusColor = getStatusColor(order.status);
+				
+				const label = `
+					<div style="min-width: 220px; max-width: 320px; font-family: system-ui, -apple-system, sans-serif;">
+						<div style="font-weight: 600; font-size: 15px; margin-bottom: 6px; color: #111827;">
+							${order.client}
+						</div>
+						${order.ref ? `<div style="font-size: 11px; color: #6b7280; margin-bottom: 4px; font-weight: 500;">Ref: ${order.ref}</div>` : ''}
+						<div style="font-size: 12px; color: #374151; margin-bottom: 10px; line-height: 1.5;">
+							${order.address}
+						</div>
+						<div style="border-top: 1px solid #e5e7eb; padding-top: 8px; margin-top: 8px;">
+							<div style="display: flex; align-items: center; gap: 6px; margin-bottom: 6px;">
+								<span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background-color: ${statusColor};"></span>
+								<span style="font-size: 11px; color: #374151;">
+									<strong>Statut:</strong> <span style="color: #6b7280;">${statusLabel}</span>
+								</span>
+							</div>
+							<div style="font-size: 11px; color: #374151; margin-bottom: 6px;">
+								<strong>Date:</strong> <span style="color: #6b7280;">${formattedDate}</span>
+							</div>
+							${timeSlot !== '—' ? `<div style="font-size: 11px; color: #374151; margin-bottom: 6px;">
+								<strong>Tranche:</strong> <span style="color: #6b7280;">${timeSlot}</span>
+							</div>` : ''}
+							${order.phoneNumber ? `<div style="font-size: 11px; color: #374151; margin-bottom: 6px;">
+								<strong>Tél:</strong> <a href="tel:${order.phoneNumber}" style="color: #3b82f6; text-decoration: none;">${order.phoneNumber}</a>
+							</div>` : ''}
+							${order.deliveries > 0 ? `<div style="font-size: 11px; color: #374151; margin-bottom: 6px;">
+								<strong>Livraisons:</strong> <span style="color: #6b7280;">${order.deliveries}</span>
+							</div>` : ''}
+							${order.internalComment ? `<div style="font-size: 11px; color: #374151; margin-top: 6px; padding-top: 6px; border-top: 1px solid #f3f4f6;">
+								<strong>Note:</strong> <span style="color: #6b7280; font-style: italic;">${order.internalComment}</span>
+							</div>` : ''}
+						</div>
+						<div style="margin-top: 10px; padding-top: 8px; border-top: 1px solid #e5e7eb;">
+							<a href="/orders/${order.id}" style="color: #3b82f6; text-decoration: none; font-size: 12px; font-weight: 500; display: inline-flex; align-items: center; gap: 4px;">
+								Voir la commande <span style="font-size: 14px;">→</span>
+							</a>
+						</div>
+					</div>
+				`;
+				
 				return {
 					lat: coords.lat,
 					lng: coords.lng,
-					label: `<b>${order.client}</b><br/>${order.address}<br/><a href="/orders/${order.id}">Voir la commande</a>`,
+					label,
 					status: order.status
 				};
 			})
@@ -327,6 +429,7 @@
 			</Alert>
 		</div>
 	{:else}
+	<PeriodBadge />
 	{#if ordersState.error || deliveriesState.error || trackingState.lastError}
 		<div class="absolute left-2 right-2 top-16 z-[40] min-w-0 max-w-[calc(100%-1rem)] sm:left-4 sm:right-4">
 			{#if ordersState.error}
@@ -381,7 +484,7 @@
 			<MapFilters />
 		</div>
 		{#if mapFilters.filters.showRoutePolylines && hasPeriod}
-			<div class="absolute top-4 right-4 z-[1100] flex flex-col items-end gap-2">
+			<div class="absolute bottom-4 right-4 z-[1100] flex flex-col items-end gap-2">
 				{#if routesPanelOpen}
 					<Card class="pb-6 w-80 max-w-[calc(100vw-2rem)]">
 						<CardHeader class="pb-3">

@@ -11,6 +11,7 @@
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
+	import PeriodBadge from '$lib/components/PeriodBadge.svelte';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
 	import { Checkbox } from '$lib/components/ui/checkbox';
@@ -54,6 +55,42 @@
 			const slotStart = Math.floor(hour / 4) * 4;
 			const slotEnd = slotStart + 4;
 			return `${slotStart}h-${slotEnd}h`;
+		} catch {
+			return '—';
+		}
+	}
+
+	/** Retourne une date relative : "Aujourd'hui", "Demain", "Hier" ou la date formatée */
+	function getRelativeDate(orderDate: string | null | undefined): string {
+		if (!orderDate) return '—';
+		try {
+			const date = new Date(orderDate);
+			if (Number.isNaN(date.getTime())) return '—';
+			
+			const now = new Date();
+			const orderDateStr = orderDate.slice(0, 10); // yyyy-MM-dd
+			const todayStr = now.toISOString().slice(0, 10);
+			const yesterday = new Date(now);
+			yesterday.setDate(yesterday.getDate() - 1);
+			const yesterdayStr = yesterday.toISOString().slice(0, 10);
+			const tomorrow = new Date(now);
+			tomorrow.setDate(tomorrow.getDate() + 1);
+			const tomorrowStr = tomorrow.toISOString().slice(0, 10);
+			
+			if (orderDateStr === todayStr) {
+				return 'Aujourd\'hui';
+			} else if (orderDateStr === tomorrowStr) {
+				return 'Demain';
+			} else if (orderDateStr === yesterdayStr) {
+				return 'Hier';
+			} else {
+				// Formatage de la date pour les autres jours
+				return date.toLocaleDateString('fr-FR', {
+					weekday: 'short',
+					day: 'numeric',
+					month: 'short'
+				});
+			}
 		} catch {
 			return '—';
 		}
@@ -200,8 +237,9 @@
 	}
 </script>
 
-<div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Commandes" subtitle="Centralise les commandes avant création des tournées." icon={ClipboardListIcon} />
+<div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6 relative">
+	<PageHeader title="Commandes" icon={ClipboardListIcon} />
+	<PeriodBadge />
 
 	<Card>
 			<CardHeader class="space-y-1">
@@ -345,7 +383,7 @@
 										<StatusBadge type="order" status={order.status} />
 									</TableCell>
 									<TableCell>
-										<RelativeTimeIndicator date={order.orderDate} showTime={true} />
+										{getRelativeDate(order.orderDate)}
 									</TableCell>
 									<TableCell class="whitespace-nowrap">
 										{@const timeSlot = getTimeSlot(order.orderDate)}

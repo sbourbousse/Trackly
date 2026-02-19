@@ -52,10 +52,10 @@
 					</CalendarPrimitive.NextButton>
 				</div>
 				<CalendarPrimitive.Grid class="w-full border-collapse space-y-1">
-					<CalendarPrimitive.GridHead>
+					<CalendarPrimitive.GridHead class="flex w-full">
 						{#each weekdays as day}
 							<CalendarPrimitive.HeadCell
-								class="text-muted-foreground rounded-md w-9 p-0 text-center text-xs font-normal"
+								class="text-muted-foreground rounded-md flex-1 p-0 text-center text-xs font-normal min-w-0"
 							>
 								{day}
 							</CalendarPrimitive.HeadCell>
@@ -65,11 +65,11 @@
 						{#each month.weeks as weekDates}
 							<CalendarPrimitive.GridRow class="mt-2 flex w-full">
 								{#each weekDates as date}
-									<CalendarPrimitive.Cell {date} month={month.value}>
+									<CalendarPrimitive.Cell {date} month={month.value} class="flex-1 min-w-0">
 										{#snippet children({ disabled, unavailable, selected })}
 											<CalendarPrimitive.Day
 												class={cn(
-													"inline-flex size-9 items-center justify-center rounded-md p-0 text-sm font-normal transition-colors",
+													"inline-flex size-9 items-center justify-center rounded-md p-0 text-sm font-normal transition-colors w-full",
 													"hover:bg-accent hover:text-accent-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none",
 													selected && "bg-primary text-primary-foreground hover:bg-primary hover:text-primary-foreground",
 													disabled && "text-muted-foreground opacity-50",

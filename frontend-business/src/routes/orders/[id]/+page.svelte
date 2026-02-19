@@ -9,7 +9,6 @@
 	import type { ApiOrderDetail } from '$lib/api/orders';
 	import { Alert, AlertDescription, AlertTitle } from '$lib/components/ui/alert';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
-	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -56,6 +55,22 @@
 			hour: '2-digit',
 			minute: '2-digit'
 		});
+	}
+
+	/** Retourne la tranche horaire d'une commande (ex: "8h-12h") */
+	function getTimeSlot(orderDate: string | null | undefined): string {
+		if (!orderDate) return '—';
+		try {
+			const date = new Date(orderDate);
+			if (Number.isNaN(date.getTime())) return '—';
+			const hour = date.getHours();
+			// Tranches de 4h : 0-4h, 4-8h, 8-12h, 12-16h, 16-20h, 20-24h
+			const slotStart = Math.floor(hour / 4) * 4;
+			const slotEnd = slotStart + 4;
+			return `${slotStart}h-${slotEnd}h`;
+		} catch {
+			return '—';
+		}
 	}
 </script>
 
@@ -113,10 +128,8 @@
 							<StatusBadge type="order" status={order.status} />
 						</div>
 						<div class="space-y-1">
-							<p class="text-sm font-medium text-muted-foreground">Date et heure de la commande</p>
-							<p class="font-medium">
-								<RelativeTimeIndicator date={order.orderDate} showTime={true} />
-							</p>
+							<p class="text-sm font-medium text-muted-foreground">Tranche horaire</p>
+							<p class="font-medium">{getTimeSlot(order.orderDate)}</p>
 						</div>
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Date de création</p>

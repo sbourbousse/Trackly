@@ -755,4 +755,33 @@
 	.dark-theme .zoom-slider-fill {
 		background: rgba(255, 255, 255, 0.6);
 	}
+
+	/* Styles pour les popups Leaflet en thème sombre */
+	:global(.dark .leaflet-popup-content-wrapper) {
+		background-color: oklch(0.216 0.006 56.043);
+		color: oklch(0.985 0.001 106.423);
+		border: 1px solid oklch(1 0 0 / 10%);
+		box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+	}
+
+	:global(.dark .leaflet-popup-content) {
+		color: oklch(0.985 0.001 106.423);
+	}
+
+	:global(.dark .leaflet-popup-tip) {
+		background-color: oklch(0.216 0.006 56.043);
+		border: 1px solid oklch(1 0 0 / 10%);
+		border-top: none;
+		border-left: none;
+	}
+
+	:global(.dark .leaflet-popup-close-button) {
+		color: oklch(0.985 0.001 106.423);
+		opacity: 0.8;
+	}
+
+	:global(.dark .leaflet-popup-close-button:hover) {
+		opacity: 1;
+		color: oklch(0.985 0.001 106.423);
+	}
 </style>

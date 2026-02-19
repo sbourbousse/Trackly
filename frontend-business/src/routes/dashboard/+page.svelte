@@ -1,7 +1,7 @@
 <script lang="ts">
-	import PageHeader from '$lib/components/PageHeader.svelte';
 	import StatusBadge from '$lib/components/StatusBadge.svelte';
 	import RelativeTimeIndicator from '$lib/components/RelativeTimeIndicator.svelte';
+	import PeriodBadge from '$lib/components/PeriodBadge.svelte';
 	import { Badge } from '$lib/components/ui/badge';
 	import { Button } from '$lib/components/ui/button';
 	import { Card, CardContent, CardHeader, CardTitle } from '$lib/components/ui/card';
@@ -43,8 +43,8 @@
 	function handleAddSection() {}
 </script>
 
-<div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6">
-	<PageHeader title="Trackly Business" subtitle="Vue rapide des tournées et livraisons." />
+<div class="mx-auto flex max-w-6xl min-w-0 flex-col gap-6 relative">
+	<PeriodBadge />
 	<Badge variant="secondary" class="w-fit">Plan Starter · 7 livraisons restantes</Badge>
 
 	<section class="flex min-w-0 flex-col gap-4">

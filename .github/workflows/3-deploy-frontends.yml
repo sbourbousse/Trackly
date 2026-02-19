@@ -121,7 +121,7 @@ jobs:
 
   deploy-landing:
     name: Deploy Landing Page
-    if: (github.event.inputs.frontend == 'all' || github.event.inputs.frontend == 'frontend-landing-page') && secrets.VERCEL_PROJECT_ID_LANDING != ''
+    if: github.event.inputs.frontend == 'all' || github.event.inputs.frontend == 'frontend-landing-page'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

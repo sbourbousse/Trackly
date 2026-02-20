@@ -71,8 +71,20 @@
 		colorClass: string;
 		icon: IconComponent;
 	}[] = [
-		{ key: 'pending', label: 'En attente', colorClass: 'bg-sky-500', icon: ClockIcon },
-		{ key: 'planned', label: 'Planifiée', colorClass: 'bg-slate-400 dark:bg-slate-500', icon: PackageIcon },
+		{ key: 'pending', label: 'En attente', colorClass: 'bg-slate-400 dark:bg-slate-500', icon: ClockIcon },
+		{
+			key: 'pending_overdue',
+			label: 'En attente (dépassée)',
+			colorClass: 'bg-slate-400 dark:bg-slate-500 overdue-hatch',
+			icon: ClockIcon
+		},
+		{ key: 'planned', label: 'Planifiée', colorClass: 'bg-sky-500', icon: PackageIcon },
+		{
+			key: 'planned_overdue',
+			label: 'Planifiée (dépassée)',
+			colorClass: 'bg-sky-500 overdue-hatch',
+			icon: PackageIcon
+		},
 		{ key: 'intransit', label: 'En transit', colorClass: 'bg-amber-500', icon: TruckIcon },
 		{ key: 'delivered', label: 'Livrée', colorClass: 'bg-emerald-500', icon: CheckCircle2Icon },
 		{ key: 'cancelled', label: 'Annulée', colorClass: 'bg-destructive', icon: XCircleIcon }
@@ -85,7 +97,7 @@
 		colorClass: string;
 		icon: IconComponent;
 	}[] = [
-		{ key: 'pending', label: 'Prévue', colorClass: 'bg-sky-500', icon: ClockIcon },
+		{ key: 'pending', label: 'Planifiée', colorClass: 'bg-sky-500', icon: ClockIcon },
 		{ key: 'inprogress', label: 'En cours', colorClass: 'bg-amber-500', icon: TruckIcon },
 		{ key: 'completed', label: 'Livrée', colorClass: 'bg-emerald-500', icon: CheckCircle2Icon },
 		{ key: 'failed', label: 'Échouée', colorClass: 'bg-destructive', icon: XCircleIcon }
@@ -101,6 +113,33 @@
 		if (lower === 'delivered' || lower === 'livrée' || lower === 'livree' || lower === '3') return 'delivered';
 		if (lower === 'cancelled' || lower === 'annulée' || lower === '4') return 'cancelled';
 		return 'pending';
+	}
+
+	function orderStatusToDisplayKey(order: { status: string; orderDate?: string | null }): string {
+		const base = statusToKey(order.status);
+		if (base !== 'pending' && base !== 'planned') return base;
+		if (!order.orderDate) return base;
+		const orderDate = new Date(order.orderDate);
+		if (Number.isNaN(orderDate.getTime())) return base;
+
+		// Logique "retard" alignée sur les tranches 4h de l'interface.
+		const getSlotStartMs = (d: Date) => {
+			const slotHour = Math.floor(d.getHours() / 4) * 4;
+			return new Date(
+				d.getFullYear(),
+				d.getMonth(),
+				d.getDate(),
+				slotHour,
+				0,
+				0,
+				0
+			).getTime();
+		};
+		const nowSlotStartMs = getSlotStartMs(new Date());
+		const orderSlotStartMs = getSlotStartMs(orderDate);
+		if (orderSlotStartMs >= nowSlotStartMs) return base;
+
+		return base === 'pending' ? 'pending_overdue' : 'planned_overdue';
 	}
 
 	function deliveryStatusToKey(s: string): string {
@@ -199,7 +238,7 @@
 					});
 			const byStatus = new Map<string, number>();
 			for (const o of ordersInPeriod) {
-				const k = statusToKey(o.status);
+				const k = orderStatusToDisplayKey(o);
 				byStatus.set(k, (byStatus.get(k) ?? 0) + 1);
 			}
 			const segments = STATUS_CONFIG.filter((s) => (byStatus.get(s.key) ?? 0) > 0).map((s) => ({
@@ -215,6 +254,7 @@
 	const BAR_HEIGHT = $derived(compact ? 40 : 120);
 	const ROW_HEIGHT_H = $derived(compact ? 16 : 24);
 	const GAP_PX = $derived(compact ? 2 : 8);
+	const loadingHeightPx = $derived(compact ? 56 : 220);
 
 	/** Mode "large" : peu de barres → barres plus larges / plus visibles. */
 	const isWideMode = $derived(stackedData.length > 0 && stackedData.length <= wideBarThreshold);
@@ -223,6 +263,10 @@
 	const barMaxWidthH = $derived(isWideMode ? wideBarMaxWidthPx : 100);
 	/** Largeur min par barre (vertical) : plus grande en mode large. */
 	const barMinPx = $derived(isWideMode ? wideBarMinWidthPx : 48);
+	/** Ordre des statuts pour les tranches verticales (une barre par statut par jour). */
+	const statusKeysOrder = $derived(STATUS_CONFIG.map((s) => s.key));
+	const sliceGapPx = 1;
+	/** Largeur min totale du graphique (scroll si besoin). Les colonnes prennent ensuite tout l'espace dispo (flex: 1). */
 	const chartMinWidthPx = $derived(stackedData.length * barMinPx + Math.max(0, stackedData.length - 1) * GAP_PX);
 
 	/** Graduations de l'axe Y : 0, puis réparties jusqu'à maxTotal (max 6 ticks). */
@@ -300,12 +344,51 @@
 		min-width: 0;
 		flex: 1 1 0;
 	}
+
+	/* Croisillon rouge pour les statuts en attente/planifiée dépassés */
+	.overdue-hatch {
+		background-image:
+			repeating-linear-gradient(
+				45deg,
+				rgba(220, 38, 38, 0.55) 0,
+				rgba(220, 38, 38, 0.55) 2px,
+				transparent 2px,
+				transparent 6px
+			),
+			repeating-linear-gradient(
+				-45deg,
+				rgba(220, 38, 38, 0.45) 0,
+				rgba(220, 38, 38, 0.45) 2px,
+				transparent 2px,
+				transparent 6px
+			);
+		background-blend-mode: multiply;
+	}
 </style>
 
 <TooltipProvider delayDuration={200}>
 	<div class="min-w-0 h-full flex flex-col {compact ? 'p-0' : 'rounded-md border bg-muted/30 p-4'}">
 		{#if loading}
-			<div class="text-muted-foreground py-8 text-center text-sm">Chargement…</div>
+			<div
+				class="flex min-w-0 flex-col {compact ? 'gap-1' : 'gap-3'}"
+				style="height: {loadingHeightPx}px"
+				aria-label="Chargement du graphique"
+			>
+				<!-- Skeleton barres : conserve la hauteur du widget et évite les sauts -->
+				<div class="flex min-w-0 flex-1 items-end {compact ? 'gap-1' : 'gap-2'}">
+					{#each Array(compact ? 10 : 12) as _, i}
+						<div class="min-w-0 flex-1">
+							<div
+								class="w-full rounded-sm bg-muted/70 animate-pulse"
+								style="height: {compact ? 10 + (i % 4) * 6 : 28 + (i % 5) * 16}px"
+							></div>
+						</div>
+					{/each}
+				</div>
+				{#if !compact}
+					<div class="h-3 w-full rounded-sm bg-muted/60 animate-pulse"></div>
+				{/if}
+			</div>
 		{:else if stackedData.length === 0}
 			<div class="text-muted-foreground py-8 text-center text-sm">{emptyMessage}</div>
 		{:else}
@@ -435,36 +518,42 @@
 									class="flex h-full w-full flex-col items-stretch cursor-default rounded-none border-0 bg-transparent p-0"
 									style="height: {BAR_HEIGHT}px"
 								>
-								<!-- Barres du bas vers le haut : colonne à hauteur fixe, spacer en haut puis segments en bas -->
+								<!-- Tranches verticales par statut : une barre par statut, partageant toute la largeur dispo (flex: 1) -->
 								<div
-									class="flex w-full flex-col items-stretch gap-0"
-									style="height: {BAR_HEIGHT}px; min-height: {BAR_HEIGHT}px"
+									class="chart-slices-row flex w-full flex-1 items-end min-h-0"
+									style="height: {BAR_HEIGHT}px; min-height: {BAR_HEIGHT}px; gap: {sliceGapPx}px"
 								>
-									<!-- Spacer = espace au-dessus des segments (remplit tout l'espace par graduation) -->
-									<div class="w-full flex-1 min-h-0" aria-hidden="true"></div>
 									{#if row.total === 0}
-										<!-- Jour vide : petite barre placeholder -->
-										<div class="bg-muted w-full min-h-[2px] shrink-0 rounded" style="height: 2px" aria-hidden="true"></div>
+										<div class="bg-muted/50 w-full min-h-[2px] rounded" style="height: 2px" aria-hidden="true"></div>
 									{:else}
-									{#each [...row.segments].reverse() as seg, segIdx}
-										{@const h = maxTotal > 0 ? (seg.count / maxTotal) * BAR_HEIGHT : 0}
-										{#if h > 0}
-											{@const isBottom = segIdx === row.segments.length - 1}
-											{@const isTop = segIdx === 0}
-											{@const isSelected = selectedStatus === seg.key}
-											{@const isOtherSelected = selectedStatus && selectedStatus !== seg.key}
-											<button
-												type="button"
-												class="w-full min-w-[8px] shrink-0 transition-opacity hover:opacity-90 {seg.colorClass} cursor-pointer border-0 p-0"
-												style="height: {Math.max(2, h)}px; border-radius: {isTop ? '4px 4px 0 0' : isBottom ? '0 0 4px 4px' : '0'}; opacity: {isOtherSelected ? '0.3' : '1'}"
-												onclick={(e) => {
-													e.stopPropagation();
-													handleSegmentClick(seg.key);
-												}}
-												aria-label="Filtrer par {seg.label}"
-											></button>
-										{/if}
-									{/each}
+										{#each statusKeysOrder as statusKey}
+											{@const seg = row.segments.find((s) => s.key === statusKey)}
+											{@const count = seg?.count ?? 0}
+											{@const config = STATUS_CONFIG.find((c) => c.key === statusKey)}
+											{#if config}
+												{@const h = maxTotal > 0 && count > 0 ? (count / maxTotal) * BAR_HEIGHT : 0}
+												{@const isOtherSelected = selectedStatus && selectedStatus !== statusKey}
+												<div
+													class="chart-slice flex min-w-[3px] flex-1 flex-col items-stretch justify-end rounded-t border border-border/30"
+													title="{config.label}: {count}"
+												>
+													{#if count > 0}
+														<button
+															type="button"
+															class="w-full transition-opacity hover:opacity-90 {config.colorClass} cursor-pointer border-0 p-0 rounded-t-sm shrink-0"
+															style="height: {Math.max(2, h)}px; opacity: {isOtherSelected ? '0.3' : '1'}"
+															onclick={(e) => {
+																e.stopPropagation();
+																handleSegmentClick(statusKey);
+															}}
+															aria-label="Filtrer par {config.label}"
+														></button>
+													{:else}
+														<div class="bg-muted/30 w-full rounded-t-sm shrink-0" style="height: 2px" aria-hidden="true"></div>
+													{/if}
+												</div>
+											{/if}
+										{/each}
 									{/if}
 								</div>
 								</div>

@@ -29,6 +29,7 @@ export const authActions = {
 		authState.user = null;
 		authState.isAuthenticated = false;
 		authState.token = null;
+		authState.tenantId = '';
 		if (typeof localStorage !== 'undefined') {
 			localStorage.removeItem('trackly_auth_token');
 			localStorage.removeItem('trackly_tenant_id');

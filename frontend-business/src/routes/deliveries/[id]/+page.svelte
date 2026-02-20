@@ -158,7 +158,7 @@
 						</div>
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Statut</p>
-							<StatusBadge type="delivery" status={delivery.status} />
+							<StatusBadge type="delivery" status={delivery.status} date={delivery.createdAt} />
 						</div>
 					</div>
 

@@ -49,6 +49,55 @@
 		return `${fmt(start)} – ${fmt(end)}`;
 	}
 
+	type PeriodTone = 'past' | 'present' | 'future';
+
+	function toLocalDayMs(d: DateValue): number {
+		const js = d.toDate(getLocalTimeZone());
+		return new Date(js.getFullYear(), js.getMonth(), js.getDate(), 0, 0, 0, 0).getTime();
+	}
+
+	const periodTone = $derived.by((): PeriodTone => {
+		// Presets connus : mapping direct pour une UX stable
+		if (selectedPresetState.index === 0 || selectedPresetState.index === 1) return 'past';
+		if (selectedPresetState.index === 2) return 'present';
+		if (selectedPresetState.index === 3 || selectedPresetState.index === 4) return 'future';
+
+		// Personnalisé : déduction selon la plage de dates
+		const { start, end } = dateRangeState.dateRange;
+		if (!start || !end) return 'present';
+		const todayMs = toLocalDayMs(today(getLocalTimeZone()));
+		const startMs = toLocalDayMs(start);
+		const endMs = toLocalDayMs(end);
+		if (endMs < todayMs) return 'past';
+		if (startMs > todayMs) return 'future';
+		return 'present';
+	});
+
+	const toneClasses = $derived.by(() => {
+		switch (periodTone) {
+			case 'past':
+				return {
+					container: 'border-amber-300/70 dark:border-amber-700/50',
+					badge:
+						'bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300',
+					activeDot: 'bg-amber-500'
+				};
+			case 'future':
+				return {
+					container: 'border-sky-300/70 dark:border-sky-700/50',
+					badge: 'bg-sky-100 text-sky-800 dark:bg-sky-900/30 dark:text-sky-300',
+					activeDot: 'bg-sky-500'
+				};
+			default:
+				return {
+					container: 'border-emerald-300/70 dark:border-emerald-700/50',
+					badge:
+						'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300',
+					activeDot: 'bg-emerald-500'
+				};
+		}
+	});
+
 	function handlePrevious() {
 		let currentNavIndex = 2; // Commencer par "Aujourd'hui" si pas de sélection
 		if (selectedPresetState.index !== null && NAVIGABLE_PRESET_INDICES.includes(selectedPresetState.index)) {
@@ -112,33 +161,57 @@
 		? "absolute left-1/2 top-2 -translate-x-1/2 z-[1100]" 
 		: "flex justify-center mb-4"
 )}>
-	<div class="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 shadow-sm">
-		{#if !isFirst}
+	<div class="flex w-[360px] max-w-[calc(100vw-1rem)] flex-col items-center gap-1.5">
+		<div class={cn(
+			"inline-flex w-full items-center gap-1.5 rounded-full border bg-gradient-to-r from-card via-background to-card px-2 py-1.5 shadow-sm backdrop-blur",
+			toneClasses.container
+		)}>
 			<button
 				type="button"
 				onclick={handlePrevious}
+				disabled={isFirst}
 				class={cn(
-					"inline-flex items-center justify-center rounded-full p-1 transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer"
+					"inline-flex items-center justify-center rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+					isFirst
+						? "cursor-not-allowed opacity-35"
+						: "cursor-pointer hover:bg-accent hover:text-accent-foreground"
 				)}
 				aria-label="Période précédente"
 			>
 				<ChevronLeftIcon class="size-4 text-muted-foreground" />
 			</button>
-		{/if}
-		<Badge variant="secondary" class="h-6 px-3 text-xs font-normal border-0">
-			{formatRangeLabel()}
-		</Badge>
-		{#if !isLast}
+			<Badge variant="secondary" class={cn("h-6 flex-1 justify-center px-3 text-xs font-normal border-0 truncate", toneClasses.badge)}>
+				{formatRangeLabel()}
+			</Badge>
 			<button
 				type="button"
 				onclick={handleNext}
+				disabled={isLast}
 				class={cn(
-					"inline-flex items-center justify-center rounded-full p-1 transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 cursor-pointer"
+					"inline-flex items-center justify-center rounded-full p-1 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2",
+					isLast
+						? "cursor-not-allowed opacity-35"
+						: "cursor-pointer hover:bg-accent hover:text-accent-foreground"
 				)}
 				aria-label="Période suivante"
 			>
 				<ChevronRightIcon class="size-4 text-muted-foreground" />
 			</button>
-		{/if}
+		</div>
+
+		<!-- Indicateur discret du preset actif (7j-, hier, aujourd'hui, demain, 7j+) -->
+		<div class="flex items-center gap-1.5">
+			{#each NAVIGABLE_PRESET_INDICES as _, i}
+				<span
+					class={cn(
+						"size-1.5 rounded-full transition-all",
+						currentNavIndex === i
+							? `${toneClasses.activeDot} scale-110`
+							: "bg-muted-foreground/30"
+					)}
+					aria-hidden="true"
+				/>
+			{/each}
+		</div>
 	</div>
 </div>

@@ -206,6 +206,45 @@ export const mockDeliveriesApi = {
       deleted,
       message: `${deleted} livraison(s) supprimée(s)`
     };
+  },
+
+  async getDeliveriesStats(filters?: DeliveriesListFilters): Promise<{ byDay: { date: string; count: number }[]; byHour: { hour: string; count: number }[] }> {
+    console.log('[Mock API] GET /api/deliveries/stats', filters);
+    await delay();
+    const deliveries = getMockDeliveries(filters);
+    const useOrderDate = filters?.dateFilter === 'OrderDate';
+    const orders = useOrderDate ? getMockOrders() : [];
+    const orderById = new Map(orders.map(o => [o.id, o]));
+    const getDateStr = (d: ApiDelivery) => {
+      if (useOrderDate) {
+        const orderDate = orderById.get(d.orderId)?.orderDate;
+        return orderDate ? new Date(orderDate).toISOString().split('T')[0] : null;
+      }
+      return d.createdAt ? new Date(d.createdAt).toISOString().split('T')[0] : null;
+    };
+    const getHour = (d: ApiDelivery) => {
+      if (useOrderDate) {
+        const orderDate = orderById.get(d.orderId)?.orderDate;
+        return orderDate ? new Date(orderDate).getHours() : 0;
+      }
+      return d.createdAt ? new Date(d.createdAt).getHours() : 0;
+    };
+    const byDayMap = new Map<string, number>();
+    const byHourMap = new Map<number, number>();
+    for (const d of deliveries) {
+      const dateStr = getDateStr(d);
+      if (dateStr) byDayMap.set(dateStr, (byDayMap.get(dateStr) ?? 0) + 1);
+      const h = getHour(d);
+      byHourMap.set(h, (byHourMap.get(h) ?? 0) + 1);
+    }
+    const byDay = Array.from(byDayMap.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+    const byHour = Array.from({ length: 24 }, (_, i) => ({
+      hour: `${String(i).padStart(2, '0')}:00`,
+      count: byHourMap.get(i) ?? 0
+    }));
+    return { byDay, byHour };
   }
 };
 

@@ -51,7 +51,6 @@
 							<DateFilterSidebar
 								collapsed={false}
 								showCloseButton={false}
-								onDateFilterChange={onDateFilterChange}
 							/>
 						</div>
 					</SheetContent>
@@ -68,7 +67,6 @@
 					collapsed={sidebarCollapsed}
 					showCloseButton={true}
 					onToggle={() => (sidebarCollapsed = !sidebarCollapsed)}
-					onDateFilterChange={onDateFilterChange}
 				/>
 			</div>
 		{/if}

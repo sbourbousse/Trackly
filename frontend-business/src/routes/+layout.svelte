@@ -3,7 +3,6 @@
 	import { browser } from '$app/environment';
 	import { goto } from '$app/navigation';
 	import AppSidebar from '$lib/components/AppSidebar.svelte';
-	import DemoBanner from '$lib/components/DemoBanner.svelte';
 	import DateFilterSidebar from '$lib/components/DateFilterSidebar.svelte';
 	import { Sheet, SheetContent, SheetTrigger } from '$lib/components/ui/sheet';
 	import { Button } from '$lib/components/ui/button';
@@ -11,10 +10,10 @@
 	import { Separator } from '$lib/components/ui/separator';
 	import { IsMobile } from '$lib/hooks/is-mobile.svelte';
 	import { initTheme } from '$lib/stores/theme.svelte';
-	import { dateRangeState, dateRangeActions, getDateRangeDayKeys, getDateRangeFourHourSlotKeys, getCurrentFourHourSlotIndex, getTodayKey, isSingleDay } from '$lib/stores/dateRange.svelte';
+	import { dateRangeState, dateRangeUI, dateRangeActions, getDateRangeDayKeys, getDateRangeFourHourSlotKeys, getCurrentFourHourSlotIndex, getTodayKey, isSingleDay } from '$lib/stores/dateRange.svelte';
 	import { periodSidebarState, periodSidebarActions } from '$lib/stores/periodSidebar.svelte';
 	import { settingsActions } from '$lib/stores/settings.svelte';
-	import { userState } from '$lib/stores/user.svelte';
+	import { userStateReactive } from '$lib/stores/user.svelte';
 	import { ordersState, ordersActions } from '$lib/stores/orders.svelte';
 	import { deliveriesState, deliveriesActions } from '$lib/stores/deliveries.svelte';
 	import OrdersChartContent from '$lib/components/OrdersChartContent.svelte';
@@ -52,7 +51,7 @@
 		const token =
 			(typeof localStorage !== 'undefined' && localStorage.getItem('trackly_auth_token')) ||
 			(typeof sessionStorage !== 'undefined' && sessionStorage.getItem('trackly_auth_token'));
-		return !!token && userState.isAuthenticated;
+		return !!token && !!userStateReactive.user;
 	});
 	let withSidebar = $derived(pathname !== '/login' && canShowProtectedContent);
 	let isMapPage = $derived(pathname === '/map');
@@ -115,6 +114,13 @@
 		}
 	});
 
+	// Après connexion : si la sidebar s'affiche et la période n'est pas prête, restaurer pour afficher "Aujourd'hui" tout de suite
+	$effect(() => {
+		if (browser && withSidebar && !dateRangeUI.ready) {
+			dateRangeActions.restoreFromStorage();
+		}
+	});
+
 	$effect(() => {
 		if (typeof document !== 'undefined' && dateRangeRestored) {
 			void dateRangeState.dateRange;
@@ -145,8 +151,6 @@
 		content="Arrivo Business: tableau de bord simple pour gerer les tournees et livraisons."
 	/>
 </svelte:head>
-
-<DemoBanner />
 
 {#if withSidebar}
 	<SidebarProvider>

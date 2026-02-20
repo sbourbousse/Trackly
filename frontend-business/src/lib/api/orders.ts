@@ -52,13 +52,13 @@ export type OrderStatsResponse = {
 	byHour: { hour: string; count: number }[];
 };
 
-export const getOrders = async (filters?: OrdersListFilters) => {
+export const getOrders = async (filters?: OrdersListFilters, init?: RequestInit) => {
 	if (browser && isOfflineMode()) {
 		const { mockOrdersApi } = await import('../offline/mockApi');
 		return await mockOrdersApi.getOrders(filters);
 	}
 	const path = `/api/orders${ordersQueryParams(filters)}`;
-	return await apiFetch<ApiOrder[]>(path);
+	return await apiFetch<ApiOrder[]>(path, init);
 };
 
 export const getOrdersStats = async (filters?: OrderStatsListFilters) => {

@@ -3,6 +3,306 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-20 | Sidebar gauche (listes/création) et droite (calendrier seul, date commande)
+
+**Tâche** : Réorganiser la sidebar gauche (3 listes + 3 pages création) et simplifier la sidebar période à droite (calendrier uniquement, filtre toujours par date commande).
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/AppSidebar.svelte` – deux groupes : « Listes » (Dashboard, Carte, Commandes, Livraisons, Livreurs) et « Création » (Créer commande, Créer tournée, Créer livreur) ; plus de sous-menus déroulants
+- `frontend-business/src/lib/components/DateFilterSidebar.svelte` – suppression des raccourcis (déjà dans le widget rapide), suppression du sélecteur « Filtrer par date création / date commande », suppression du graphique intégré ; ne garde que le calendrier pour choisir un jour
+- `frontend-business/src/lib/stores/dateRange.svelte.ts` – valeur par défaut `dateFilter: 'OrderDate'` ; à la restauration depuis le storage, forçage à « date commande »
+- `frontend-business/src/lib/components/PageWithPeriodSidebar.svelte` – retrait de la prop `onDateFilterChange` passée à `DateFilterSidebar`
+
+**Résultat** :
+- ✅ Sidebar gauche : listes et création clairement séparées
+- ✅ Sidebar droite : uniquement le calendrier pour un jour précis ; les raccourcis restent dans le widget de période en haut
+- ✅ Filtrage toujours par date commande (plus d’option « date création »)
+
+---
+
+## 2026-02-20 | Timeline visuelle Dashboard (période sélectionnée)
+
+**Tâche** : Ajouter une timeline visuelle dans l’onglet Dashboard > Livraisons, alignée sur la période sélectionnée, avec affichage des tournées et des commandes positionnées dans chaque tournée.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/dashboard/+page.svelte` – ajout d’une carte "Timeline des tournées" avec regroupement par `routeId`, ordre des commandes par `sequence`, statuts et liens vers détail tournée/commande
+- `docs/project-log.md` – journalisation de la modification
+- `ROADMAP.md` – mise à jour de la roadmap (fonctionnalité timeline dashboard)
+
+**Implémentation** :
+1. Chargement dédié des livraisons filtrées par la période courante (`getListFilters()`), avec gestion loading/error/race condition.
+2. Regroupement des livraisons par tournée (`routeId`) et tri des commandes selon `sequence` puis date de création.
+3. Affichage visuel en timeline : une section par tournée + items commandes positionnés avec index d’arrêt, statut et métadonnées client/adresse.
+4. Réutilisation du design system existant (`Card`, `Badge`, `Button`, `StatusBadge`, `RelativeTimeIndicator`) pour rester cohérent avec l’UI actuelle.
+
+**Résultat** :
+- ✅ Vue timeline claire sur la période sélectionnée
+- ✅ Visibilité immédiate de la composition de chaque tournée
+- ✅ Position des commandes dans la tournée visible (ordre d’arrêt)
+- ✅ Navigation rapide vers les pages détail (`/deliveries/routes/[id]`, `/orders/[id]`)
+
+---
+
+## 2026-02-20 | Refonte Dashboard timeline (sans onglets, sans card imbriquée)
+
+**Tâche** : Revoir complètement le dashboard pour supprimer le système d’onglets, enlever le titre de section timeline, éviter les cards imbriquées et afficher les tournées directement sur le fond.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/dashboard/+page.svelte` – suppression des onglets, suppression des sections legacy, layout direct en `flex-wrap` avec `max-width` par tournée
+- `docs/project-log.md` – journalisation de la refonte
+
+**Implémentation** :
+1. Suppression du bloc `Tabs` (plus de double onglet).
+2. Suppression des cards imbriquées (plus de `Card` englobante + card interne).
+3. Suppression du titre de section timeline.
+4. Rendu direct des tournées sous forme de blocs alignés sur le background.
+5. Mise en page responsive : `flex-wrap` + `min/max width` par tournée (`min-w-[320px]`, `max-w-[560px]`, `basis-[420px]`).
+
+**Résultat** :
+- ✅ Dashboard centré sur la timeline
+- ✅ Interface plus lisible et plus dense
+- ✅ Plus de structure "card dans card"
+- ✅ Meilleure adaptation desktop/tablette via wrapping des tournées
+
+---
+
+## 2026-02-20 | Dashboard timeline : affichage chauffeur par tournée
+
+**Tâche** : Afficher le chauffeur sur chaque card tournée dans le dashboard timeline.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/dashboard/+page.svelte` – chargement des routes (`getRoutes`) pour enrichir les cards avec `driverName`
+- `docs/project-log.md` – journalisation de l’évolution
+
+**Résultat** :
+- ✅ Chaque tournée affiche maintenant le nom du chauffeur directement dans la card
+- ✅ Fallback explicite si info manquante : `Livreur non assigne`
+
+---
+
+## 2026-02-20 | Dashboard par rubriques (KPI, alertes, affectation, livreurs, performance)
+
+**Tâche** : Mettre en place une refonte complète du dashboard en rubriques métier avec vue synthétique + actions.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/dashboard/+page.svelte` – ajout des rubriques KPI, alertes, commandes en attente, livreurs, actions rapides, graphiques de performance, conservation de la timeline
+- `docs/project-log.md` – journalisation de la refonte
+- `ROADMAP.md` – mise à jour du suivi roadmap
+
+**Implémentation** :
+1. Chargement consolidé des données dashboard (livraisons, tournées, livreurs, stats commandes, stats livraisons) selon la période sélectionnée.
+2. Ajout d’une grille KPI en tête (tournées, commandes à affecter, livraisons en cours, taux de réussite).
+3. Colonne opérationnelle avec rubriques : Alertes, Commandes en attente d’affectation, Livreurs, Actions rapides.
+4. Rubrique performance sur 7 jours avec deux graphiques (`OrdersChartContent`) : commandes et livraisons.
+5. Conservation de la timeline de tournées avec les améliorations précédentes (chauffeur, date, tranche 4h, position des commandes).
+
+**Résultat** :
+- ✅ Dashboard structuré en rubriques lisibles
+- ✅ Vision “pilotage” + “action” sur un seul écran
+- ✅ Priorisation visuelle des problèmes (alertes)
+- ✅ Passage plus simple vers les workflows clés (affectation, création tournée, import, carte)
+
+---
+
+## 2026-02-20 | Dashboard desktop : style template KPI + grille rééquilibrée
+
+**Tâche** : Aligner les KPI avec le style du template `dashboard-01` et corriger l’organisation desktop pour mieux exploiter toute la largeur.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/dashboard/+page.svelte` – style KPI type template (`CardDescription`, `CardAction`, gradient), refonte de la disposition desktop en sections pleine largeur et grille homogène
+- `docs/project-log.md` – journalisation de l’évolution
+
+**Résultat** :
+- ✅ KPI visuellement proches du template `dashboard-01`
+- ✅ Disparition de la colonne droite “quart d’écran” trop étroite
+- ✅ Rubriques mieux réparties sur desktop (timeline pleine largeur + grilles équilibrées)
+
+---
+
+## 2026-02-20 | Dashboard : ajustement affectation + croisillon overdue dans le graphe
+
+**Tâche** : Exclure les commandes planifiées de la rubrique “en attente d’affectation” et améliorer le code couleur du graphique du haut pour les statuts dépassés dans le temps.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/dashboard/+page.svelte` – les commandes `Planned` ne sont plus comptées comme “à affecter”
+- `frontend-business/src/lib/components/OrdersChartContent.svelte` – ajout de variantes `pending_overdue` et `planned_overdue` avec croisillon rouge sur fond bleu/gris
+- `docs/project-log.md` – journalisation de l’évolution
+
+**Résultat** :
+- ✅ “Commandes à affecter” = uniquement les vraies commandes en attente (pas les planifiées)
+- ✅ Graphique du haut : en attente/planifiée dépassées visibles avec un motif croisillon rouge
+
+---
+
+## 2026-02-20 | Homogénéisation statuts + filtre affectation dashboard
+
+**Tâche** : Harmoniser les termes de statut (`Planifiée`), exclure les commandes en attente déjà dépassées de la rubrique d’affectation, et appliquer la couleur de statut sur la tête de chaque tournée dans le dashboard.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/dashboard/+page.svelte` – exclusion des commandes en attente dépassées du card “Commandes à affecter”, pastille de couleur liée au statut tournée
+- `frontend-business/src/lib/components/StatusBadge.svelte` – statut livraison pending affiché en `Planifiée` (au lieu de `Prévue`)
+- `frontend-business/src/lib/components/OrdersChartContent.svelte` – libellé livraison pending aligné sur `Planifiée`
+- `frontend-business/src/lib/components/RouteProgressIndicator.svelte` – libellé pending aligné sur `Planifiée`
+- `frontend-business/src/routes/deliveries/+page.svelte` – libellé `pending` aligné sur `Planifiée`
+- `frontend-business/src/lib/components/map/MapFilters.svelte` – filtre `planned` aligné sur `Planifiée`
+
+**Résultat** :
+- ✅ Les commandes en attente mais déjà dépassées ne gonflent plus la rubrique “à affecter”
+- ✅ Vocabulaire homogène dans l’UI : `Planifiée`
+- ✅ Timeline dashboard : couleur de statut visible directement sur chaque tournée
+
+---
+
+## 2026-02-20 | Correctif couleurs badges statuts (Livrée en vert)
+
+**Tâche** : Restaurer les variantes de couleur des badges après l’overwrite du template, pour retrouver le code couleur métier attendu.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/ui/badge/badge.svelte` – réintégration des variantes `info`, `warning`, `success`
+
+**Résultat** :
+- ✅ Les badges `Livrée` redeviennent verts (`success`)
+- ✅ Les badges `En cours` / `En attente` récupèrent aussi leurs couleurs dédiées
+
+---
+
+## 2026-02-20 | Badge statut : croisillon overdue aussi en détail tournée
+
+**Tâche** : Appliquer le quadrillage rouge directement sur `StatusBadge` pour les statuts planifiés/en attente dépassés (logique tranche 4h), y compris dans le détail d’une tournée.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/StatusBadge.svelte` – ajout d’une prop `date` et d’une classe `overdue-hatch` conditionnelle
+- `frontend-business/src/routes/deliveries/routes/[routeId]/+page.svelte` – passage de `delivery.createdAt` au badge statut
+- `frontend-business/src/routes/dashboard/+page.svelte` – passage des dates au badge statut de la timeline
+
+**Résultat** :
+- ✅ Le badge statut dans le détail tournée affiche bien le croisillon rouge quand la commande/livraison planifiée est dans une tranche 4h déjà dépassée
+
+---
+
+## 2026-02-20 | Harmonisation badges commandes/livraisons + tranche neutre
+
+**Tâche** : Finaliser l’harmonisation des badges statut et du graphe du haut, avec quadrillage overdue cohérent et couleurs métier.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/StatusBadge.svelte` – Commandes : `Planifiée` en bleu (`info`), `En attente` en gris (`outline`), quadrillage overdue conservé
+- `frontend-business/src/lib/components/OrdersChartContent.svelte` – même quadrillage rouge sans bordure sur le graphe du haut, inversion des couleurs `pending/planned` selon la convention
+- `frontend-business/src/routes/orders/+page.svelte` – colonne Tranche en style neutre (suppression code couleur rouge/jaune), badge commande avec date pour overdue
+- `frontend-business/src/routes/orders/[id]/+page.svelte` – badge commande/livraison avec date pour overdue
+- `frontend-business/src/routes/deliveries/new/+page.svelte` – badge commande avec date pour overdue
+- `frontend-business/src/routes/deliveries/+page.svelte` – badge livraison avec date pour overdue
+- `frontend-business/src/routes/deliveries/[id]/+page.svelte` – badge livraison avec date pour overdue
+- `frontend-business/src/routes/dashboard/+page.svelte` – badge commande avec date dans la rubrique d’affectation
+
+**Résultat** :
+- ✅ Graphique du haut : quadrillage rouge visible sans bordure
+- ✅ Commande : `Planifiée` bleu, `En attente` gris, overdue hatch
+- ✅ Livraisons : quadrillage overdue visible là où la date est disponible
+- ✅ Colonne Tranche neutralisée visuellement (pas de code couleur d’urgence)
+
+---
+
+## 2026-02-20 | Dashboard : nettoyage actions rapides + icônes KPI
+
+**Tâche** : Retirer l’action “Importer CSV” du dashboard et ajouter des icônes sur les cards KPI du haut.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/dashboard/+page.svelte`
+
+**Résultat** :
+- ✅ Bouton “Importer CSV” retiré des actions rapides dashboard
+- ✅ KPI enrichis visuellement avec icônes (`Route`, `Box`, `Truck`, `CheckCircle`)
+
+---
+
+## 2026-02-20 | KPI taux de réussite : exclusion des commandes dépassées
+
+**Tâche** : Ajuster le calcul du KPI “Taux de réussite” pour exclure les commandes `Planifiée` / `En attente` déjà dépassées.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/dashboard/+page.svelte`
+
+**Résultat** :
+- ✅ Les commandes planifiées/en attente dépassées ne sont plus prises en compte dans la base de calcul du taux de réussite
+
+---
+
+## 2026-02-20 | KPI taux de réussite : commandes dépassées comptées en échec
+
+**Tâche** : Ajuster le KPI “Taux de réussite” pour considérer les commandes `Planifiée` / `En attente` dépassées comme des échecs.
+
+**Fichiers modifiés** :
+- `frontend-business/src/routes/dashboard/+page.svelte`
+
+**Résultat** :
+- ✅ Les commandes planifiées/en attente dépassées pénalisent désormais le taux de réussite (comptées dans les échecs)
+
+---
+
+## 2026-02-20 | Widget période : style, largeur fixe, indicateur et bug premier chargement
+
+**Tâche** : Améliorer le widget de sélection de période (ergonomie + visuel) et corriger l’affichage `...` au premier chargement.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/PeriodBadge.svelte` – fond modernisé, largeur fixe, flèches toujours visibles (désactivées aux bornes), indicateur à points du preset actif
+- `frontend-business/src/lib/stores/dateRange.svelte.ts` – `dateRangeUI.ready` activé même sans valeur en localStorage
+
+**Résultat** :
+- ✅ Widget visuellement plus lisible
+- ✅ Taille stable pour faciliter le clic sur les flèches, même quand le libellé change
+- ✅ Indicateur de “position” par points sous le widget
+- ✅ Plus besoin de recharger la page au premier login pour sortir du `...`
+
+---
+
+## 2026-02-20 | Widget période : design system Past / Present / Future
+
+**Tâche** : Ajouter un code couleur intelligent au widget période selon la temporalité (Passé, Présent, Futur).
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/PeriodBadge.svelte`
+
+**Implémentation** :
+- Détection de tonalité basée sur les presets (et fallback intelligent pour la plage personnalisée).
+- Couleurs sémantiques appliquées au widget :
+  - **Passé** : ambre
+  - **Présent** : émeraude
+  - **Futur** : bleu ciel
+- Application cohérente sur la bordure du widget, le badge central, et le point actif de l’indicateur.
+
+**Résultat** :
+- ✅ Lecture temporelle immédiate (sans lire le texte)
+- ✅ Cohérence visuelle du widget avec un système de couleurs métier stable
+
+---
+
+## 2026-02-20 | Widget graphique haut : skeleton loading sans saut de layout
+
+**Tâche** : Éviter les micro-périodes de “flash” lors du chargement du graphique de la barre du haut en remplaçant le texte de chargement par des placeholders visuels.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/OrdersChartContent.svelte`
+
+**Résultat** :
+- ✅ Plus de texte “Chargement…” qui change la hauteur du widget
+- ✅ Skeleton barres avec hauteur stable pendant le loading
+- ✅ Transition visuelle plus fluide dans la barre haute
+
+---
+
+## 2026-02-20 | Widget graphique haut : hauteur verrouillée pendant loading
+
+**Tâche** : Éliminer la micro-variation de taille restante pendant le chargement du widget graphique.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/OrdersChartContent.svelte`
+
+**Résultat** :
+- ✅ Hauteur fixe explicite pendant le loading (compact et normal)
+- ✅ Plus de variation perceptible du widget dans la barre du haut
+
+---
+
 ## 2026-02-12 | Turborepo et CI
 
 **Tâche** : Mise en place d’un monorepo Turborepo pour build, lint et tests, et d’un workflow CI unique.
@@ -948,6 +1248,53 @@ PORT=3004
 
 **Résultat** :
 - Depuis la liste des livraisons, le suivi client peut s'ouvrir dans une fenêtre dédiée sans quitter l'interface Business.
+
+---
+
+## 2026-02-20 | Carte mobile : menu navigation au-dessus de la carte
+
+**Tâche** : Corriger le problème de superposition sur mobile où les éléments de la carte passaient au-dessus du menu de navigation déplié.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/components/ui/sheet/sheet-content.svelte` – augmentation du `z-index` du panneau mobile (`z-[2000]`)
+- `frontend-business/src/lib/components/ui/sheet/sheet-overlay.svelte` – augmentation du `z-index` de l’overlay (`z-[2000]`)
+
+**Résultat** :
+- ✅ Le menu de navigation mobile reste au-dessus de la carte et de ses overlays
+- ✅ Plus d’interférence visuelle quand un menu est ouvert sur la vue carte
+
+---
+
+## 2026-02-20 | Cache intelligent périodes (orders/deliveries)
+
+**Tâche** : Implémenter un cache frontend efficace pour les changements de période fréquents (SWR + déduplication + anti-race).
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/stores/queryCache.svelte.ts` – nouvelle couche de cache partagée (clé stable, TTL, staleTime, déduplication des requêtes en vol, invalidation)
+- `frontend-business/src/lib/stores/orders.svelte.ts` – lecture immédiate du cache, revalidation, annulation des requêtes obsolètes (`AbortController`), protection anti-race (`requestId`)
+- `frontend-business/src/lib/stores/deliveries.svelte.ts` – mêmes mécanismes appliqués aux livraisons
+- `frontend-business/src/lib/api/orders.ts` – support d’un `RequestInit` optionnel pour propager le `signal` d’annulation
+- `frontend-business/src/lib/api/deliveries.ts` – support d’un `RequestInit` optionnel pour propager le `signal` d’annulation
+
+**Résultat** :
+- ✅ Changement de période plus fluide (données instantanées si déjà en cache)
+- ✅ Moins d’appels doublons lors de navigation rapide
+- ✅ Pas d’écrasement par des réponses API retardées
+
+---
+
+## 2026-02-20 | Correctif faux message "Erreur de connexion" avec cache période
+
+**Tâche** : Supprimer le message d’erreur affiché à tort lorsque les données sont bien chargées pendant les changements de période.
+
+**Fichiers modifiés** :
+- `frontend-business/src/lib/api/client.ts` – ne convertit plus un `AbortError` en `ApiError` réseau
+- `frontend-business/src/lib/stores/orders.svelte.ts` – annulation uniquement si la nouvelle requête vise une clé différente
+- `frontend-business/src/lib/stores/deliveries.svelte.ts` – même correctif côté livraisons
+
+**Résultat** :
+- ✅ Plus de faux "Erreur de connexion au serveur" lors des navigations rapides de période
+- ✅ Les annulations techniques (`AbortController`) restent silencieuses côté UI
 
 ---
 

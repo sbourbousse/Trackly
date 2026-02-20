@@ -84,9 +84,9 @@
 			case 'Failed':
 				return 'Échouée';
 			case 'Pending':
-				return 'Prévue';
+				return 'Planifiée';
 			default:
-				return 'Prévue';
+				return 'Planifiée';
 		}
 	}
 

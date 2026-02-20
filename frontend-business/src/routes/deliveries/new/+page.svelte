@@ -477,7 +477,7 @@
 													/>
 												</TableCell>
 												<TableCell>
-													<StatusBadge type="order" status={order.status} />
+													<StatusBadge type="order" status={order.status} date={order.orderDate} />
 												</TableCell>
 												<TableCell>
 													<RelativeTimeIndicator date={order.orderDate} showTime={true} />

@@ -1,7 +1,7 @@
 # ROADMAP — Trackly
 
 > Feuille de route MVP — SaaS de gestion de livraisons pour TPE et artisans
-> Dernière mise à jour : 2026-02-11
+> Dernière mise à jour : 2026-02-20
 
 ---
 
@@ -45,6 +45,8 @@
 | Page authentification (Dashboard) | 🟢 Terminé | P0 | @dev-frontend | Auth API |
 | Page import commandes (UI) | 🟡 En cours | P0 | @dev-frontend | Import API |
 | Liste des tournées (Dashboard) | 🟡 En cours | P0 | @dev-frontend | CRUD Tournées |
+| Timeline visuelle Dashboard (tournées + commandes positionnées) | 🟢 Terminé | P1 | @dev-frontend | Liste des tournées |
+| Dashboard par rubriques (KPI, alertes, affectation, performance) | 🟢 Terminé | P1 | @dev-frontend | Timeline dashboard |
 | Vue détail d'une tournée | 🔴 Non démarré | P0 | @dev-frontend | Liste tournées |
 | Gestion des statuts de livraison | 🔴 Non démarré | P1 | @dev-backend | Tournées |
 
@@ -96,6 +98,7 @@
 |----------------|--------|----------|---------|-------------|
 | Calcul d'itinéraires optimisés (Google Maps API) | 🔴 Non démarré | P1 | @dev-backend | - |
 | Géocodage automatique des adresses | 🔴 Non démarré | P1 | @dev-backend | Google Maps |
+| Cache intelligent des listes par période (SWR + déduplication) | 🟢 Terminé | P1 | @dev-frontend | Dashboard, Carte |
 | Tests unitaires backend (xUnit) | 🔴 Non démarré | P1 | @dev-backend | - |
 | Tests E2E frontend | 🔴 Non démarré | P2 | @qa | Features complètes |
 | Documentation API (Swagger) | 🟡 En cours | P1 | @dev-backend | API stable |

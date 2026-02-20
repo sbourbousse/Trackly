@@ -125,7 +125,7 @@
 						{/if}
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Statut</p>
-							<StatusBadge type="order" status={order.status} />
+							<StatusBadge type="order" status={order.status} date={order.orderDate} />
 						</div>
 						<div class="space-y-1">
 							<p class="text-sm font-medium text-muted-foreground">Tranche horaire</p>
@@ -171,7 +171,7 @@
 									{#each order.deliveries as delivery}
 										<TableRow>
 											<TableCell>
-												<StatusBadge type="delivery" status={delivery.status} />
+												<StatusBadge type="delivery" status={delivery.status} date={delivery.createdAt} />
 											</TableCell>
 											<TableCell class="tabular-nums">{formatDate(delivery.createdAt)}</TableCell>
 											<TableCell class="tabular-nums">

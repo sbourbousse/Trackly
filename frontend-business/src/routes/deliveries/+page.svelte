@@ -131,7 +131,7 @@
 	});
 
 	const DELIVERY_STATUS_LABELS: Record<string, string> = {
-		pending: 'Prévue',
+		pending: 'Planifiée',
 		inprogress: 'En cours',
 		completed: 'Livrée',
 		failed: 'Échouée'
@@ -417,7 +417,7 @@
 												/>
 											</TableCell>
 											<TableCell>
-												<StatusBadge type="delivery" status={delivery.status} />
+												<StatusBadge type="delivery" status={delivery.status} date={delivery.createdAt} />
 											</TableCell>
 											<TableCell>
 												<RelativeTimeIndicator date={delivery.createdAt} />

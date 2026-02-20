@@ -3,7 +3,7 @@
 import dynamic from "next/dynamic";
 
 /**
- * Composants d’aperçu des apps Trackly, chargés en lazy pour le LCP.
+ * Composants d’aperçu des apps Arrivo, chargés en lazy pour le LCP.
  * Couleurs et style alignés avec frontend-business (stone + teal).
  */
 export const AppBusinessPreview = dynamic(

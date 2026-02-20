@@ -13,7 +13,7 @@ export function CtaFinal() {
           <div className="flex justify-center md:order-2">
             <img
               src="/undraw_order-confirmed.svg"
-              alt="Commencez avec Trackly dès aujourd'hui"
+              alt="Commencez avec Arrivo dès aujourd'hui"
               className="h-64 w-auto"
               loading="lazy"
               decoding="async"

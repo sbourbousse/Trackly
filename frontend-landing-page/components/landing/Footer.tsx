@@ -6,7 +6,7 @@ export function Footer() {
       <div className="container mx-auto max-w-6xl px-4">
         <div className="flex flex-col gap-6 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-sm text-stone-600">
-            Trackly — Gestion de livraisons pour TPE et artisans
+            Arrivo — Gestion de livraisons pour TPE et artisans
           </p>
           <nav aria-label="Liens légaux et contact">
             <ul className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm">

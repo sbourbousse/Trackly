@@ -2,7 +2,7 @@ import type { Metadata } from 'next'
 import './globals.css'
 
 export const metadata: Metadata = {
-  title: 'Trackly - Suivi de livraison',
+  title: 'Arrivo - Suivi de livraison',
   description: 'Suivez votre livraison en temps réel',
 }
 

@@ -7,7 +7,7 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://trackly.fr";
 
-const title = "Trackly — Gestion de livraisons pour TPE et artisans";
+const title = "Arrivo — Gestion de livraisons pour TPE et artisans";
 const description =
   "Gérez vos tournées et le suivi de vos colis en quelques clics. Gestion de livraisons pour TPE et artisans. Simple, abordable, sans engagement. Essai gratuit.";
 
@@ -22,10 +22,10 @@ export const metadata: Metadata = {
     title,
     description,
     url: SITE_URL,
-    siteName: "Trackly",
+    siteName: "Arrivo",
     type: "website",
     locale: "fr_FR",
-    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Trackly" }],
+    images: [{ url: "/og-image.png", width: 1200, height: 630, alt: "Arrivo" }],
   },
   twitter: {
     card: "summary_large_image",

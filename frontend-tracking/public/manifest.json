@@ -1,7 +1,7 @@
 {
-  "name": "Trackly - Suivi de livraison",
-  "short_name": "Trackly Suivi",
-  "description": "Suivez votre livraison en temps réel avec Trackly",
+  "name": "Arrivo - Suivi de livraison",
+  "short_name": "Arrivo Suivi",
+  "description": "Suivez votre livraison en temps réel avec Arrivo",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#fafaf9",

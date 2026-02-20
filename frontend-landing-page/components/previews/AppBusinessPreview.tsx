@@ -12,7 +12,7 @@ export function AppBusinessPreview() {
     >
       <div className="mb-2 flex items-center gap-2">
         <span className="text-xs font-semibold text-stone-900">
-          Trackly Business
+          Arrivo Business
         </span>
         <span className="rounded bg-stone-100 px-1.5 py-0.5 text-[10px] text-stone-600">
           Plan Starter

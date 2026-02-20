@@ -38,17 +38,10 @@
 <Sidebar collapsible="icon">
 	<SidebarHeader class="border-b border-sidebar-border">
 		<a href="/dashboard" class="flex items-center gap-2 px-2 py-2 text-sidebar-foreground hover:text-sidebar-foreground">
-			{#if isDemo}
-				<span class="flex size-8 items-center justify-center rounded-md bg-amber-500 text-amber-950 font-semibold" title="Mode démo">
-					<FlaskConicalIcon class="size-4" aria-hidden="true" />
-				</span>
-				<span class="font-semibold truncate text-amber-600 dark:text-amber-400 group-data-[collapsible=icon]:hidden">Démo</span>
-			{:else}
-				<span class="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-semibold">
-					T
-				</span>
-				<span class="font-semibold truncate group-data-[collapsible=icon]:hidden">Trackly Business</span>
-			{/if}
+			<span class="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-semibold">
+				A
+			</span>
+			<span class="font-semibold truncate group-data-[collapsible=icon]:hidden">Arrivo Business</span>
 		</a>
 		{#if userStateReactive.user}
 			<div class="px-2 py-2 border-t border-sidebar-border mt-2 group-data-[collapsible=icon]:hidden">

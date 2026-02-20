@@ -7,9 +7,9 @@ export function Header() {
         <Link
           href="/"
           className="font-semibold text-stone-900 hover:text-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded-sm"
-          aria-label="Trackly — Accueil"
+          aria-label="Arrivo — Accueil"
         >
-          Trackly
+          Arrivo
         </Link>
         <nav aria-label="Navigation principale">
           <Link

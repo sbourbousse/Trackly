@@ -21,7 +21,7 @@ export type DeliveriesListFilters = {
 	routeId?: string;
 };
 
-export const getDeliveries = async (filters?: DeliveriesListFilters) => {
+export const getDeliveries = async (filters?: DeliveriesListFilters, init?: RequestInit) => {
 	if (browser && isOfflineMode()) {
 		const { mockDeliveriesApi } = await import('../offline/mockApi');
 		return await mockDeliveriesApi.getDeliveries(filters);
@@ -32,7 +32,7 @@ export const getDeliveries = async (filters?: DeliveriesListFilters) => {
 	if (filters?.dateFilter) entries.push(['dateFilter', filters.dateFilter]);
 	if (filters?.routeId) entries.push(['routeId', filters.routeId]);
 	const path = entries.length ? `/api/deliveries?${new URLSearchParams(entries)}` : '/api/deliveries';
-	return await apiFetch<ApiDelivery[]>(path);
+	return await apiFetch<ApiDelivery[]>(path, init);
 };
 
 export type ApiDeliveryDetail = {
@@ -121,6 +121,10 @@ export type DeliveryStatsResponse = {
 };
 
 export const getDeliveriesStats = async (filters?: DeliveriesListFilters) => {
+	if (browser && isOfflineMode()) {
+		const { mockDeliveriesApi } = await import('../offline/mockApi');
+		return await mockDeliveriesApi.getDeliveriesStats(filters);
+	}
 	const path = filters && (filters.dateFrom ?? filters.dateTo ?? filters.dateFilter)
 		? `/api/deliveries/stats?${new URLSearchParams(
 				Object.fromEntries(

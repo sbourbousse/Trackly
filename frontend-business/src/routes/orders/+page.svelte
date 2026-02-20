@@ -378,14 +378,14 @@
 										/>
 									</TableCell>
 									<TableCell>
-										<StatusBadge type="order" status={order.status} />
+										<StatusBadge type="order" status={order.status} date={order.orderDate} />
 									</TableCell>
 									<TableCell>
 										{getRelativeDate(order.orderDate)}
 									</TableCell>
 									<TableCell class="whitespace-nowrap">
 										{@const timeSlot = getTimeSlot(order.orderDate)}
-										<span class={getTimeSlotColorClass(order.orderDate, timeSlot)}>
+										<span class="text-muted-foreground">
 											{timeSlot}
 										</span>
 									</TableCell>

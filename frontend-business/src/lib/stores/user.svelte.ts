@@ -8,6 +8,8 @@ import { ordersActions } from '$lib/stores/orders.svelte';
 import { deliveriesActions } from '$lib/stores/deliveries.svelte';
 import { dateRangeActions } from '$lib/stores/dateRange.svelte';
 import { mapFilters } from '$lib/stores/mapFilters.svelte';
+import { setOfflineModeReactive } from '$lib/stores/offline.svelte';
+import { clearQueryCache } from '$lib/stores/queryCache.svelte';
 import { clearGeocodeCache } from '$lib/utils/geocoding';
 
 interface User {
@@ -37,19 +39,24 @@ function loadFromStorage(): { user: User | null; tenant: Tenant | null } {
 }
 
 const stored = loadFromStorage();
-let user = $state<User | null>(stored.user);
-let tenant = $state<Tenant | null>(stored.tenant);
+/** Objet réactif exporté : on ne fait que muter .user et .tenant (pas de réassignation) pour respecter Svelte 5. */
+export const userStateReactive = $state<{ user: User | null; tenant: Tenant | null }>({
+	user: stored.user,
+	tenant: stored.tenant
+});
 
 // Save to localStorage when changed
 function saveToStorage() {
 	if (!browser) return;
-	if (user) {
-		localStorage.setItem('trackly_user', JSON.stringify(user));
+	const u = userStateReactive.user;
+	const t = userStateReactive.tenant;
+	if (u) {
+		localStorage.setItem('trackly_user', JSON.stringify(u));
 	} else {
 		localStorage.removeItem('trackly_user');
 	}
-	if (tenant) {
-		localStorage.setItem('trackly_tenant', JSON.stringify(tenant));
+	if (t) {
+		localStorage.setItem('trackly_tenant', JSON.stringify(t));
 	} else {
 		localStorage.removeItem('trackly_tenant');
 	}
@@ -57,26 +64,28 @@ function saveToStorage() {
 
 export const userState = {
 	get user() {
-		return user;
+		return userStateReactive.user;
 	},
 	get tenant() {
-		return tenant;
+		return userStateReactive.tenant;
 	},
 	get isAuthenticated() {
-		return !!user && !!localStorage.getItem('trackly_auth_token');
+		return !!userStateReactive.user && !!localStorage.getItem('trackly_auth_token');
 	},
 	setUser(u: User | null) {
-		user = u;
+		userStateReactive.user = u;
 		saveToStorage();
 	},
 	setTenant(t: Tenant | null) {
-		tenant = t;
+		userStateReactive.tenant = t;
 		saveToStorage();
 	},
 	logout() {
-		user = null;
-		tenant = null;
+		userStateReactive.user = null;
+		userStateReactive.tenant = null;
 		if (browser) {
+			clearQueryCache();
+			setOfflineModeReactive(false);
 			localStorage.removeItem('trackly_auth_token');
 			localStorage.removeItem('trackly_user');
 			localStorage.removeItem('trackly_tenant');

@@ -461,7 +461,11 @@
 									<TableRow>
 										<TableCell class="tabular-nums font-medium">{index + 1}</TableCell>
 										<TableCell>
-											<StatusBadge type="delivery" status={delivery.status} />
+											<StatusBadge
+												type="delivery"
+												status={delivery.status}
+												date={delivery.createdAt}
+											/>
 										</TableCell>
 										<TableCell>
 											<Button variant="link" href="/deliveries/{delivery.id}" class="h-auto p-0 font-normal">

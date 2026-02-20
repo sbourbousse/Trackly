@@ -14,7 +14,7 @@
 	import BellIcon from '@lucide/svelte/icons/bell';
 	import CopyIcon from '@lucide/svelte/icons/copy';
 	import CheckIcon from '@lucide/svelte/icons/check';
-	import { userState } from '$lib/stores/user.svelte';
+	import { userStateReactive } from '$lib/stores/user.svelte';
 	import { settingsState, settingsActions } from '$lib/stores/settings.svelte';
 	import { geocodeAddressCached } from '$lib/utils/geocoding';
 	import MapPinIcon from '@lucide/svelte/icons/map-pin';
@@ -24,11 +24,22 @@
 	let activeTab = $state('profile');
 	let copiedTenantId = $state(false);
 
-	// Profile form
+	// Profile form (synchronisé avec user/tenant réactifs au changement de session)
 	let profileForm = $state({
-		name: userState.user?.name ?? '',
-		email: userState.user?.email ?? '',
-		companyName: userState.tenant?.name ?? ''
+		name: '',
+		email: '',
+		companyName: ''
+	});
+	$effect(() => {
+		const u = userStateReactive.user;
+		const t = userStateReactive.tenant;
+		if (u && t) {
+			profileForm = {
+				name: u.name ?? '',
+				email: u.email ?? '',
+				companyName: t.name ?? ''
+			};
+		}
 	});
 
 	// Password form
@@ -173,8 +184,8 @@
 	}
 
 	function copyTenantId() {
-		if (userState.tenant?.id) {
-			navigator.clipboard.writeText(userState.tenant.id);
+		if (userStateReactive.tenant?.id) {
+			navigator.clipboard.writeText(userStateReactive.tenant.id);
 			copiedTenantId = true;
 			setTimeout(() => copiedTenantId = false, 2000);
 		}
@@ -300,7 +311,7 @@
 						<Label>Tenant ID</Label>
 						<div class="flex items-center gap-2">
 							<code class="flex-1 rounded bg-muted px-3 py-2 text-sm font-mono">
-								{userState.tenant?.id ?? 'Non disponible'}
+								{userStateReactive.tenant?.id ?? 'Non disponible'}
 							</code>
 							<Button 
 								variant="outline" 

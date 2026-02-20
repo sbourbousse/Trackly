@@ -139,6 +139,10 @@ export const apiFetch = async <T>(path: string, init: RequestInit = {}): Promise
 		console.log('[API Success]', path, Array.isArray(data) ? `${data.length} items` : 'data');
 		return data as T;
 	} catch (error) {
+		// Les annulations volontaires (AbortController) ne sont pas des erreurs réseau.
+		if (error instanceof Error && error.name === 'AbortError') {
+			throw error;
+		}
 		if (error instanceof ApiError) {
 			throw error;
 		}

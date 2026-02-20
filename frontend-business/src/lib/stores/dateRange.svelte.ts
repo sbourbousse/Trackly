@@ -37,7 +37,7 @@ function getDefaultState() {
 		timeRange: null as { start: string; end: string } | null,
 		timePreset: 'journee' as TimePreset,
 		useManualTime: false,
-		dateFilter: 'CreatedAt' as DateFilterType
+		dateFilter: 'OrderDate' as DateFilterType
 	};
 }
 
@@ -149,7 +149,6 @@ export const dateRangeActions = {
 		dateRangeState.timePreset = getDefaultState().timePreset;
 		dateRangeState.useManualTime = getDefaultState().useManualTime;
 		dateRangeState.dateFilter = getDefaultState().dateFilter;
-		dateRangeUI.ready = false;
 		if (typeof window !== 'undefined') {
 			try {
 				localStorage.removeItem(STORAGE_KEY);
@@ -157,13 +156,19 @@ export const dateRangeActions = {
 				// ignore
 			}
 		}
+		selectedPresetState.index = 2; // Aujourd'hui
+		dateRangeUI.ready = true;
 	},
 	/** Restaure la période depuis localStorage (à appeler au chargement, côté client). */
 	restoreFromStorage() {
 		if (typeof window === 'undefined') return;
 		try {
 			const raw = localStorage.getItem(STORAGE_KEY);
-			if (!raw) return;
+			if (!raw) {
+				selectedPresetState.index = 2; // Aujourd'hui
+				dateRangeUI.ready = true;
+				return;
+			}
 			const data = JSON.parse(raw) as {
 				dateRange?: { start: string | null; end: string | null };
 				timePreset?: TimePreset;
@@ -182,7 +187,8 @@ export const dateRangeActions = {
 			if (typeof data.useManualTime === 'boolean') dateRangeState.useManualTime = data.useManualTime;
 			if (data.timeRange) dateRangeState.timeRange = data.timeRange;
 			else if (data.timeRange === null) dateRangeState.timeRange = null;
-			if (data.dateFilter) dateRangeState.dateFilter = data.dateFilter;
+			// Toujours filtrer par date commande (plus de choix date création dans l'UI)
+			dateRangeState.dateFilter = 'OrderDate';
 		} catch {
 			// ignore invalid stored data
 		}
@@ -268,15 +274,15 @@ export function getCurrentFourHourSlotIndex(dayKey: string): number | null {
 	return slot;
 }
 
-/** Début du jour (00:00:00) en UTC, puis ISO pour l'API. */
+/** Début du jour (00:00:00) en heure locale, puis ISO UTC pour l'API. Évite le décalage (ex. UTC+1 : "aujourd'hui" = 00h locale → bon créneau UTC). */
 function toStartOfDayISO(d: CalendarDate): string {
-	const dt = new Date(Date.UTC(d.year, d.month - 1, d.day, 0, 0, 0, 0));
+	const dt = new Date(d.year, d.month - 1, d.day, 0, 0, 0, 0);
 	return dt.toISOString();
 }
 
-/** Fin du jour (23:59:59.999) en UTC, puis ISO pour l'API. Inclut tout le dernier jour. */
+/** Fin du jour (23:59:59.999) en heure locale, puis ISO UTC pour l'API. Inclut tout le dernier jour dans le fuseau de l'utilisateur. */
 function toEndOfDayISO(d: CalendarDate): string {
-	const dt = new Date(Date.UTC(d.year, d.month - 1, d.day, 23, 59, 59, 999));
+	const dt = new Date(d.year, d.month - 1, d.day, 23, 59, 59, 999);
 	return dt.toISOString();
 }
 

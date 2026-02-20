@@ -14,7 +14,7 @@
 
 	const orderStatuses: { key: OrderStatus; label: string; color: string }[] = [
 		{ key: 'pending', label: 'En attente', color: 'bg-sky-500' },
-		{ key: 'planned', label: 'Prévue', color: 'bg-blue-500' },
+		{ key: 'planned', label: 'Planifiée', color: 'bg-blue-500' },
 		{ key: 'inTransit', label: 'En cours', color: 'bg-amber-500' },
 		{ key: 'delivered', label: 'Livrée', color: 'bg-emerald-500' },
 		{ key: 'cancelled', label: 'Annulée', color: 'bg-destructive' }

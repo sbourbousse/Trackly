@@ -49,58 +49,61 @@ function getDateWithOffset(dayOffset: number): Date {
   return date;
 }
 
-/**
- * Détermine le statut d'une commande en fonction de la date
- */
-function getOrderStatus(orderDate: Date): 'Pending' | 'InDelivery' | 'Delivered' {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  const orderDay = new Date(orderDate);
-  orderDay.setHours(0, 0, 0, 0);
-  
-  if (orderDay < today) {
-    return 'Delivered'; // Commandes passées = livrées
-  } else if (orderDay.getTime() === today.getTime()) {
-    return 'InDelivery'; // Commandes d'aujourd'hui = en cours de livraison
-  } else {
-    return 'Pending'; // Commandes futures = en attente
-  }
-}
+// Statuts commandes (API) : couverture exhaustive 7j passés, aujourd'hui, 7j à venir
+const ORDER_STATUSES = ['Pending', 'Planned', 'InTransit', 'Delivered', 'Cancelled'] as const;
+type OrderStatusType = (typeof ORDER_STATUSES)[number];
 
-// Commandes fictives réparties entre J-7 et J+7
+// Statuts livraisons (API)
+const DELIVERY_STATUSES = ['Pending', 'InProgress', 'Completed', 'Failed'] as const;
+type DeliveryStatusType = (typeof DELIVERY_STATUSES)[number];
+
+/**
+ * Génère des commandes de démo exhaustives : 7 derniers jours, aujourd'hui, 7 prochains jours
+ * avec au moins un exemple de chaque statut (Pending, Planned, InTransit, Delivered, Cancelled) selon la période.
+ */
 function generateMockOrders(): ApiOrder[] {
-  return DEMO_CUSTOMERS.map((customer, index) => {
-    // Répartir les commandes sur 15 jours (J-7 à J+7)
-    // index 0-1 : J-7 à J-5 (passé lointain)
-    // index 2-3 : J-3 à J-1 (passé récent)
-    // index 4-5 : J (aujourd'hui)
-    // index 6-7 : J+1 à J+3 (futur proche)
-    // index 8+ : J+5 à J+7 (futur lointain)
-    let dayOffset: number;
-    if (index < 2) {
-      dayOffset = -7 + Math.floor(Math.random() * 3); // J-7 à J-5
-    } else if (index < 4) {
-      dayOffset = -3 + Math.floor(Math.random() * 3); // J-3 à J-1
-    } else if (index < 6) {
-      dayOffset = 0; // J (aujourd'hui)
-    } else if (index < 8) {
-      dayOffset = 1 + Math.floor(Math.random() * 3); // J+1 à J+3
-    } else {
-      dayOffset = 5 + Math.floor(Math.random() * 3); // J+5 à J+7
-    }
-    
+  const orders: ApiOrder[] = [];
+  let orderIndex = 0;
+
+  // Répartition par jour : J-7 → J+7 (15 jours)
+  for (let dayOffset = -7; dayOffset <= 7; dayOffset++) {
     const orderDate = getDateWithOffset(dayOffset);
-    const status = getOrderStatus(orderDate);
-    
-    return {
-      id: `demo-order-${String(index + 1).padStart(3, '0')}`,
-      customerName: customer.name,
-      address: customer.address,
-      orderDate: orderDate.toISOString(),
-      status,
-      deliveryCount: 0 // Sera calculé après génération des livraisons
-    };
-  });
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const orderDay = new Date(orderDate);
+    orderDay.setHours(0, 0, 0, 0);
+
+    let statusesToUse: OrderStatusType[];
+    if (orderDay.getTime() < today.getTime()) {
+      // Passé : Delivered, Cancelled (et éventuellement InTransit pour hier)
+      statusesToUse = dayOffset === -1
+        ? ['Delivered', 'Delivered', 'Delivered', 'Cancelled', 'InTransit']
+        : ['Delivered', 'Delivered', 'Cancelled'];
+    } else if (orderDay.getTime() === today.getTime()) {
+      // Aujourd'hui : tous les statuts
+      statusesToUse = ['Pending', 'Planned', 'InTransit', 'Delivered', 'Cancelled', 'Pending', 'Planned'];
+    } else {
+      // Futur : Pending, Planned
+      statusesToUse = ['Pending', 'Planned', 'Pending', 'Planned'];
+    }
+
+    for (let s = 0; s < statusesToUse.length; s++) {
+      const customer = DEMO_CUSTOMERS[(orderIndex + s) % DEMO_CUSTOMERS.length];
+      const dateForOrder = new Date(orderDate);
+      dateForOrder.setHours(8 + (s % 6), (s * 10) % 60, 0, 0);
+      orders.push({
+        id: `demo-order-${String(orderIndex + 1).padStart(3, '0')}`,
+        customerName: customer.name,
+        address: customer.address,
+        orderDate: dateForOrder.toISOString(),
+        status: statusesToUse[s],
+        deliveryCount: 0
+      });
+      orderIndex++;
+    }
+  }
+
+  return orders;
 }
 
 /**
@@ -117,55 +120,61 @@ function getRouteIdForDate(date: Date): string {
 }
 
 /**
- * Détermine le statut d'une livraison en fonction de la date de commande
+ * Détermine le statut d'une livraison pour la démo : exhaustif sur 7j passés / aujourd'hui / 7j à venir.
+ * Passé : Completed, Failed ; Aujourd'hui : Pending, InProgress, Completed, Failed ; Futur : Pending.
  */
-function getDeliveryStatus(orderDate: Date): 'Pending' | 'InProgress' | 'Completed' {
+function getDeliveryStatusForDemo(orderDate: Date, indexInDay: number): DeliveryStatusType {
   const today = new Date();
   today.setHours(0, 0, 0, 0);
   const orderDay = new Date(orderDate);
   orderDay.setHours(0, 0, 0, 0);
-  
-  if (orderDay < today) {
-    return 'Completed'; // Livraisons passées = terminées
-  } else if (orderDay.getTime() === today.getTime()) {
-    return 'InProgress'; // Livraisons d'aujourd'hui = en cours
-  } else {
-    return 'Pending'; // Livraisons futures = en attente
+
+  if (orderDay.getTime() < today.getTime()) {
+    return indexInDay % 3 === 0 ? 'Failed' : 'Completed'; // Passé : surtout Completed, quelques Failed
   }
+  if (orderDay.getTime() === today.getTime()) {
+    const statuses: DeliveryStatusType[] = ['Pending', 'InProgress', 'Completed', 'Failed'];
+    return statuses[indexInDay % statuses.length]; // Aujourd'hui : tous les statuts
+  }
+  return 'Pending'; // Futur : Pending
 }
 
-// Livraisons fictives avec dates et statuts cohérents
+// Livraisons fictives avec dates et statuts cohérents (exhaustif sur les statuts)
 function generateMockDeliveries(): ApiDelivery[] {
-  // Créer des livraisons pour toutes les commandes
-  return mockOrdersState
-    .filter(order => order.orderDate !== null) // Ignorer les commandes sans date
-    .map((order, index) => {
+  const deliveries: ApiDelivery[] = [];
+  let indexInDayByDate = new Map<string, number>();
+
+  mockOrdersState
+    .filter((order) => order.orderDate != null)
+    .forEach((order, index) => {
       const driver = DEMO_DRIVERS[index % DEMO_DRIVERS.length];
       const orderDate = new Date(order.orderDate!);
-      const status = getDeliveryStatus(orderDate);
-      
-      // Date de création de la livraison = même jour que la commande
+      const dayKey = orderDate.toISOString().slice(0, 10);
+      const indexInDay = indexInDayByDate.get(dayKey) ?? 0;
+      indexInDayByDate.set(dayKey, indexInDay + 1);
+
+      const status = getDeliveryStatusForDemo(orderDate, indexInDay);
       const createdAt = new Date(orderDate);
-      
-      // Date de complétion pour les livraisons terminées
+
       let completedAt: string | null = null;
       if (status === 'Completed') {
         const completedDate = new Date(orderDate);
-        // Ajouter quelques heures pour la complétion (entre 2h et 8h après création)
-        completedDate.setHours(completedDate.getHours() + 2 + Math.floor(Math.random() * 6));
+        completedDate.setHours(completedDate.getHours() + 2 + (indexInDay % 5), (indexInDay * 7) % 60, 0, 0);
         completedAt = completedDate.toISOString();
       }
-      
-      return {
-        id: `demo-delivery-${String(index + 1).padStart(3, '0')}`,
+
+      deliveries.push({
+        id: `demo-delivery-${String(deliveries.length + 1).padStart(3, '0')}`,
         orderId: order.id,
         driverId: driver.id,
         routeId: getRouteIdForDate(orderDate),
         status,
         createdAt: createdAt.toISOString(),
         completedAt
-      };
+      });
     });
+
+  return deliveries;
 }
 
 // État interne des données de démo
@@ -226,27 +235,20 @@ export function getMockOrders(filters?: {
     );
   }
   
-  // Filtre par date (utilise orderDate pour les deux types de filtre)
+  // Filtre par date : comparaison d'instants (dateFrom/dateTo sont déjà en UTC, cohérent avec le fuseau local côté store)
   if (filters?.dateFrom || filters?.dateTo) {
     if (filters?.dateFrom) {
-      const fromDate = new Date(filters.dateFrom);
-      fromDate.setHours(0, 0, 0, 0);
+      const fromInstant = new Date(filters.dateFrom).getTime();
       orders = orders.filter(order => {
         if (!order.orderDate) return false;
-        const orderDate = new Date(order.orderDate);
-        orderDate.setHours(0, 0, 0, 0);
-        return orderDate >= fromDate;
+        return new Date(order.orderDate).getTime() >= fromInstant;
       });
     }
-    
     if (filters?.dateTo) {
-      const toDate = new Date(filters.dateTo);
-      toDate.setHours(23, 59, 59, 999);
+      const toInstant = new Date(filters.dateTo).getTime();
       orders = orders.filter(order => {
         if (!order.orderDate) return false;
-        const orderDate = new Date(order.orderDate);
-        orderDate.setHours(0, 0, 0, 0);
-        return orderDate <= toDate;
+        return new Date(order.orderDate).getTime() <= toInstant;
       });
     }
   }
@@ -358,47 +360,30 @@ export function getMockDeliveries(filters?: {
     deliveries = deliveries.filter(d => d.routeId === filters.routeId);
   }
   
-  // Filtre par date
+  // Filtre par date : comparaison d'instants (aligné sur le store et l'API)
   if (filters?.dateFrom || filters?.dateTo) {
     if (filters?.dateFrom) {
-      const fromDate = new Date(filters.dateFrom);
-      fromDate.setHours(0, 0, 0, 0);
+      const fromInstant = new Date(filters.dateFrom).getTime();
       deliveries = deliveries.filter(delivery => {
         if (!delivery.createdAt) return false;
-        
-        // Si dateFilter est OrderDate, chercher la commande associée
-        let dateToCheck: Date;
-        if (filters?.dateFilter === 'OrderDate') {
-          const order = mockOrdersState.find(o => o.id === delivery.orderId);
-          if (!order?.orderDate) return false;
-          dateToCheck = new Date(order.orderDate);
-        } else {
-          dateToCheck = new Date(delivery.createdAt);
-        }
-        
-        dateToCheck.setHours(0, 0, 0, 0);
-        return dateToCheck >= fromDate;
+        const dateToCheck =
+          filters?.dateFilter === 'OrderDate'
+            ? mockOrdersState.find(o => o.id === delivery.orderId)?.orderDate
+            : delivery.createdAt;
+        if (!dateToCheck) return false;
+        return new Date(dateToCheck).getTime() >= fromInstant;
       });
     }
-    
     if (filters?.dateTo) {
-      const toDate = new Date(filters.dateTo);
-      toDate.setHours(23, 59, 59, 999);
+      const toInstant = new Date(filters.dateTo).getTime();
       deliveries = deliveries.filter(delivery => {
         if (!delivery.createdAt) return false;
-        
-        // Si dateFilter est OrderDate, chercher la commande associée
-        let dateToCheck: Date;
-        if (filters?.dateFilter === 'OrderDate') {
-          const order = mockOrdersState.find(o => o.id === delivery.orderId);
-          if (!order?.orderDate) return false;
-          dateToCheck = new Date(order.orderDate);
-        } else {
-          dateToCheck = new Date(delivery.createdAt);
-        }
-        
-        dateToCheck.setHours(0, 0, 0, 0);
-        return dateToCheck <= toDate;
+        const dateToCheck =
+          filters?.dateFilter === 'OrderDate'
+            ? mockOrdersState.find(o => o.id === delivery.orderId)?.orderDate
+            : delivery.createdAt;
+        if (!dateToCheck) return false;
+        return new Date(dateToCheck).getTime() <= toInstant;
       });
     }
   }
@@ -543,26 +528,13 @@ export function getMockRoutes(filters?: { dateFrom?: string; dateTo?: string; dr
   // Appliquer les filtres
   let filteredRoutes = routes;
   
-  // Filtre par date de début
   if (filters?.dateFrom) {
-    const fromDate = new Date(filters.dateFrom);
-    fromDate.setHours(0, 0, 0, 0);
-    filteredRoutes = filteredRoutes.filter(route => {
-      const routeDate = new Date(route.createdAt);
-      routeDate.setHours(0, 0, 0, 0);
-      return routeDate >= fromDate;
-    });
+    const fromInstant = new Date(filters.dateFrom).getTime();
+    filteredRoutes = filteredRoutes.filter(route => new Date(route.createdAt).getTime() >= fromInstant);
   }
-  
-  // Filtre par date de fin
   if (filters?.dateTo) {
-    const toDate = new Date(filters.dateTo);
-    toDate.setHours(23, 59, 59, 999);
-    filteredRoutes = filteredRoutes.filter(route => {
-      const routeDate = new Date(route.createdAt);
-      routeDate.setHours(0, 0, 0, 0);
-      return routeDate <= toDate;
-    });
+    const toInstant = new Date(filters.dateTo).getTime();
+    filteredRoutes = filteredRoutes.filter(route => new Date(route.createdAt).getTime() <= toInstant);
   }
   
   // Filtre par livreur

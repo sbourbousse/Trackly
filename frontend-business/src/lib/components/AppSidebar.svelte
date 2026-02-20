@@ -10,15 +10,14 @@
 		SidebarHeader,
 		SidebarMenu,
 		SidebarMenuButton,
-		SidebarMenuItem,
-		SidebarMenuSub,
-		SidebarMenuSubButton,
-		SidebarMenuSubItem
+		SidebarMenuItem
 	} from '$lib/components/ui/sidebar';
 	import { Switch } from '$lib/components/ui/switch';
 	import { themeState, setTheme } from '$lib/stores/theme.svelte';
-	import { userState } from '$lib/stores/user.svelte';
+	import { userStateReactive, userState } from '$lib/stores/user.svelte';
+	import { offlineState } from '$lib/stores/offline.svelte';
 	import LayoutDashboardIcon from '@lucide/svelte/icons/layout-dashboard';
+	import FlaskConicalIcon from '@lucide/svelte/icons/flask-conical';
 	import ClipboardListIcon from '@lucide/svelte/icons/clipboard-list';
 	import ClipboardEditIcon from '@lucide/svelte/icons/clipboard-edit';
 	import PackageIcon from '@lucide/svelte/icons/package';
@@ -33,32 +32,38 @@
 
 	let pathname = $derived(page.url.pathname);
 	let isDark = $derived(themeState.value === 'dark');
+	let isDemo = $derived(offlineState.isOffline);
 </script>
 
 <Sidebar collapsible="icon">
 	<SidebarHeader class="border-b border-sidebar-border">
 		<a href="/dashboard" class="flex items-center gap-2 px-2 py-2 text-sidebar-foreground hover:text-sidebar-foreground">
-			<span class="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-semibold">
-				T
-			</span>
-			<span class="font-semibold truncate group-data-[collapsible=icon]:hidden">Trackly Business</span>
+			{#if isDemo}
+				<span class="flex size-8 items-center justify-center rounded-md bg-amber-500 text-amber-950 font-semibold" title="Mode démo">
+					<FlaskConicalIcon class="size-4" aria-hidden="true" />
+				</span>
+				<span class="font-semibold truncate text-amber-600 dark:text-amber-400 group-data-[collapsible=icon]:hidden">Démo</span>
+			{:else}
+				<span class="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground font-semibold">
+					T
+				</span>
+				<span class="font-semibold truncate group-data-[collapsible=icon]:hidden">Trackly Business</span>
+			{/if}
 		</a>
-		{#if userState.user}
+		{#if userStateReactive.user}
 			<div class="px-2 py-2 border-t border-sidebar-border mt-2 group-data-[collapsible=icon]:hidden">
-				<p class="text-sm font-medium truncate">{userState.user.name}</p>
-				<p class="text-xs text-muted-foreground truncate">{userState.user.email}</p>
+				<p class="text-sm font-medium truncate">{userStateReactive.user.name}</p>
+				<p class="text-xs text-muted-foreground truncate">{userStateReactive.user.email}</p>
 			</div>
 		{/if}
 	</SidebarHeader>
 	<SidebarContent>
+		<!-- Dashboard et Carte (hors catégorie Listes) -->
 		<SidebarGroup>
 			<SidebarGroupContent>
 				<SidebarMenu>
 					<SidebarMenuItem>
-						<SidebarMenuButton
-							tooltipContent="Dashboard"
-							isActive={pathname === '/dashboard'}
-						>
+						<SidebarMenuButton tooltipContent="Dashboard" isActive={pathname === '/dashboard'}>
 							{#snippet child({ props })}
 								<a href="/dashboard" {...props}>
 									<LayoutDashboardIcon class="size-4 shrink-0" aria-hidden="true" />
@@ -68,10 +73,7 @@
 						</SidebarMenuButton>
 					</SidebarMenuItem>
 					<SidebarMenuItem>
-						<SidebarMenuButton
-							tooltipContent="Carte"
-							isActive={pathname === '/map'}
-						>
+						<SidebarMenuButton tooltipContent="Carte" isActive={pathname === '/map'}>
 							{#snippet child({ props })}
 								<a href="/map" {...props}>
 									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />
@@ -84,13 +86,15 @@
 			</SidebarGroupContent>
 		</SidebarGroup>
 
+		<!-- Listes : Commandes, Livraisons, Livreurs -->
 		<SidebarGroup>
+			<SidebarGroupLabel class="text-xs font-medium text-muted-foreground">Listes</SidebarGroupLabel>
 			<SidebarGroupContent>
 				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							tooltipContent="Commandes"
-							isActive={pathname === '/orders' || pathname.startsWith('/orders/')}
+							isActive={pathname === '/orders' || (pathname.startsWith('/orders/') && pathname !== '/orders/new')}
 						>
 							{#snippet child({ props })}
 								<a href="/orders" {...props}>
@@ -99,26 +103,11 @@
 								</a>
 							{/snippet}
 						</SidebarMenuButton>
-						<SidebarMenuSub>
-							<SidebarMenuSubItem>
-								<SidebarMenuSubButton href="/orders/new" isActive={pathname === '/orders/new'}>
-									<ClipboardEditIcon class="size-4 shrink-0" aria-hidden="true" />
-									<span>Créer commande</span>
-								</SidebarMenuSubButton>
-							</SidebarMenuSubItem>
-						</SidebarMenuSub>
 					</SidebarMenuItem>
-				</SidebarMenu>
-			</SidebarGroupContent>
-		</SidebarGroup>
-
-		<SidebarGroup>
-			<SidebarGroupContent>
-				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							tooltipContent="Livraisons & tournées"
-							isActive={pathname === '/deliveries' || pathname.startsWith('/deliveries/')}
+							isActive={pathname === '/deliveries' || (pathname.startsWith('/deliveries/') && pathname !== '/deliveries/new')}
 						>
 							{#snippet child({ props })}
 								<a href="/deliveries" {...props}>
@@ -127,26 +116,11 @@
 								</a>
 							{/snippet}
 						</SidebarMenuButton>
-						<SidebarMenuSub>
-							<SidebarMenuSubItem>
-								<SidebarMenuSubButton href="/deliveries/new" isActive={pathname === '/deliveries/new'}>
-									<MapPinIcon class="size-4 shrink-0" aria-hidden="true" />
-									<span>Créer tournée</span>
-								</SidebarMenuSubButton>
-							</SidebarMenuSubItem>
-						</SidebarMenuSub>
 					</SidebarMenuItem>
-				</SidebarMenu>
-			</SidebarGroupContent>
-		</SidebarGroup>
-
-		<SidebarGroup>
-			<SidebarGroupContent>
-				<SidebarMenu>
 					<SidebarMenuItem>
 						<SidebarMenuButton
 							tooltipContent="Livreurs"
-							isActive={pathname === '/drivers' || pathname.startsWith('/drivers/')}
+							isActive={pathname === '/drivers' || (pathname.startsWith('/drivers/') && pathname !== '/drivers/new')}
 						>
 							{#snippet child({ props })}
 								<a href="/drivers" {...props}>
@@ -155,14 +129,45 @@
 								</a>
 							{/snippet}
 						</SidebarMenuButton>
-						<SidebarMenuSub>
-							<SidebarMenuSubItem>
-								<SidebarMenuSubButton href="/drivers/new" isActive={pathname === '/drivers/new'}>
+					</SidebarMenuItem>
+				</SidebarMenu>
+			</SidebarGroupContent>
+		</SidebarGroup>
+
+		<!-- Création : Créer commande, Créer tournée, Créer livreur -->
+		<SidebarGroup>
+			<SidebarGroupLabel class="text-xs font-medium text-muted-foreground">Création</SidebarGroupLabel>
+			<SidebarGroupContent>
+				<SidebarMenu>
+					<SidebarMenuItem>
+						<SidebarMenuButton tooltipContent="Créer commande" isActive={pathname === '/orders/new'}>
+							{#snippet child({ props })}
+								<a href="/orders/new" {...props}>
+									<ClipboardEditIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Créer commande</span>
+								</a>
+							{/snippet}
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+					<SidebarMenuItem>
+						<SidebarMenuButton tooltipContent="Créer tournée" isActive={pathname === '/deliveries/new'}>
+							{#snippet child({ props })}
+								<a href="/deliveries/new" {...props}>
+									<RouteIcon class="size-4 shrink-0" aria-hidden="true" />
+									<span>Créer tournée</span>
+								</a>
+							{/snippet}
+						</SidebarMenuButton>
+					</SidebarMenuItem>
+					<SidebarMenuItem>
+						<SidebarMenuButton tooltipContent="Créer livreur" isActive={pathname === '/drivers/new'}>
+							{#snippet child({ props })}
+								<a href="/drivers/new" {...props}>
 									<UserPlusIcon class="size-4 shrink-0" aria-hidden="true" />
 									<span>Créer livreur</span>
-								</SidebarMenuSubButton>
-							</SidebarMenuSubItem>
-						</SidebarMenuSub>
+								</a>
+							{/snippet}
+						</SidebarMenuButton>
 					</SidebarMenuItem>
 				</SidebarMenu>
 			</SidebarGroupContent>

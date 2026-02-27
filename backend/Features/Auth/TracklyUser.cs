@@ -10,4 +10,8 @@ public sealed class TracklyUser : ITenantIsolated
     public string Email { get; set; } = string.Empty;
     public string PasswordHash { get; set; } = string.Empty;
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>Code à 6 chiffres envoyé par email pour confirmer l'inscription. Null une fois vérifié.</summary>
+    public string? EmailVerificationCode { get; set; }
+    public DateTimeOffset? EmailVerificationSentAt { get; set; }
 }

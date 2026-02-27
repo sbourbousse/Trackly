@@ -15,6 +15,7 @@ public sealed class TenantMiddleware(RequestDelegate next)
             path.StartsWith("/api/tenants/default") ||
             path.StartsWith("/api/tenants/register") ||
             path.StartsWith("/api/auth/register") ||
+            path.StartsWith("/api/auth/verify-email") ||
             path.StartsWith("/api/auth/login") ||
             path.StartsWith("/api/public/") || // Endpoints publics pour les clients (tracking, etc.)
             (path.StartsWith("/api/drivers/") && path.EndsWith("/tenant")) ||

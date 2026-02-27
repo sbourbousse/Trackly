@@ -3,7 +3,9 @@
 	import { authActions } from '$lib/stores/auth.svelte';
 	import { userState } from '$lib/stores/user.svelte';
 	import { settingsActions } from '$lib/stores/settings.svelte';
-	import { loginAccount, registerAccount, clearAuthCache } from '$lib/api/client';
+	import { loginAccount, registerAccount, verifyEmailCode, clearAuthCache } from '$lib/api/client';
+import type { RegisterPendingResponse } from '$lib/api/client';
+import { ApiError } from '$lib/api/client';
 	import { setAuthCookie } from '$lib/auth-cookie';
 	import { setOfflineModeReactive } from '$lib/stores/offline.svelte';
 	import { DEMO_TENANT_ID } from '$lib/offline/mockData';
@@ -22,6 +24,7 @@
 
 	const REGISTER_STEPS = [
 		{ key: 'compte', label: 'Compte' },
+		{ key: 'email', label: 'Vérification email' },
 		{ key: 'siege', label: 'Siège social' }
 	] as const;
 
@@ -36,6 +39,13 @@
 	let error = $state<string | null>(null);
 	let createdTenantId = $state<string | null>(null);
 
+	// Étape vérification email (étape 1)
+	let pendingVerifyEmail = $state('');
+	let verificationCode = $state('');
+	let verificationMessage = $state('');
+	let verifyLoading = $state(false);
+	let verifyError = $state<string | null>(null);
+
 	// Formulaire siège social (étape 2)
 	let hqAddress = $state('');
 	let hqLat = $state('');
@@ -46,6 +56,10 @@
 	function resetRegisterFlow() {
 		registerStep = 0;
 		createdTenantId = null;
+		pendingVerifyEmail = '';
+		verificationCode = '';
+		verificationMessage = '';
+		verifyError = null;
 		hqAddress = '';
 		hqLat = '';
 		hqLng = '';
@@ -68,16 +82,73 @@
 
 		loading = true;
 		try {
-			const response =
-				mode === 'register'
-					? await registerAccount({
-							companyName: companyName.trim(),
-							name: fullName.trim(),
-							email: email.trim(),
-							password
-						})
-					: await loginAccount({ email: email.trim(), password });
+			if (mode === 'register') {
+				const pending = await registerAccount({
+					companyName: companyName.trim(),
+					name: fullName.trim(),
+					email: email.trim(),
+					password
+				}) as RegisterPendingResponse;
+				pendingVerifyEmail = pending.email;
+				verificationMessage = pending.message;
+				registerStep = 1;
+			} else {
+				const response = await loginAccount({ email: email.trim(), password });
+				if (remember) {
+					localStorage.setItem('trackly_auth_token', response.token);
+					localStorage.setItem('trackly_tenant_id', response.tenantId);
+				} else {
+					sessionStorage.setItem('trackly_auth_token', response.token);
+					sessionStorage.setItem('trackly_tenant_id', response.tenantId);
+				}
+				setAuthCookie(response.token, remember);
+				clearAuthCache();
+				authActions.setTenantId(response.tenantId);
+				authActions.setToken(response.token);
+				authActions.login({
+					id: response.userId,
+					name: response.name,
+					email: response.email,
+					plan: 'Starter'
+				});
+				userState.setUser({
+					id: response.userId,
+					name: response.name,
+					email: response.email
+				});
+				userState.setTenant({
+					id: response.tenantId,
+					name: companyName || 'Mon Entreprise'
+				});
+				await goto('/dashboard');
+			}
+		} catch (err) {
+			if (err instanceof ApiError && err.status === 403 && err.details) {
+				try {
+					const body = JSON.parse(err.details) as { error?: string };
+					error = body.error ?? err.message;
+				} catch {
+					error = err.message;
+				}
+			} else {
+				error = err instanceof Error ? err.message : "Erreur d'authentification";
+			}
+		} finally {
+			loading = false;
+		}
+	}
 
+	async function handleVerifyEmail(event: SubmitEvent) {
+		event.preventDefault();
+		verifyError = null;
+		const code = verificationCode.trim();
+		if (!code) {
+			verifyError = 'Saisissez le code reçu par email.';
+			return;
+		}
+		verifyLoading = true;
+		try {
+			const response = await verifyEmailCode(pendingVerifyEmail, code);
 			if (remember) {
 				localStorage.setItem('trackly_auth_token', response.token);
 				localStorage.setItem('trackly_tenant_id', response.tenantId);
@@ -86,9 +157,7 @@
 				sessionStorage.setItem('trackly_tenant_id', response.tenantId);
 			}
 			setAuthCookie(response.token, remember);
-			// Invalider le cache in-memory du client API pour que X-Tenant-Id soit le nouveau
 			clearAuthCache();
-
 			authActions.setTenantId(response.tenantId);
 			authActions.setToken(response.token);
 			authActions.login({
@@ -97,7 +166,6 @@
 				email: response.email,
 				plan: 'Starter'
 			});
-
 			userState.setUser({
 				id: response.userId,
 				name: response.name,
@@ -107,17 +175,12 @@
 				id: response.tenantId,
 				name: companyName || 'Mon Entreprise'
 			});
-
-			if (mode === 'register') {
-				createdTenantId = response.tenantId;
-				registerStep = 1;
-			} else {
-				await goto('/dashboard');
-			}
+			createdTenantId = response.tenantId;
+			registerStep = 2;
 		} catch (err) {
-			error = err instanceof Error ? err.message : "Erreur d'authentification";
+			verifyError = err instanceof Error ? err.message : 'Code invalide.';
 		} finally {
-			loading = false;
+			verifyLoading = false;
 		}
 	}
 
@@ -267,6 +330,40 @@
 		</CardHeader>
 		<CardContent>
 			{#if mode === 'register' && registerStep === 1}
+				<!-- Étape 1 : Vérification email -->
+				<div class="space-y-4">
+					<p class="text-muted-foreground text-sm">
+						{verificationMessage}
+					</p>
+					<p class="text-sm font-medium text-muted-foreground">
+						Code envoyé à <span class="text-foreground">{pendingVerifyEmail}</span>
+					</p>
+					<form onsubmit={handleVerifyEmail} class="space-y-4">
+						<div class="space-y-2">
+							<Label for="verification-code">Code à 6 chiffres</Label>
+							<Input
+								id="verification-code"
+								type="text"
+								inputmode="numeric"
+								pattern="[0-9]*"
+								maxlength={6}
+								placeholder="000000"
+								bind:value={verificationCode}
+								class="text-center font-mono text-lg tracking-widest"
+								autocomplete="one-time-code"
+							/>
+						</div>
+						{#if verifyError}
+							<Alert variant="destructive">
+								<AlertDescription>{verifyError}</AlertDescription>
+							</Alert>
+						{/if}
+						<Button type="submit" class="w-full" disabled={verifyLoading}>
+							{verifyLoading ? 'Vérification…' : 'Vérifier et continuer'}
+						</Button>
+					</form>
+				</div>
+			{:else if mode === 'register' && registerStep === 2}
 				<!-- Étape 2 : Siège social -->
 				<div class="space-y-4">
 					<p class="text-muted-foreground text-sm">
@@ -314,7 +411,7 @@
 					</div>
 				</div>
 			{:else}
-				<!-- Connexion ou Étape 1 : Compte -->
+				<!-- Connexion ou Étape 0 : Compte -->
 				<form onsubmit={handleSubmit} class="space-y-4">
 					<div class="flex gap-2">
 						<Button

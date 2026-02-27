@@ -210,8 +210,9 @@ app.MapGet("/debug/cors", () =>
     });
 });
 
-// Auth business (création de compte + login)
-app.MapPost("/api/auth/register", async (TracklyDbContext dbContext, AuthService authService, RegisterRequest request) =>
+// Auth business (création de compte + vérification email + login)
+var rnd = new Random();
+app.MapPost("/api/auth/register", async (TracklyDbContext dbContext, AuthService authService, RegisterRequest request, IWebHostEnvironment env) =>
 {
     var companyName = request.CompanyName?.Trim();
     var name = request.Name?.Trim();
@@ -238,19 +239,60 @@ app.MapPost("/api/auth/register", async (TracklyDbContext dbContext, AuthService
     var tenant = new Tenant { Name = companyName };
     dbContext.Tenants.Add(tenant);
 
+    var code = rnd.Next(100000, 999999).ToString();
     var user = new TracklyUser
     {
         TenantId = tenant.Id,
         Name = name,
-        Email = email
+        Email = email,
+        EmailVerificationCode = code,
+        EmailVerificationSentAt = DateTimeOffset.UtcNow
     };
     user.PasswordHash = authService.HashPassword(user, password);
 
     dbContext.Users.Add(user);
     await dbContext.SaveChangesAsync();
 
+    if (env.IsDevelopment())
+    {
+        Console.WriteLine("[Auth] Inscription - Code de vérification email (dev uniquement) pour {0} : {1}", email, code);
+    }
+    // TODO: en production, envoyer l'email avec le code (SendGrid, etc.)
+
+    return Results.Ok(new RegisterPendingResponse(email, "Un code de vérification a été envoyé à votre adresse email. Saisissez-le ci-dessous."));
+});
+
+app.MapPost("/api/auth/verify-email", async (TracklyDbContext dbContext, AuthService authService, VerifyEmailRequest request) =>
+{
+    var email = request.Email?.Trim().ToLowerInvariant();
+    var code = request.Code?.Trim();
+
+    if (string.IsNullOrWhiteSpace(email) || string.IsNullOrWhiteSpace(code))
+    {
+        return Results.BadRequest("Email et code sont requis.");
+    }
+
+    var user = await dbContext.Users
+        .IgnoreQueryFilters()
+        .FirstOrDefaultAsync(u => u.Email == email);
+
+    if (user == null || user.EmailVerificationCode == null)
+    {
+        return Results.BadRequest("Compte introuvable ou déjà vérifié.");
+    }
+
+    if (user.EmailVerificationCode != code)
+    {
+        return Results.BadRequest("Code incorrect.");
+    }
+
+    user.EmailVerificationCode = null;
+    user.EmailVerificationSentAt = null;
+    await dbContext.SaveChangesAsync();
+
+    var tenant = await dbContext.Tenants.AsNoTracking().FirstAsync(t => t.Id == user.TenantId);
     var token = authService.CreateToken(user, jwtSecret);
-    return Results.Ok(new AuthResponse(token, tenant.Id, user.Id, user.Name, user.Email));
+    return Results.Ok(new AuthResponse(token, user.TenantId, user.Id, user.Name, user.Email));
 });
 
 app.MapPost("/api/auth/login", async (TracklyDbContext dbContext, AuthService authService, LoginRequest request) =>
@@ -270,6 +312,11 @@ app.MapPost("/api/auth/login", async (TracklyDbContext dbContext, AuthService au
     if (user == null || !authService.VerifyPassword(user, password))
     {
         return Results.Unauthorized();
+    }
+
+    if (!string.IsNullOrEmpty(user.EmailVerificationCode))
+    {
+        return Results.Json(new { error = "Veuillez confirmer votre adresse email avec le code envoyé lors de l'inscription." }, statusCode: 403);
     }
 
     var token = authService.CreateToken(user, jwtSecret);

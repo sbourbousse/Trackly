@@ -176,14 +176,31 @@ export type AuthResponse = {
 	email: string;
 };
 
+/** Réponse après inscription : l'utilisateur doit confirmer son email avec le code envoyé. */
+export type RegisterPendingResponse = {
+	email: string;
+	message: string;
+};
+
 export const registerAccount = async (payload: AuthRegisterPayload) => {
 	if (browser && isOfflineMode()) {
 		const { mockAuthApi } = await import('../offline/mockApi');
 		return await mockAuthApi.register(payload);
 	}
-	return apiFetch<AuthResponse>('/api/auth/register', {
+	return apiFetch<RegisterPendingResponse>('/api/auth/register', {
 		method: 'POST',
 		body: JSON.stringify(payload)
+	});
+};
+
+export const verifyEmailCode = async (email: string, code: string) => {
+	if (browser && isOfflineMode()) {
+		const { mockAuthApi } = await import('../offline/mockApi');
+		return await mockAuthApi.verifyEmail(email, code);
+	}
+	return apiFetch<AuthResponse>('/api/auth/verify-email', {
+		method: 'POST',
+		body: JSON.stringify({ email, code })
 	});
 };
 

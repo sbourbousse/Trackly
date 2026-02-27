@@ -7,7 +7,7 @@ import type { ApiOrder, ApiOrderDetail, CreateOrderRequest, OrdersListFilters, I
 import type { ApiDelivery, ApiDeliveryDetail, DeliveriesListFilters, CreateDeliveriesBatchRequest, DeleteDeliveriesBatchRequest } from '../api/deliveries';
 import type { RoutesListFilters } from '../api/routes';
 import type { ApiDriver, CreateDriverRequest } from '../api/drivers';
-import type { AuthResponse, AuthLoginPayload, AuthRegisterPayload } from '../api/client';
+import type { AuthResponse, AuthLoginPayload, AuthRegisterPayload, RegisterPendingResponse } from '../api/client';
 import { offlineConfig } from './config';
 import {
   getMockOrders,
@@ -34,6 +34,11 @@ function delay(): Promise<void> {
   return new Promise(resolve => setTimeout(resolve, offlineConfig.mockDelay));
 }
 
+/** Dernière inscription en attente de vérification (mock) */
+let lastRegisterPayload: AuthRegisterPayload | null = null;
+
+const MOCK_VERIFICATION_CODE = '123456';
+
 /**
  * Mock pour l'API d'authentification
  */
@@ -52,16 +57,31 @@ export const mockAuthApi = {
     };
   },
 
-  async register(payload: AuthRegisterPayload): Promise<AuthResponse> {
+  async register(payload: AuthRegisterPayload): Promise<RegisterPendingResponse> {
     console.log('[Mock API] POST /api/auth/register');
     await delay();
-    
+    lastRegisterPayload = payload;
+    // En mode dev/mock, le code s'affiche dans la console
+    console.log('[Mock API] Code de vérification email (dev) pour', payload.email, ':', MOCK_VERIFICATION_CODE);
+    return {
+      email: payload.email,
+      message: 'Un code de vérification a été envoyé à votre adresse email. Saisissez-le ci-dessous.'
+    };
+  },
+
+  async verifyEmail(email: string, code: string): Promise<AuthResponse> {
+    console.log('[Mock API] POST /api/auth/verify-email', { email });
+    await delay();
+    if (code !== MOCK_VERIFICATION_CODE) {
+      throw new Error('Code incorrect.');
+    }
+    const reg = lastRegisterPayload;
     return {
       token: 'demo-token-' + Date.now(),
       tenantId: DEMO_TENANT_ID,
       userId: 'demo-user-001',
-      name: payload.name,
-      email: payload.email
+      name: reg?.name ?? 'Utilisateur',
+      email
     };
   }
 };

@@ -3,6 +3,27 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-28 | Vérification email à l'inscription
+
+**Tâche** : Ajouter une étape de confirmation par email lors de l'inscription : envoi d'un code à 6 chiffres, saisie du code avant d'accéder au tableau de bord. En mode dev, le code s'affiche dans la console backend.
+
+**Fichiers modifiés** :
+- `backend/Features/Auth/TracklyUser.cs` – champs `EmailVerificationCode` et `EmailVerificationSentAt`
+- `backend/Features/Auth/AuthDtos.cs` – `RegisterPendingResponse`, `VerifyEmailRequest`
+- `backend/Program.cs` – register retourne `RegisterPendingResponse` et log le code en dev ; nouvel endpoint `POST /api/auth/verify-email` ; login refusé (403) si email non vérifié
+- `backend/Infrastructure/MultiTenancy/TenantMiddleware.cs` – route `/api/auth/verify-email` publique
+- `backend/Migrations/20260228100000_AddEmailVerificationToUser.cs` + snapshot
+- `frontend-business/src/lib/api/client.ts` – types `RegisterPendingResponse`, `verifyEmailCode()` ; `registerAccount` retourne `RegisterPendingResponse`
+- `frontend-business/src/lib/offline/mockApi.ts` – mock register → pending, `verifyEmail()` avec code `123456` (log en console en mock)
+- `frontend-business/src/routes/login/+page.svelte` – 3 étapes : Compte → Vérification email → Siège social ; formulaire code 6 chiffres (Label, Input, Alert, Button Shadcn) ; gestion erreur 403 login
+
+**Résultat** :
+- Inscription : après création du compte, l'utilisateur voit l'étape « Vérification email » et saisit le code reçu (en dev : code affiché dans la console backend ; en mock : code `123456`).
+- Après vérification, même flux qu'avant (token, puis étape Siège social optionnelle).
+- Connexion refusée tant que l'email n'est pas vérifié (message d'erreur explicite).
+
+---
+
 ## 2026-02-20 | Sidebar gauche (listes/création) et droite (calendrier seul, date commande)
 
 **Tâche** : Réorganiser la sidebar gauche (3 listes + 3 pages création) et simplifier la sidebar période à droite (calendrier uniquement, filtre toujours par date commande).

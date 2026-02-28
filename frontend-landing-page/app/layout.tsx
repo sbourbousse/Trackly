@@ -15,6 +15,9 @@ export const metadata: Metadata = {
   title,
   description,
   metadataBase: new URL(SITE_URL),
+  icons: {
+    icon: [{ url: "/icon.svg", type: "image/svg+xml" }, { url: "/icon.svg", sizes: "any" }],
+  },
   alternates: {
     canonical: "/",
   },

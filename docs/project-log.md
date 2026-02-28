@@ -3,6 +3,26 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-28 | Envoi d'emails avec Resend
+
+**Tâche** : Utiliser Resend pour l'envoi des emails (création de compte / code de vérification et tout autre email).
+
+**Fichiers modifiés** :
+- `backend/Trackly.Backend.csproj` – package Resend 0.2.1
+- `backend/Features/Email/IEmailService.cs` – interface (SendVerificationCodeAsync)
+- `backend/Features/Email/ResendEmailService.cs` – implémentation Resend (HTML code à 6 chiffres)
+- `backend/Features/Email/ResendEmailOptions.cs` – options ApiKey, From (config + RESEND_APIKEY)
+- `backend/Program.cs` – enregistrement Resend (HttpClient, ResendClientOptions, IEmailService) ; appel à emailService.SendVerificationCodeAsync après inscription
+- `backend/appsettings.json` – section Resend (ApiKey, From)
+- `docs/project-log.md` – présente entrée
+
+**Résultat** :
+- À l'inscription, le code de vérification est envoyé par email via Resend si `Resend:ApiKey` ou `RESEND_APIKEY` est défini.
+- Sinon (dev sans clé), le code reste affiché en console et l'utilisateur voit le même message.
+- Pour la prod : définir `RESEND_APIKEY` (ou `Resend:ApiKey`) et optionnellement `Resend:From` (ex. « Arrivo &lt;contact@arrivo.fr&gt; » après vérification du domaine).
+
+---
+
 ## 2026-02-28 | Finalisation landing : pages légales, suppression FAQ, contact
 
 **Tâche** : Finaliser la landing : créer les pages CGU, Mentions légales et Politique de confidentialité (contenus conformes droit français), retirer la FAQ, garder le contact par email uniquement.

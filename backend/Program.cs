@@ -6,9 +6,11 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.IdentityModel.Tokens;
 using Npgsql;
+using Resend;
 using Trackly.Backend.Features.Auth;
 using Trackly.Backend.Features.Billing;
 using Trackly.Backend.Features.Deliveries;
+using Trackly.Backend.Features.Email;
 using Trackly.Backend.Features.Drivers;
 using Trackly.Backend.Features.Geocode;
 using Trackly.Backend.Features.Orders;
@@ -25,6 +27,20 @@ builder.Services.AddMemoryCache();
 builder.Services.AddScoped<TenantContext>();
 builder.Services.AddScoped<IBillingService, BillingService>();
 builder.Services.AddSingleton<AuthService>();
+
+// Resend (emails : vérification compte, etc.)
+var resendApiKey = builder.Configuration["Resend:ApiKey"] ?? Environment.GetEnvironmentVariable("RESEND_APIKEY") ?? "";
+builder.Services.AddOptions<ResendEmailOptions>()
+    .Bind(builder.Configuration.GetSection(ResendEmailOptions.SectionName))
+    .PostConfigure(opts =>
+    {
+        if (string.IsNullOrWhiteSpace(opts.ApiKey)) opts.ApiKey = resendApiKey;
+        if (string.IsNullOrWhiteSpace(opts.From)) opts.From = "Arrivo <onboarding@resend.dev>";
+    });
+builder.Services.AddHttpClient<ResendClient>();
+builder.Services.Configure<ResendClientOptions>(o => o.ApiToken = resendApiKey);
+builder.Services.AddTransient<IResend, ResendClient>();
+builder.Services.AddTransient<IEmailService, ResendEmailService>();
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
     options.SerializerOptions.Converters.Add(new JsonStringEnumConverter());
@@ -214,7 +230,7 @@ app.MapGet("/debug/cors", () =>
 
 // Auth business (création de compte + vérification email + login)
 var rnd = new Random();
-app.MapPost("/api/auth/register", async (TracklyDbContext dbContext, AuthService authService, RegisterRequest request, IWebHostEnvironment env) =>
+app.MapPost("/api/auth/register", async (TracklyDbContext dbContext, AuthService authService, IEmailService emailService, RegisterRequest request, IWebHostEnvironment env) =>
 {
     var companyName = request.CompanyName?.Trim();
     var name = request.Name?.Trim();
@@ -255,11 +271,19 @@ app.MapPost("/api/auth/register", async (TracklyDbContext dbContext, AuthService
     dbContext.Users.Add(user);
     await dbContext.SaveChangesAsync();
 
-    if (env.IsDevelopment())
+    try
     {
-        Console.WriteLine("[Auth] Inscription - Code de vérification email (dev uniquement) pour {0} : {1}", email, code);
+        await emailService.SendVerificationCodeAsync(email, code);
     }
-    // TODO: en production, envoyer l'email avec le code (SendGrid, etc.)
+    catch (Exception ex)
+    {
+        if (env.IsDevelopment())
+            Console.WriteLine("[Auth] Envoi email échoué (Resend) - Code pour {0} : {1}. Erreur : {2}", email, code, ex.Message);
+        // En production on ne révèle pas l'erreur ; l'utilisateur voit le même message
+    }
+
+    if (env.IsDevelopment())
+        Console.WriteLine("[Auth] Inscription - Code de vérification (dev) pour {0} : {1}", email, code);
 
     return Results.Ok(new RegisterPendingResponse(email, "Un code de vérification a été envoyé à votre adresse email. Saisissez-le ci-dessous."));
 });

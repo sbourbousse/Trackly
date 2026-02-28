@@ -5,7 +5,7 @@ import { JsonLd } from "@/components/seo/JsonLd";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://trackly.fr";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://arrivo.fr";
 
 const title = "Arrivo — Gestion de livraisons pour TPE et artisans";
 const description =

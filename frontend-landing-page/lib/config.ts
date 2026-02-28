@@ -43,5 +43,4 @@ export const config = {
 export const internalLinks = {
   pricing: "#tarification",
   cta: "#cta",
-  faq: "#faq",
 } as const;

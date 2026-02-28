@@ -3,6 +3,31 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-28 | Finalisation landing : pages légales, suppression FAQ, contact
+
+**Tâche** : Finaliser la landing : créer les pages CGU, Mentions légales et Politique de confidentialité (contenus conformes droit français), retirer la FAQ, garder le contact par email uniquement.
+
+**Fichiers modifiés** :
+- `frontend-landing-page/app/page.tsx` – retrait de la section `<Faq />`
+- `frontend-landing-page/components/landing/Footer.tsx` – suppression du lien FAQ, conservation Contact (mailto) + liens vers mentions-legales, cgu, confidentialite
+- `frontend-landing-page/lib/config.ts` – retrait de `faq` dans `internalLinks`
+- `frontend-landing-page/components/landing/Faq.tsx` et `frontend-landing-page/lib/faq.ts` – supprimés
+- `frontend-landing-page/components/landing/LegalPageLayout.tsx` – nouveau composant (Header + main + Footer, titre + article)
+- `frontend-landing-page/app/mentions-legales/page.tsx` – page Mentions légales (LCEN : Arrivo micro-entreprise, Vercel hébergeur)
+- `frontend-landing-page/app/cgu/page.tsx` – page CGU (objet, acceptation, freemium, obligations, PI, responsabilité, résiliation, droit français, médiation à indiquer)
+- `frontend-landing-page/app/confidentialite/page.tsx` – page Politique de confidentialité (RGPD : responsable, finalités, données, durées, Vercel/Railway, droits, pas de cookies site vitrine)
+- `frontend-landing-page/app/sitemap.ts` – ajout des URLs /mentions-legales, /cgu, /confidentialite
+- `frontend-landing-page/docs/CONTENT_LANDING.md` – footer et liens légaux à jour, FAQ retirée
+- `docs/project-log.md` – présente entrée
+
+**Résultat** :
+- Les liens du footer mènent vers des pages réelles (plus de 404).
+- Contact : email uniquement (contact@arrivo.fr).
+- FAQ retirée de la home et du footer.
+- Contenus juridiques (Arrivo, micro-entreprise) ; hébergeur site = Vercel, backend = Railway. Version bêta gratuite : pas de placeholders, marque Arrivo uniquement (contact@arrivo.fr, arrivo.fr).
+
+---
+
 ## 2026-02-28 | Quota livraisons (API + badge dashboard réactif)
 
 **Tâche** : Système de quota pour les livraisons : endpoint quota, badge dashboard affichant le nombre de livraisons restantes (mis à jour à chaque chargement).

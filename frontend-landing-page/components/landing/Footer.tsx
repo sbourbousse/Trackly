@@ -1,5 +1,4 @@
 import Link from "next/link";
-import { internalLinks } from "@/lib/config";
 
 export function Footer() {
   return (
@@ -13,15 +12,7 @@ export function Footer() {
             <ul className="flex flex-wrap items-center gap-4 sm:gap-6 text-sm">
               <li>
                 <a
-                  href={internalLinks.faq}
-                  className="text-stone-600 hover:text-teal-600 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded-sm"
-                >
-                  FAQ
-                </a>
-              </li>
-              <li>
-                <a
-                  href="mailto:contact@trackly.fr"
+                  href="mailto:contact@arrivo.fr"
                   className="font-semibold text-teal-600 hover:text-teal-700 focus:outline-none focus:ring-2 focus:ring-teal-500 focus:ring-offset-2 rounded-sm underline underline-offset-2"
                   aria-label="Nous contacter par email"
                 >

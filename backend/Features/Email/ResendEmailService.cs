@@ -19,7 +19,7 @@ public class ResendEmailService : IEmailService
         if (string.IsNullOrWhiteSpace(_options.ApiKey))
             return;
 
-        var from = string.IsNullOrWhiteSpace(_options.From) ? "Arrivo <onboarding@resend.dev>" : _options.From;
+        var from = string.IsNullOrWhiteSpace(_options.From) ? "Arrivo <inscription@arrivo.pro>" : _options.From;
         var message = new EmailMessage
         {
             From = from,

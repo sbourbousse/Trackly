@@ -30,12 +30,13 @@ builder.Services.AddSingleton<AuthService>();
 
 // Resend (emails : vérification compte, etc.)
 var resendApiKey = builder.Configuration["Resend:ApiKey"] ?? Environment.GetEnvironmentVariable("RESEND_APIKEY") ?? "";
+var resendFrom = builder.Configuration["Resend:From"] ?? Environment.GetEnvironmentVariable("RESEND_FROM") ?? "";
 builder.Services.AddOptions<ResendEmailOptions>()
     .Bind(builder.Configuration.GetSection(ResendEmailOptions.SectionName))
     .PostConfigure(opts =>
     {
         if (string.IsNullOrWhiteSpace(opts.ApiKey)) opts.ApiKey = resendApiKey;
-        if (string.IsNullOrWhiteSpace(opts.From)) opts.From = "Arrivo <onboarding@resend.dev>";
+        if (string.IsNullOrWhiteSpace(opts.From)) opts.From = string.IsNullOrWhiteSpace(resendFrom) ? "Arrivo <inscription@arrivo.pro>" : resendFrom;
     });
 builder.Services.AddHttpClient<ResendClient>();
 builder.Services.Configure<ResendClientOptions>(o => o.ApiToken = resendApiKey);

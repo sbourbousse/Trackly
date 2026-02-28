@@ -8,6 +8,7 @@ import type { ApiDelivery, ApiDeliveryDetail, DeliveriesListFilters, CreateDeliv
 import type { RoutesListFilters } from '../api/routes';
 import type { ApiDriver, CreateDriverRequest } from '../api/drivers';
 import type { AuthResponse, AuthLoginPayload, AuthRegisterPayload, RegisterPendingResponse } from '../api/client';
+import type { DeliveryQuotaResponse } from '../api/billing';
 import { offlineConfig } from './config';
 import {
   getMockOrders,
@@ -325,5 +326,31 @@ export const mockTenantApi = {
     console.log('[Mock API] GET /api/tenants/default');
     await delay();
     return { id: DEMO_TENANT_ID };
+  }
+};
+
+/**
+ * Mock pour l'API billing (quota livraisons)
+ */
+export const mockBillingApi = {
+  async getDeliveryQuota(): Promise<DeliveryQuotaResponse> {
+    console.log('[Mock API] GET /api/billing/quota');
+    await delay();
+    const deliveries = await getMockDeliveries({});
+    const now = new Date();
+    const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59);
+    const usedThisMonth = deliveries.filter((d) => {
+      const created = d.createdAt ? new Date(d.createdAt) : null;
+      return created && created >= startOfMonth && created <= endOfMonth;
+    }).length;
+    const monthlyLimit = 25;
+    const remaining = Math.max(0, monthlyLimit - usedThisMonth);
+    return {
+      plan: 'Starter',
+      monthlyLimit,
+      usedThisMonth,
+      remaining
+    };
   }
 };

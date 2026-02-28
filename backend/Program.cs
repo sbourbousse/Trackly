@@ -426,6 +426,21 @@ app.MapGet("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, Te
     });
 });
 
+// Quota de livraisons (plan, utilisé ce mois, restant) — pour le badge dashboard
+app.MapGet("/api/billing/quota", async (TenantContext tenantContext, IBillingService billingService, CancellationToken cancellationToken) =>
+{
+    if (tenantContext.TenantId == Guid.Empty)
+        return Results.BadRequest("Tenant manquant.");
+    var quota = await billingService.GetDeliveryQuotaAsync(tenantContext.TenantId, cancellationToken);
+    return Results.Ok(new
+    {
+        plan = quota.Plan,
+        monthlyLimit = quota.MonthlyLimit,
+        usedThisMonth = quota.UsedThisMonth,
+        remaining = quota.Remaining
+    });
+});
+
 app.MapPut("/api/tenants/me/headquarters", async (TracklyDbContext dbContext, TenantContext tenantContext, IMapboxService routingService, HeadquartersRequest request, CancellationToken cancellationToken) =>
 {
     if (tenantContext.TenantId == Guid.Empty)

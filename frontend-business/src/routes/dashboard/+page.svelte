@@ -15,15 +15,10 @@
 	} from '$lib/components/ui/card';
 	import { dateRangeState } from '$lib/stores/dateRange.svelte';
 	import { ordersActions, ordersState } from '$lib/stores/orders.svelte';
-	import {
-		getDeliveries,
-		getDeliveriesStats,
-		type ApiDelivery,
-		type DeliveryStatsResponse
-	} from '$lib/api/deliveries';
+	import { getDeliveries, type ApiDelivery } from '$lib/api/deliveries';
 	import { getRoutes, type ApiRoute } from '$lib/api/routes';
 	import { getDrivers, type ApiDriver } from '$lib/api/drivers';
-	import { getOrdersStats } from '$lib/api/orders';
+	import { getDeliveryQuota, type DeliveryQuotaResponse } from '$lib/api/billing';
 	import { getListFilters } from '$lib/stores/dateRange.svelte';
 	import BoxIcon from '@lucide/svelte/icons/box';
 	import TruckIcon from '@lucide/svelte/icons/truck';
@@ -34,6 +29,7 @@
 		deliveries: [] as ApiDelivery[],
 		routes: {} as Record<string, ApiRoute>,
 		drivers: [] as ApiDriver[],
+		quota: null as DeliveryQuotaResponse | null,
 		loading: false,
 		error: null as string | null,
 		requestId: 0
@@ -219,6 +215,13 @@
 		}
 		return items;
 	});
+	const quotaBadgeText = $derived.by(() => {
+		const q = dashboardState.quota;
+		if (!q) return 'Plan Starter · …';
+		if (q.remaining === null) return `Plan ${q.plan} · Illimité`;
+		return `Plan ${q.plan} · ${q.remaining} livraison${q.remaining !== 1 ? 's' : ''} restante${q.remaining !== 1 ? 's' : ''}`;
+	});
+
 	const driverWorkload = $derived.by(() => {
 		const map = new Map<string, { routes: number; stops: number; inProgress: number }>();
 		for (const route of timelineRoutes) {
@@ -247,17 +250,17 @@
 				dateFrom: filters.dateFrom,
 				dateTo: filters.dateTo
 			};
-			const [deliveries, routes, drivers] = await Promise.all([
+			const [deliveries, routes, drivers, quota] = await Promise.all([
 				getDeliveries(filters),
 				getRoutes(routeFilters),
 				getDrivers(),
-				getOrdersStats(filters),
-				getDeliveriesStats(filters)
+				getDeliveryQuota()
 			]);
 			if (dashboardRequestId !== requestId) return;
 			dashboardState.deliveries = deliveries.filter((d) => Boolean(d.routeId));
 			dashboardState.routes = Object.fromEntries(routes.map((r) => [r.id, r]));
 			dashboardState.drivers = drivers;
+			dashboardState.quota = quota;
 		} catch (error) {
 			if (dashboardRequestId !== requestId) return;
 			dashboardState.error =
@@ -270,7 +273,7 @@
 
 <div class="mx-auto flex w-full max-w-7xl min-w-0 flex-col gap-6">
 	<PeriodBadge />
-	<Badge variant="secondary" class="w-fit">Plan Starter · 7 livraisons restantes</Badge>
+	<Badge variant="secondary" class="w-fit">{quotaBadgeText}</Badge>
 
 	<section class="*:data-[slot=card]:from-primary/5 *:data-[slot=card]:to-card dark:*:data-[slot=card]:bg-card grid grid-cols-1 gap-4 *:data-[slot=card]:bg-gradient-to-t *:data-[slot=card]:shadow-xs md:grid-cols-2 xl:grid-cols-4">
 		<Card class="@container/card">

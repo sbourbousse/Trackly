@@ -3,6 +3,25 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-28 | Quota livraisons (API + badge dashboard réactif)
+
+**Tâche** : Système de quota pour les livraisons : endpoint quota, badge dashboard affichant le nombre de livraisons restantes (mis à jour à chaque chargement).
+
+**Fichiers modifiés** :
+- `backend/Features/Billing/DeliveryQuotaResult.cs` – DTO (Plan, MonthlyLimit, UsedThisMonth, Remaining)
+- `backend/Features/Billing/IBillingService.cs` – `GetDeliveryQuotaAsync`
+- `backend/Features/Billing/BillingService.cs` – calcul livraisons du mois en cours, limite 25 pour Starter, illimité pour Pro
+- `backend/Program.cs` – `GET /api/billing/quota` (après TenantMiddleware)
+- `frontend-business/src/lib/api/billing.ts` – `getDeliveryQuota()`, type `DeliveryQuotaResponse`
+- `frontend-business/src/lib/offline/mockApi.ts` – `mockBillingApi.getDeliveryQuota()` (dérivé des livraisons mock du mois)
+- `frontend-business/src/routes/dashboard/+page.svelte` – état `quota`, chargement dans `loadDashboardData`, badge dérivé `quotaBadgeText` (Plan X · N livraisons restantes / Illimité)
+
+**Résultat** :
+- Le badge « Plan Starter · 7 livraisons restantes » est remplacé par les données réelles (ou « … » pendant le chargement, « Illimité » pour Pro).
+- Rechargement du dashboard (changement de période ou entrée sur la page) met à jour le quota.
+
+---
+
 ## 2026-02-28 | SEO landing page (sitemap, robots, FAQ, BreadcrumbList)
 
 **Tâche** : Optimiser le référencement de la landing page : sitemap.xml et robots.txt dynamiques, section FAQ avec schéma FAQPage, BreadcrumbList en JSON-LD, lien FAQ dans le footer.

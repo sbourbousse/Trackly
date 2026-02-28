@@ -56,7 +56,7 @@ Textes recommandés pour chaque section. Adapter selon ton et A/B.
 
 ## 7. Footer
 
-- **Contact** : lien unique mis en avant (font-semibold, teal, souligné) — mailto:contact@arrivo.fr (pas de page contact dédiée).
+- **Contact** : lien unique mis en avant (font-semibold, teal, souligné) — mailto:contact@arrivo.pro (pas de page contact dédiée).
 - **Liens légaux** : Mentions légales (/mentions-legales), CGU (/cgu), Politique de confidentialité (/confidentialite). Les trois pages sont en place avec contenus conformes (LCEN, RGPD, CGU).
 - La section FAQ a été retirée de la landing et du footer.
 - **Réseaux** : optionnel, si pertinent (LinkedIn, etc.)

@@ -19,7 +19,7 @@
 **Résultat** :
 - À l'inscription, le code de vérification est envoyé par email via Resend si `Resend:ApiKey` ou `RESEND_APIKEY` est défini.
 - Sinon (dev sans clé), le code reste affiché en console et l'utilisateur voit le même message.
-- Pour la prod : définir `RESEND_APIKEY` (ou `Resend:ApiKey`) et optionnellement `Resend:From` (ex. « Arrivo &lt;contact@arrivo.fr&gt; » après vérification du domaine).
+- Pour la prod : définir `RESEND_APIKEY` (ou `Resend:ApiKey`) et optionnellement `Resend:From` (ex. « Arrivo &lt;contact@arrivo.pro&gt; » après vérification du domaine).
 
 ---
 
@@ -42,9 +42,9 @@
 
 **Résultat** :
 - Les liens du footer mènent vers des pages réelles (plus de 404).
-- Contact : email uniquement (contact@arrivo.fr).
+- Contact : email uniquement (contact@arrivo.pro).
 - FAQ retirée de la home et du footer.
-- Contenus juridiques (Arrivo, micro-entreprise) ; hébergeur site = Vercel, backend = Railway. Version bêta gratuite : pas de placeholders, marque Arrivo uniquement (contact@arrivo.fr, arrivo.fr).
+- Contenus juridiques (Arrivo, micro-entreprise) ; hébergeur site = Vercel, backend = Railway. Version bêta gratuite : pas de placeholders, marque Arrivo uniquement (contact@arrivo.pro, arrivo.pro).
 
 ---
 

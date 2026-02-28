@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPageLayout } from "@/components/landing/LegalPageLayout";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://arrivo.fr";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://arrivo.pro";
 
 export const metadata: Metadata = {
   title: "Conditions générales d'utilisation — Arrivo",
@@ -63,7 +63,7 @@ export default function CguPage() {
       </p>
 
       <p className="mt-10 text-sm text-stone-500">
-        Contact : <a href="mailto:contact@arrivo.fr" className="text-teal-600 hover:text-teal-700 underline">contact@arrivo.fr</a>.
+        Contact : <a href="mailto:contact@arrivo.pro" className="text-teal-600 hover:text-teal-700 underline">contact@arrivo.pro</a>.
       </p>
     </LegalPageLayout>
   );

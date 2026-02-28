@@ -1,4 +1,4 @@
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://arrivo.fr";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://arrivo.pro";
 
 const organization = {
   "@context": "https://schema.org",

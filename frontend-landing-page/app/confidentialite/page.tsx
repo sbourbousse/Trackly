@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { LegalPageLayout } from "@/components/landing/LegalPageLayout";
 
-const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://arrivo.fr";
+const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? "https://arrivo.pro";
 
 export const metadata: Metadata = {
   title: "Politique de confidentialité — Arrivo",
@@ -19,7 +19,7 @@ export default function ConfidentialitePage() {
 
       <h2>Responsable du traitement</h2>
       <p>
-        <strong>Arrivo</strong> (micro-entreprise). Contact : <a href="mailto:contact@arrivo.fr" className="text-teal-600 hover:text-teal-700 underline">contact@arrivo.fr</a>.
+        <strong>Arrivo</strong> (micro-entreprise). Contact : <a href="mailto:contact@arrivo.pro" className="text-teal-600 hover:text-teal-700 underline">contact@arrivo.pro</a>.
       </p>
 
       <h2>Finalités et bases légales</h2>
@@ -44,7 +44,7 @@ export default function ConfidentialitePage() {
 
       <h2>Vos droits</h2>
       <p>
-        Vous disposez d’un droit d’accès, de rectification, d’effacement, d’opposition, de limitation du traitement et de portabilité de vos données. Pour les exercer : <a href="mailto:contact@arrivo.fr" className="text-teal-600 hover:text-teal-700 underline">contact@arrivo.fr</a>. Vous pouvez introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 underline">www.cnil.fr</a>).
+        Vous disposez d’un droit d’accès, de rectification, d’effacement, d’opposition, de limitation du traitement et de portabilité de vos données. Pour les exercer : <a href="mailto:contact@arrivo.pro" className="text-teal-600 hover:text-teal-700 underline">contact@arrivo.pro</a>. Vous pouvez introduire une réclamation auprès de la CNIL (<a href="https://www.cnil.fr" target="_blank" rel="noopener noreferrer" className="text-teal-600 hover:text-teal-700 underline">www.cnil.fr</a>).
       </p>
     </LegalPageLayout>
   );

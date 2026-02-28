@@ -41,6 +41,7 @@ export const config = {
  * URLs de navigation interne (ancrages dans la landing page)
  */
 export const internalLinks = {
-  pricing: '#tarification',
-  cta: '#cta',
+  pricing: "#tarification",
+  cta: "#cta",
+  faq: "#faq",
 } as const;

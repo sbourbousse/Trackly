@@ -47,12 +47,14 @@ builder.Services.AddCors(options =>
                 "http://localhost:5175",   // Frontend Driver PWA
                 "http://localhost:5176",   // Frontend Driver PWA (port alternatif)
                 "http://localhost:3000",   // Frontend Landing (Next.js)
+                "http://localhost:3001",   // Frontend Tracking (Next.js, port alternatif)
                 "http://localhost:3004",   // Frontend Tracking (Next.js)
                 "http://127.0.0.1:5173",
                 "http://127.0.0.1:5174",
                 "http://127.0.0.1:5175",
                 "http://127.0.0.1:5176",
                 "http://127.0.0.1:3000",
+                "http://127.0.0.1:3001",
                 "http://127.0.0.1:3004"
             )
             .AllowAnyMethod()

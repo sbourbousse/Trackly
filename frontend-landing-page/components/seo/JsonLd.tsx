@@ -35,10 +35,24 @@ const softwareApplication = {
   },
 };
 
+const breadcrumbList = {
+  "@context": "https://schema.org",
+  "@type": "BreadcrumbList",
+  itemListElement: [
+    {
+      "@type": "ListItem",
+      position: 1,
+      name: "Accueil",
+      item: SITE_URL,
+    },
+  ],
+};
+
 const jsonLd = [
   { ...organization, "@id": `${SITE_URL}/#organization` },
   { ...website, publisher: { "@id": `${SITE_URL}/#organization` } },
   softwareApplication,
+  breadcrumbList,
 ];
 
 export function JsonLd() {

@@ -3,6 +3,28 @@
 > **Usage** : Résumé de ce qui a été fait après chaque tâche complétée.
 > Format : Date | Tâche | Fichiers modifiés | Notes
 
+## 2026-02-28 | SEO landing page (sitemap, robots, FAQ, BreadcrumbList)
+
+**Tâche** : Optimiser le référencement de la landing page : sitemap.xml et robots.txt dynamiques, section FAQ avec schéma FAQPage, BreadcrumbList en JSON-LD, lien FAQ dans le footer.
+
+**Fichiers modifiés** :
+- `frontend-landing-page/app/sitemap.ts` – sitemap dynamique (URL canonique, changeFrequency weekly, priority 1)
+- `frontend-landing-page/app/robots.ts` – robots.txt avec allow / et sitemap
+- `frontend-landing-page/lib/faq.ts` – données FAQ (5 questions/réponses)
+- `frontend-landing-page/components/landing/Faq.tsx` – section FAQ (h2, dl/dt/dd) + script JSON-LD FAQPage
+- `frontend-landing-page/components/seo/JsonLd.tsx` – ajout BreadcrumbList (Accueil)
+- `frontend-landing-page/lib/config.ts` – internalLinks.faq = "#faq"
+- `frontend-landing-page/app/page.tsx` – intégration Faq entre Trust et CtaFinal
+- `frontend-landing-page/components/landing/Footer.tsx` – lien FAQ dans la nav
+
+**Résultat** :
+- `/sitemap.xml` et `/robots.txt` générés par Next.js (NEXT_PUBLIC_SITE_URL pour l’URL de base).
+- Section « Questions fréquentes » avec schéma FAQPage pour les extraits enrichis Google.
+- Fil d’Ariane structuré (BreadcrumbList) pour la home.
+- Ancrage #faq et lien footer vers la FAQ.
+
+---
+
 ## 2026-02-28 | Vérification email à l'inscription
 
 **Tâche** : Ajouter une étape de confirmation par email lors de l'inscription : envoi d'un code à 6 chiffres, saisie du code avant d'accéder au tableau de bord. En mode dev, le code s'affiche dans la console backend.

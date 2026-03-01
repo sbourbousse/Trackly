@@ -15,6 +15,16 @@ declare global {
   }
 }
 
+/** URL de l'API en production quand la config runtime est absente ou vide (ex. déploiement statique Vercel). */
+const PRODUCTION_API_BASE = 'https://api.arrivo.pro';
+const PRODUCTION_SIGNALR = `${PRODUCTION_API_BASE}/hubs/tracking`;
+
+function isProductionOrigin(): boolean {
+  if (typeof window === 'undefined') return false;
+  const origin = window.location?.origin ?? '';
+  return origin !== '' && !origin.startsWith('http://localhost') && !origin.startsWith('http://127.0.0.1');
+}
+
 /**
  * Obtient la configuration runtime avec des fallbacks appropriés
  */
@@ -29,17 +39,33 @@ export function getRuntimeConfig(): RuntimeConfig {
     };
   }
 
-  // En production, utiliser la configuration runtime
-  if (window.__RUNTIME_CONFIG__) {
-    return window.__RUNTIME_CONFIG__;
+  const runtime = window.__RUNTIME_CONFIG__;
+  const hasValidApiUrl = runtime && (runtime.API_BASE_URL?.trim().length ?? 0) > 0;
+
+  if (runtime && hasValidApiUrl) {
+    return runtime;
   }
 
-  // Fallback: URL Railway si aucune config n'est disponible
-  console.warn('[Config] Configuration runtime non disponible, utilisation de Railway');
+  // En production (origin non localhost), ne jamais utiliser localhost
+  if (isProductionOrigin()) {
+    if (runtime && !hasValidApiUrl) {
+      console.warn('[Config] API_BASE_URL manquant dans la config runtime, utilisation de', PRODUCTION_API_BASE);
+    } else {
+      console.warn('[Config] Configuration runtime non disponible, utilisation de', PRODUCTION_API_BASE);
+    }
+    return {
+      API_BASE_URL: PRODUCTION_API_BASE,
+      SIGNALR_URL: PRODUCTION_SIGNALR,
+      DEFAULT_TENANT_ID: runtime?.DEFAULT_TENANT_ID ?? '',
+      TENANT_BOOTSTRAP: runtime?.TENANT_BOOTSTRAP ?? 'true'
+    };
+  }
+
+  // Fallback local (build prod servi en local)
   return {
-    API_BASE_URL: 'https://backend-production-050e.up.railway.app',
-    SIGNALR_URL: 'https://backend-production-050e.up.railway.app/hubs/tracking',
-    DEFAULT_TENANT_ID: '',
-    TENANT_BOOTSTRAP: 'true'
+    API_BASE_URL: 'http://localhost:5257',
+    SIGNALR_URL: 'http://localhost:5257/hubs/tracking',
+    DEFAULT_TENANT_ID: runtime?.DEFAULT_TENANT_ID ?? '',
+    TENANT_BOOTSTRAP: runtime?.TENANT_BOOTSTRAP ?? 'true'
   };
 }

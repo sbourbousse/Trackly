@@ -2,11 +2,20 @@ import { getRuntimeConfig } from '../config';
 import { offlineConfig } from '../offline/config';
 import { mockTenantApi } from '../offline/mockApi';
 
+function getBaseUrl(): string {
+  const config = getRuntimeConfig();
+  const url = config.API_BASE_URL?.trim() || '';
+  if (url) return url;
+  return typeof window !== 'undefined' && window.location?.origin && !window.location.origin.startsWith('http://localhost')
+    ? 'https://api.arrivo.pro'
+    : 'http://localhost:5257';
+}
+
+const baseUrl = getBaseUrl();
 const config = getRuntimeConfig();
-const baseUrl = config.API_BASE_URL || 'http://localhost:5257';
 
 console.info('[Driver] Configuration:');
-console.info('[Driver] - API_BASE_URL:', config.API_BASE_URL || '(fallback to localhost)');
+console.info('[Driver] - API_BASE_URL:', config.API_BASE_URL || '(fallback)');
 console.info('[Driver] - baseUrl used:', baseUrl);
 console.info('[Driver] - Mode offline:', offlineConfig.enabled ? 'ACTIVÉ' : 'désactivé');
 
